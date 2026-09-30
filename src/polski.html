@@ -1600,34 +1600,68 @@ function validDrillItems(arr, fallbackTag) {
      (it.t === "choice" && typeof it.q === "string" && Array.isArray(it.o) && it.o.length >= 2 && Number.isInteger(it.a) && it.a < it.o.length)))
     .map(it => ({ t: it.t, q: it.q, h: it.h ? String(it.h) : "", a: it.t === "fill" ? it.a.map(String) : it.a, o: it.o ? it.o.map(String) : undefined, en: it.en ? String(it.en) : "", _tag: UNITS.some(u => u.tag === it.tag) ? it.tag : fallbackTag, _label: "drill" }));
 }
-function packPrompt(u, n, withDrill) {
-  const tags = weakList().map(([t]) => t).filter(t => !t.startsWith("v")).concat(u.tag).join(", ");
-  return `Write practice material that a Polish learner will use offline.
+/* The pack is made from small requests (one dialogue each, one drill) on the
+   fast model, two at a time. One big request for everything took minutes and
+   often hit the reply length limit, which lost the whole pack. Each piece that
+   finishes is kept, so a failure or Stop still leaves a usable pack. */
+const PACK_CAST = [["Ania", "Piotr"], ["Kasia", "Tomek"], ["Ola", "Marek"], ["Zosia", "Kuba"], ["Ewa", "Adam"], ["Magda", "Paweł"]];
+const PACK_ANGLE = ["meeting for the first time", "a phone call", "a small problem to solve", "making a plan together", "a surprise", "asking for help"];
+function packDialoguePrompt(u, i) {
+  const [a, b] = PACK_CAST[i % PACK_CAST.length];
+  return `Write one short Polish reading dialogue that a learner will read offline.
 ${learnerContext(u)}
-Setting ideas: ${u.scenario} Vary the setting and the speakers between dialogues.
-1. "dialogues": ${n} different dialogues, each 7 to 9 lines between two named Polish speakers, natural everyday Polish at the learner's level, mostly using words the learner has studied plus this unit's grammar (${u.grammar.title}). Each has at most 3 new words and 3 comprehension questions in English with 4 options.
-${withDrill ? `2. "drill": 10 one-gap exercises on the learner's weak spots and this unit's grammar. Each gap is exactly one word. "tag" must be one of: ${tags}.` : ""}
+Topic: ${u.scenario} Angle: ${PACK_ANGLE[i % PACK_ANGLE.length]}.
+- 6 to 8 lines between ${a} and ${b}, natural everyday Polish at the learner's level.
+- Mostly words the learner has studied, and use this unit's grammar (${u.grammar.title}).
+- At most 3 new words, listed in newWords.
+- 3 comprehension questions in English, each with 4 options.
 Reply with only JSON:
-{"dialogues":[{"title":"Polish title","setting":"one English sentence","lines":[{"speaker":"Name","pl":"Polish line","en":"English"}],"newWords":[{"pl":"word","en":"meaning"}],"questions":[{"q":"question","options":["a","b","c","d"],"answer":0}]}]${withDrill ? `,"drill":[{"t":"fill","q":"Polish sentence with ___","h":"base form or hint","a":["answer"],"en":"English translation","tag":"tag"},{"t":"choice","q":"sentence with ___","o":["correct","wrong","wrong"],"a":0,"tag":"tag"}]` : ""}}`;
+{"title":"Polish title","setting":"one English sentence","lines":[{"speaker":"${a}","pl":"Polish line","en":"English"}],"newWords":[{"pl":"word","en":"meaning"}],"questions":[{"q":"question","options":["a","b","c","d"],"answer":0}]}`;
+}
+function packDrillPrompt(u) {
+  const tags = weakList().map(([t]) => t).filter(t => !t.startsWith("v")).concat(u.tag).join(", ");
+  return `Write 10 short one-gap Polish exercises that a learner will do offline.
+${learnerContext(u)}
+Focus on the learner's weak spots and this unit's grammar (${u.grammar.title}). Each gap is exactly one word. Use simple vocabulary.
+"tag" must be one of: ${tags}.
+Reply with only JSON:
+{"items":[{"t":"fill","q":"Polish sentence with ___","h":"base form or hint","a":["answer"],"en":"English translation","tag":"tag"},{"t":"choice","q":"sentence with ___","o":["correct","wrong","wrong"],"a":0,"tag":"tag"}]}`;
 }
 async function makePack(onStatus, signal) {
   const cur = curUnit(), next = UNITS[cur.id + 1];
+  const jobs = [0, 1, 2, 3].map(i => ({ kind: "dlg", u: cur, i })).concat([{ kind: "drill", u: cur }]);
+  if (next && !S.progress.mastered.includes(next.id)) jobs.push({ kind: "dlg", u: next, i: 4 }, { kind: "dlg", u: next, i: 5 });
   const pack = { made: Date.now(), units: {}, drill: null };
-  onStatus(`Writing 4 dialogues and a drill for unit ${cur.id + 1}…`);
-  const r1 = await sample.json(packPrompt(cur, 4, true), { signal, cache: false });
-  const d1 = (r1 && Array.isArray(r1.dialogues) ? r1.dialogues : []).map(validDialogue).filter(Boolean);
-  if (d1.length) pack.units[cur.id] = { dialogues: d1, used: 0 };
-  const items = validDrillItems(r1 && r1.drill, cur.tag);
-  if (items.length >= 4) pack.drill = { unit: cur.id, items, used: false };
-  if (next && !S.progress.mastered.includes(next.id)) {
-    onStatus(`Writing 2 dialogues for unit ${next.id + 1}, in case you get there offline…`);
+  const FATAL = ["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed", "rate_limited", "session_expired", "cancelled"];
+  let done = 0, ok = 0, stopErr = null, lastErr = null, idx = 0;
+  onStatus(`Writing the offline pack: 0 of ${jobs.length} pieces ready…`);
+  async function run(job) {
     try {
-      const r2 = await sample.json(packPrompt(next, 2, false), { signal, cache: false });
-      const d2 = (r2 && Array.isArray(r2.dialogues) ? r2.dialogues : []).map(validDialogue).filter(Boolean);
-      if (d2.length) pack.units[next.id] = { dialogues: d2, used: 0 };
-    } catch (e) { if (e && e.code === "cancelled") throw e; }
+      if (job.kind === "dlg") {
+        const r = await sample.json(packDialoguePrompt(job.u, job.i), { signal, cache: false, modelTier: "quick" });
+        const dl = validDialogue(r && !r.lines && r.dialogue ? r.dialogue : r);
+        if (!dl) throw { code: "invalid_json" };
+        (pack.units[job.u.id] = pack.units[job.u.id] || { dialogues: [], used: 0 }).dialogues.push(dl);
+      } else {
+        const r = await sample.json(packDrillPrompt(job.u), { signal, cache: false, modelTier: "quick" });
+        const items = validDrillItems(r && (r.items || r.drill), job.u.tag);
+        if (items.length < 4) throw { code: "invalid_json" };
+        pack.drill = { unit: job.u.id, items, used: false };
+      }
+      ok++;
+    } catch (e) {
+      lastErr = e;
+      if (e && FATAL.includes(e.code)) stopErr = stopErr || e;
+    }
+    done++;
+    if (!stopErr) onStatus(`Writing the offline pack: ${ok} of ${jobs.length} pieces ready…`);
   }
-  if (!Object.keys(pack.units).length && !pack.drill) throw { code: "invalid_json" };
+  const worker = async () => { while (!stopErr && idx < jobs.length) await run(jobs[idx++]); };
+  await Promise.all([worker(), worker()]);
+  const got = Object.keys(pack.units).length || pack.drill;
+  if (!got) throw stopErr || lastErr || { code: "invalid_json" };
+  pack.partial = ok < jobs.length;
+  pack.stopped = stopErr ? stopErr.code : null;
   return pack;
 }
 
@@ -2828,8 +2862,11 @@ function syncPanel() {
       let pack = null;
       if (packToggle.checked && aiOn()) {
         status.hidden = false; ctl = new AbortController();
-        try { pack = await makePack(t => { status.textContent = t; }, ctl.signal); }
-        catch (e) { const m = aiErrorText(e); if (m) out.append(h("div", { class: "notice" }, "The offline pack couldn't be made: " + m + " Your progress is still included.")); }
+        try {
+          pack = await makePack(t => { status.textContent = t; }, ctl.signal);
+          if (pack.partial) out.append(h("div", { class: "notice" }, pack.stopped === "cancelled" ? "Stopped. The pack keeps the pieces that were already finished." : pack.stopped ? "The pack is smaller than planned: " + (aiErrorText({ code: pack.stopped }) || "the AI stopped early.") + " It keeps the pieces that were finished." : "Some pieces couldn't be written, so the pack is a little smaller than planned."));
+        }
+        catch (e) { const m = e && e.code === "cancelled" ? "you stopped it before any piece was finished." : aiErrorText(e); if (m) out.append(h("div", { class: "notice" }, "The offline pack couldn't be made: " + m + " Your progress is still included, so you can sync without it.")); }
         status.hidden = true;
       }
       const code = await encodeSync(pack ? { pack } : {});
@@ -2847,8 +2884,8 @@ function syncPanel() {
       h("div", { class: "spread" }, h("h3", null, "Send to the installed app"), h("span", { class: "chip green" }, "claude.ai")),
       h("p", { class: "small muted" }, "Before going offline, send your progress to the installed app. An offline pack adds 6 new AI dialogues and a 10-question weak-spot drill for the app to use without internet."),
       h("div", { class: "tiles" }, stat(ago(info.got), "last received", "from the app"), stat(ago(info.sent), "last sent", "to the app")),
-      h("label", { class: "row small", for: "pack-toggle", style: "flex-wrap:nowrap;align-items:flex-start" }, packToggle, h("span", null, "Include an offline pack (AI, takes about a minute)", aiOn() ? "" : " · needs AI and a connection")),
-      h("div", { class: "row" }, prep, h("button", { class: "btn ghost sm", onclick: () => ctl && ctl.abort() }, "Stop")), status, out,
+      h("label", { class: "row small", for: "pack-toggle", style: "flex-wrap:nowrap;align-items:flex-start" }, packToggle, h("span", null, "Include an offline pack (AI, usually under a minute)", aiOn() ? "" : " · needs AI and a connection")),
+      h("div", { class: "row" }, prep, h("button", { class: "btn ghost sm", onclick: () => ctl && ctl.abort() }, "Stop and keep what's ready")), status, out,
       importBox(() => render()),
       HAS_APP_URL ? h("p", { class: "small muted" }, "Don't have the app yet? Open ", h("a", { href: APP_URL, target: "_blank", rel: "noopener" }, APP_URL), " in Chrome or Edge and choose Install.") : null);
   }
