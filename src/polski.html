@@ -81,7 +81,9 @@ nav.tabs button[aria-current="page"] .en { color: var(--bg); opacity: 0.75; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .btn.primary:hover { filter: brightness(1.06); }
 .btn.ghost { border-color: var(--line); }
-.btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+.btn[disabled], .btn[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; }
+.btn[aria-disabled="true"] { pointer-events: none; }
+a.btn { text-decoration: none; color: inherit; }
 .btn.sm { padding: 5px 11px; font-size: 0.875rem; }
 .chip { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 2px 10px; font-size: 0.8rem; font-weight: 700; background: var(--blue-soft); color: var(--blue); }
 .chip.red { background: var(--accent-soft); color: var(--accent); }
@@ -2791,17 +2793,24 @@ function syncPanel() {
   if (IS_APP) {
     const p = getPack(), u = curUnit();
     const waiting = S.progress.writings.filter(w => !w.fb).length;
-    const go = h("button", { class: "btn primary", onclick: async () => {
-      go.disabled = true;
-      const code = await encodeSync();
+    /* The link is prepared before the tap. Browsers only let a page open a new
+       window straight from a real tap; installed-app windows block a window
+       opened by script after an async step, and they do it silently. */
+    let code = "";
+    const go = h("a", { class: "btn primary", id: "sync-go", href: ARTIFACT_URL, target: "_blank", rel: "noopener", "aria-disabled": "true" }, "Preparing sync…");
+    encodeSync().then(c => { code = c; go.href = ARTIFACT_URL + "#" + c; go.textContent = "Sync with claude.ai"; go.removeAttribute("aria-disabled"); });
+    go.addEventListener("click", e => {
+      if (!code) { e.preventDefault(); return; }
       syncInfo({ sent: Date.now() });
-      const a = h("a", { href: ARTIFACT_URL + "#" + code, target: "_blank", rel: "noopener" });
-      document.body.append(a); a.click(); a.remove();
-      go.disabled = false;
-      out.replaceChildren(h("p", { class: "small" }, "claude.ai opened in your browser and should import your progress on its own. Didn't work? Copy the code, then paste it under Postępy → Sync on claude.ai."),
-        h("div", { class: "row" }, copyButton(() => code)), h("textarea", { class: "code-box", readonly: true, hidden: true }, code));
       renderStats();
-    } }, "Sync with claude.ai");
+      const help = () => out.replaceChildren(
+        h("p", { class: "small" }, "claude.ai should now be open in your browser and importing your progress. If it didn't open, or opened without syncing, copy the code and paste it on claude.ai under Postępy → Sync."),
+        h("div", { class: "row" }, copyButton(() => code)), h("textarea", { class: "code-box", readonly: true, hidden: true }, code));
+      help();
+      setTimeout(() => {
+        if (!document.hidden && document.hasFocus()) out.prepend(h("div", { class: "notice" }, "It looks like nothing opened. Your device may have blocked the link or sent it to another app. Use Copy code below instead."));
+      }, 2000);
+    });
     box.append(
       h("div", { class: "spread" }, h("h3", null, "Sync with claude.ai"), h("span", { class: "chip" }, "installed app")),
       h("p", { class: "small muted" }, "This app works fully offline. When you're online, sync to send your progress to claude.ai, get feedback on writing you did offline, and bring back a new offline pack."),
