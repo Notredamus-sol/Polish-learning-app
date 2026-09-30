@@ -234,6 +234,49 @@ caption { caption-side: top; text-align: left; font-weight: 700; font-size: 0.85
 .stage-mark::before { content: ""; position: absolute; left: 19px; top: 0; bottom: 0; width: 4px; background: var(--line); }
 .code-box { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 0.75rem; min-height: 90px; word-break: break-all; }
 label.row input[type=checkbox] { width: 18px; height: 18px; margin-top: 2px; flex: none; accent-color: var(--accent); }
+/* bottom tab bar on phones */
+@media (max-width: 640px) {
+  nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; margin: 0; border-radius: 14px 14px 0 0; border-bottom: 0; padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.18); }
+  nav.tabs button { padding: 8px 2px; }
+  .wrap { padding-block-end: calc(96px + env(safe-area-inset-bottom, 0px)); }
+  #toasts { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+}
+.hello-row { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; }
+.hello-row .hello { min-width: 0; flex: 1; }
+.ring { position: relative; width: 92px; height: 92px; flex: none; }
+.ring svg { width: 100%; height: 100%; }
+.ring-bg { fill: none; stroke: var(--line); stroke-width: 7; }
+.ring-fg { fill: none; stroke: var(--accent); stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset .6s; }
+.ring-fg.full { stroke: var(--good); }
+.ring-label { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; line-height: 1.1; }
+.ring-label b { font-family: var(--display); font-size: 1.25rem; }
+.ring-label small { font-size: 0.68rem; color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; background: var(--surface-2); }
+.seg button { border: 0; background: transparent; border-radius: 7px; padding: 4px 10px; font-size: 0.82rem; font-weight: 700; color: var(--muted); }
+.seg button.on { background: var(--ink); color: var(--bg); }
+.daily { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.daily > .card { min-width: 0; }
+ul.cando { margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+ul.cando li { padding-left: 24px; position: relative; }
+ul.cando li::before { content: "✓"; position: absolute; left: 0; color: var(--good); font-weight: 800; }
+.badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.badge { border: 1px dashed var(--line); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 2px; opacity: 0.5; min-width: 0; }
+.badge.on { border-style: solid; border-color: var(--warn); background: var(--warn-soft); opacity: 1; }
+.badge-icon { font-family: var(--display); font-weight: 800; font-size: 1.1rem; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); border: 2px solid var(--line); }
+.badge.on .badge-icon { border-color: var(--warn); color: var(--warn); }
+.badge small { font-size: 0.72rem; color: var(--muted); }
+.setting { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding-block: 8px; border-top: 1px solid var(--line); }
+.setting > span { display: flex; flex-direction: column; min-width: 0; }
+.setting select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); max-width: 52vw; }
+#toasts { position: fixed; left: 50%; transform: translateX(-50%); bottom: 20px; z-index: 60; display: flex; flex-direction: column; gap: 8px; width: min(420px, calc(100vw - 32px)); pointer-events: none; }
+.toast { display: flex; gap: 10px; align-items: center; background: var(--ink); color: var(--bg); border-radius: 12px; padding: 10px 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); animation: toast-in .25s ease-out; transition: opacity .4s, transform .4s; }
+.toast.out { opacity: 0; transform: translateY(8px); }
+.toast-icon { font-family: var(--display); font-weight: 800; min-width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--warn); color: var(--on-accent); padding: 0 6px; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(10px); } }
+.key-hint { display: inline-grid; place-items: center; min-width: 20px; height: 20px; border-radius: 5px; border: 1px solid var(--line); font-size: 0.72rem; color: var(--muted); margin-right: 8px; font-family: var(--body); }
+@media (hover: none) { .key-hint { display: none; } }
+.center { text-align: center; }
+.flash { touch-action: pan-y; transition: transform .15s; }
 .notice { border-left: 4px solid var(--blue); background: var(--blue-soft); padding: 10px 14px; border-radius: 0 10px 10px 0; font-size: 0.9rem; }
 .confirm { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 10px; padding: 12px 14px; }
 @media (max-width: 480px) {
@@ -1404,6 +1447,101 @@ const REF = [
 ];
 
 
+
+/* ================================================================
+   MOTIVATION CONTENT: can-do statements, culture notes, milestones, story cast
+   ================================================================ */
+const CAN_DO = [
+  ["Greet people formally and informally, and say goodbye", "Introduce yourself and ask how someone is"],
+  ["Introduce the people in your family", "Tell masculine, feminine and neuter nouns apart"],
+  ["Count to 20 and say how old you are", "Say what you have"],
+  ["Order food and drinks in a café", "Ask for the bill"],
+  ["Say where you live and work", "Say which languages you speak"],
+  ["Say where you are: at home, at work, in the shop, in Poland"],
+  ["Say what you like and don't like", "Say you don't have time"],
+  ["Name the days of the week and tell the time", "Arrange when to meet"],
+  ["Describe things by colour, size and price"],
+  ["Say where you're going and how you'll get there", "Understand simple directions"],
+  ["Ask how much things cost", "Buy things and pay by card or cash"],
+  ["Say what you did yesterday or last weekend"],
+  ["Say what you do for a living", "Say who you do things with"],
+  ["Say what you want, can, must and know how to do", "Ask for permission politely"],
+  ["Count things: two cats, five windows", "Describe your home"],
+  ["Describe your daily routine"],
+  ["Talk about your plans for the weekend and holidays"],
+  ["Say whether something was in progress or got done"],
+  ["Say who you're giving things to", "Thank people properly"],
+  ["Give instructions and directions", "Make polite requests to strangers"],
+  ["Compare two things and say which is best"]
+];
+
+/* A culture note appears on the Today page, a different one each day */
+const CULTURE = [
+  { t: "Smacznego!", pl: "Smacznego! Nawzajem!", en: "Enjoy your meal! Likewise!", text: "Poles say „Smacznego!” before a meal, like bon appétit. The usual reply is „Nawzajem!”, meaning likewise." },
+  { t: "Name days", pl: "Wszystkiego najlepszego z okazji imienin!", en: "All the best on your name day!", text: "Many Poles celebrate their imieniny (name day), the feast of the saint they're named after. For some people it matters as much as their birthday." },
+  { t: "Na zdrowie!", pl: "Na zdrowie!", en: "Cheers! / Bless you!", text: "„Na zdrowie!” (to your health) is what you say when raising a glass, and also when someone sneezes." },
+  { t: "Pan and Pani", pl: "Czy może pan mi pomóc?", en: "Could you help me, sir?", text: "Strangers are addressed as pan (sir) or pani (madam) with the he / she form of the verb. Moving to informal ty is usually offered by the older person: „Przejdźmy na ty.”" },
+  { t: "Nicknames", pl: "Kasia, Ania, Piotrek", en: "Katarzyna, Anna, Piotr", text: "Friends use short forms of names: Katarzyna becomes Kasia, Anna becomes Ania, and Piotr becomes Piotrek. There are even softer versions, like Aneczka." },
+  { t: "Calling someone", pl: "Aniu! Kasiu! Tomku!", en: "Ania! Kasia! Tomek!", text: "When you call out to someone, the name changes into the vocative case. Ania becomes Aniu!, and Tomek becomes Tomku!" },
+  { t: "Wigilia", pl: "Wesołych Świąt!", en: "Merry Christmas!", text: "The main Christmas meal is on Christmas Eve (Wigilia). Traditionally there are twelve meatless dishes, dinner starts when the first star appears, and there's an extra place at the table for an unexpected guest." },
+  { t: "Śmigus-dyngus", pl: "Wesołego Alleluja!", en: "Happy Easter!", text: "On Easter Monday, people throw water at each other. This is śmigus-dyngus, and in some towns it turns into a full water fight." },
+  { t: "Pierogi ruskie", pl: "Poproszę pierogi ruskie.", en: "Pierogi ruskie, please.", text: "Pierogi ruskie are filled with potato and white cheese. The name has nothing to do with Russia: it refers to the old region of Ruthenia (Ruś)." },
+  { t: "Shoes off", pl: "Proszę, tu są kapcie.", en: "Here are some slippers.", text: "Guests often take their shoes off at the door of a Polish home, and hosts may offer kapcie (slippers)." },
+  { t: "Flowers", pl: "To dla ciebie.", en: "This is for you.", text: "Give an odd number of flowers as a gift. Even numbers are for funerals." },
+  { t: "No 'good afternoon'", pl: "Dzień dobry! Dobry wieczór!", en: "Hello! Good evening!", text: "Polish has no 'good afternoon'. „Dzień dobry” works from morning until evening, then you switch to „Dobry wieczór”." },
+  { t: "Proszę", pl: "Proszę bardzo.", en: "You're welcome. / Here you are.", text: "„Proszę” means please, here you are, you're welcome and pardon? — it's probably the most useful word in Polish." },
+  { t: "'No' means yes", pl: "No, jasne!", en: "Yeah, sure!", text: "In casual Polish, „no” is a filler word meaning yeah or well. „No, jasne!” means 'yeah, sure!', not 'no'." },
+  { t: "The old capital", pl: "Kraków był stolicą Polski.", en: "Kraków was the capital of Poland.", text: "Kraków was the royal capital until King Sigismund III moved the court to Warsaw at the end of the 16th century." },
+  { t: "Fat Thursday", pl: "Poproszę dwa pączki.", en: "Two doughnuts, please.", text: "On Tłusty czwartek, the last Thursday before Lent, Poles eat pączki (doughnuts), often a lot of them." },
+  { t: "All Saints' Day", pl: "Pierwszego listopada idziemy na cmentarz.", en: "On the first of November we go to the cemetery.", text: "On 1 November, families visit their relatives' graves and light candles called znicze. At night the cemeteries glow." },
+  { t: "Milk bars", pl: "Jemy obiad w barze mlecznym.", en: "We're having lunch at a milk bar.", text: "A bar mleczny (milk bar) is a cheap canteen that dates from communist times. Many still serve homestyle soups and pierogi." },
+  { t: "Sto lat!", pl: "Sto lat, sto lat!", en: "A hundred years, a hundred years!", text: "Instead of 'Happy Birthday', Poles sing „Sto lat”, wishing the person a hundred years of life." },
+  { t: "Cześć and na razie", pl: "Cześć! Na razie!", en: "Hi! See you!", text: "„Cześć” means both hi and bye. „Na razie” (literally 'for now') is a casual 'see you'." },
+  { t: "A famous tongue twister", pl: "W Szczebrzeszynie chrząszcz brzmi w trzcinie.", en: "In Szczebrzeszyn a beetle buzzes in the reeds.", text: "Poles use this line to test foreigners. Try it slowly: chrząszcz sounds like 'hshonshch'." },
+  { t: "Letters that sound the same", pl: "góra, rzeka, żaba", en: "mountain, river, frog", text: "Ó sounds just like u, and rz sounds just like ż. Spelling them correctly is hard even for Polish schoolchildren." },
+  { t: "Zakopane", pl: "Jedziemy w góry, do Zakopanego.", en: "We're going to the mountains, to Zakopane.", text: "Zakopane sits below the Tatra mountains. It's known for highlander (góral) culture and oscypek, a smoked sheep's cheese." },
+  { t: "Toruń", pl: "Toruń słynie z pierników.", en: "Toruń is famous for gingerbread.", text: "Toruń is famous for its gingerbread (pierniki), and Nicolaus Copernicus was born there in 1473." },
+  { t: "Maria Skłodowska-Curie", pl: "Maria Skłodowska-Curie urodziła się w Warszawie.", en: "Maria Skłodowska-Curie was born in Warsaw.", text: "Maria Skłodowska-Curie was born in Warsaw in 1867. She won two Nobel Prizes, in physics and in chemistry." },
+  { t: "Chopin", pl: "Lubię słuchać Chopina.", en: "I like listening to Chopin.", text: "Fryderyk Chopin was born in 1810 in Żelazowa Wola, near Warsaw. Warsaw's airport is named after him." },
+  { t: "An honest answer", pl: "Jakoś leci.", en: "I'm getting by.", text: "Ask a Pole „Jak się masz?” and you may get a real answer, complaints included. „Jakoś leci” (it's going somehow) is a typical reply." },
+  { t: "Who's last?", pl: "Przepraszam, kto jest ostatni?", en: "Excuse me, who's last?", text: "In a waiting room or a queue with no line, ask „Kto ostatni?” to find out who you're after." },
+  { t: "Zapraszam", pl: "Zapraszam!", en: "Come in! / Next, please!", text: "Shop and café staff say „Zapraszam!” (I invite you) to welcome you in or call the next customer." },
+  { t: "Dates", pl: "Dzisiaj jest trzydziesty września.", en: "Today is the thirtieth of September.", text: "Dates are written day, month, year (30.09.2026). The month goes in the genitive: września, not wrzesień." }
+];
+
+/* Milestones: each check reads the progress and returns true once earned */
+const MILESTONES = [
+  { id: "first", icon: "1", pl: "Pierwszy krok", en: "Finished your first step", check: P => Object.values(P.days).some(d => Object.keys(d.steps || {}).length) },
+  { id: "streak3", icon: "3", pl: "Trzy dni", en: "3-day streak", check: P => P.best >= 3 },
+  { id: "streak7", icon: "7", pl: "Tydzień", en: "7-day streak", check: P => P.best >= 7 },
+  { id: "streak30", icon: "30", pl: "Miesiąc", en: "30-day streak", check: P => P.best >= 30 },
+  { id: "streak100", icon: "100", pl: "Sto dni", en: "100-day streak", check: P => P.best >= 100 },
+  { id: "unit1", icon: "✓", pl: "Pierwsza lekcja", en: "Finished your first unit", check: P => P.mastered.length >= 1 },
+  { id: "a11", icon: "A1.1", pl: "Połowa A1", en: "Finished units 1–6", check: P => [0, 1, 2, 3, 4, 5].every(i => P.mastered.includes(i)) },
+  { id: "a1", icon: "A1", pl: "Poziom A1", en: "Finished all A1 units", check: P => UNITS.slice(0, 12).every(u => P.mastered.includes(u.id)) },
+  { id: "a2", icon: "A2", pl: "Poziom A2", en: "Finished the whole course", check: P => UNITS.every(u => P.mastered.includes(u.id)) },
+  { id: "words50", icon: "50", pl: "50 słów", en: "50 words learned", check: (P, L) => L.learned >= 50 },
+  { id: "words100", icon: "100", pl: "100 słów", en: "100 words learned", check: (P, L) => L.learned >= 100 },
+  { id: "words250", icon: "250", pl: "250 słów", en: "250 words learned", check: (P, L) => L.learned >= 250 },
+  { id: "chat10", icon: "💬", pl: "Gaduła", en: "A conversation of 10+ messages", check: P => (P.stats.chatMax || 0) >= 10 },
+  { id: "perfect", icon: "12", pl: "Bez błędów", en: "12 out of 12 on a test", check: P => (P.stats.perfect || 0) >= 1 },
+  { id: "writer", icon: "10", pl: "Pisarz", en: "10/10 for a piece of writing", check: P => (P.stats.w10 || 0) >= 1 },
+  { id: "listener", icon: "👂", pl: "Dobre ucho", en: "25 sentences understood by ear", check: P => (P.stats.listenOk || 0) >= 25 },
+  { id: "xp1000", icon: "1k", pl: "Tysiąc", en: "1,000 XP", check: P => P.xp >= 1000 },
+  { id: "xp5000", icon: "5k", pl: "Pięć tysięcy", en: "5,000 XP", check: P => P.xp >= 5000 }
+];
+
+/* Story mode: AI dialogues follow the same characters from day to day */
+const STORY_CAST = `Recurring characters in the learner's story: Ola, who runs a small café in Kraków; her brother Tomek, a programmer who loves football; Pani Ewa, their chatty neighbour; and Marek, Ola's friend from work. The learner has just moved to Kraków and knows them all.`;
+const STORY_PAIRS = [["Ola", "Tomek"], ["Tomek", "Marek"], ["Ola", "Pani Ewa"], ["Pani Ewa", "Tomek"], ["Marek", "Ola"], ["Tomek", "Ola"]];
+
+/* Session lengths: which steps make up the day */
+const PLANS = {
+  quick: { label: "Quick", steps: ["review", "mini"] },
+  standard: { label: "Standard", steps: ["review", "grammar", "dialogue", "quiz"] },
+  full: { label: "Full", steps: ["review", "grammar", "dialogue", "listen", "convo", "writing", "quiz"] }
+};
+
 /* ================================================================
    Utilities
    ================================================================ */
@@ -1477,10 +1615,11 @@ function normalizeProgress(P) {
   if (!Array.isArray(P.writings)) P.writings = [];
   if (!Array.isArray(P.quizzes)) P.quizzes = [];
   if (!Array.isArray(P.mastered)) P.mastered = [];
+  for (const k of ["stats", "milestones", "frozen", "masteredAt"]) if (!P[k] || typeof P[k] !== "object") P[k] = {};
   return P;
 }
 function computeStreak(P) {
-  const active = k => { const d = P.days[k]; return d && (Object.keys(d.steps || {}).length || d.xp > 0); };
+  const active = k => { const d = P.days[k]; return (d && (Object.keys(d.steps || {}).length || d.xp > 0)) || (P.frozen && P.frozen[k]); };
   const dt = new Date(); let n = 0;
   if (!active(localKey(dt))) dt.setDate(dt.getDate() - 1);
   while (active(localKey(dt))) { n++; dt.setDate(dt.getDate() - 1); }
@@ -1508,6 +1647,11 @@ function mergeProgress(local, incoming) {
   [...older.writings, ...newer.writings].forEach(w => { const o = ws[w.id]; ws[w.id] = !o ? w : Object.assign({}, o, w, { fb: w.fb || o.fb, seen: w.seen || o.seen }); });
   m.writings = Object.values(ws).sort((x, y) => (x.at || 0) - (y.at || 0)).slice(-30);
   m.today = a.today;
+  m.frozen = Object.assign({}, older.frozen, newer.frozen);
+  m.milestones = Object.assign({}, older.milestones, newer.milestones);
+  m.masteredAt = Object.assign({}, older.masteredAt, newer.masteredAt);
+  m.stats = Object.assign({}, older.stats);
+  for (const [k, v] of Object.entries(newer.stats || {})) m.stats[k] = Math.max(+v || 0, +m.stats[k] || 0);
   m._t = Math.max(a._t || 0, b._t || 0);
   m.lastDay = Math.max(a.lastDay || 0, b.lastDay || 0) || null;
   m.streak = computeStreak(m);
@@ -1607,10 +1751,10 @@ function validDrillItems(arr, fallbackTag) {
 const PACK_CAST = [["Ania", "Piotr"], ["Kasia", "Tomek"], ["Ola", "Marek"], ["Zosia", "Kuba"], ["Ewa", "Adam"], ["Magda", "Paweł"]];
 const PACK_ANGLE = ["meeting for the first time", "a phone call", "a small problem to solve", "making a plan together", "a surprise", "asking for help"];
 function packDialoguePrompt(u, i) {
-  const [a, b] = PACK_CAST[i % PACK_CAST.length];
+  const [a, b] = (settings().story ? STORY_PAIRS : PACK_CAST)[i % PACK_CAST.length];
   return `Write one short Polish reading dialogue that a learner will read offline.
 ${learnerContext(u)}
-Topic: ${u.scenario} Angle: ${PACK_ANGLE[i % PACK_ANGLE.length]}.
+${settings().story ? STORY_CAST + " This is a side story with these characters (no episode number).\n" : ""}Topic: ${u.scenario} Angle: ${PACK_ANGLE[i % PACK_ANGLE.length]}.
 - 6 to 8 lines between ${a} and ${b}, natural everyday Polish at the learner's level.
 - Mostly words the learner has studied, and use this unit's grammar (${u.grammar.title}).
 - At most 3 new words, listed in newWords.
@@ -1727,11 +1871,11 @@ function todayRec() {
   return p.days[k];
 }
 function touchStreak() {
-  const p = S.progress, t = TODAY();
-  if (p.lastDay === t) return;
-  p.streak = p.lastDay === t - 1 ? p.streak + 1 : 1;
+  const p = S.progress;
+  p.lastDay = TODAY();
+  p.streak = computeStreak(p);
   p.best = Math.max(p.best || 0, p.streak);
-  p.lastDay = t;
+  maybeEarnFreeze();
 }
 function addXP(n) {
   if (!n) return;
@@ -1742,6 +1886,8 @@ function addXP(n) {
   pruneDays();
   persist("progress");
   renderStats();
+  checkGoal();
+  checkMilestones();
 }
 function pruneDays() {
   const keys = Object.keys(S.progress.days).sort();
@@ -1750,7 +1896,7 @@ function pruneDays() {
 }
 function markStep(id) {
   const d = todayRec();
-  if (!d.steps[id]) { d.steps[id] = true; touchStreak(); persist("progress"); }
+  if (!d.steps[id]) { d.steps[id] = true; touchStreak(); persist("progress"); checkMilestones(); }
 }
 function hit(tag, correct) {
   const w = S.progress.weak;
@@ -1794,12 +1940,15 @@ function introduced() { return allCards().filter(c => S.srs.cards[c.id]); }
 function dueCards() { const t = TODAY(); return introduced().filter(c => S.srs.cards[c.id].due <= t).sort((a, b) => S.srs.cards[a.id].due - S.srs.cards[b.id].due); }
 function newCardsForToday() {
   const u = curUnit();
-  return allCards().filter(c => c.unit === u.id && !S.srs.cards[c.id]);
+  const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+  const today = Object.values(S.srs.cards).filter(c => c.f >= t0.getTime()).length;
+  const left = Math.max(0, (+settings().newPerDay || 10) - today);
+  return allCards().filter(c => c.unit === u.id && !S.srs.cards[c.id]).slice(0, left);
 }
 function grade(card, g) {
   const t = TODAY();
   const st = S.srs.cards[card.id] || { b: 0, due: t, l: 0, n: 0 };
-  st.n = (st.n || 0) + 1; st.t = Date.now();
+  st.n = (st.n || 0) + 1; st.t = Date.now(); st.f = st.f || st.t;
   if (g === "again") { st.b = 0; st.l = (st.l || 0) + 1; st.due = t; }
   else if (g === "hard") { st.b = Math.max(1, st.b); st.due = t + Math.max(1, Math.floor(INTERVALS[st.b] / 2)); }
   else if (g === "good") { st.b = Math.min(6, st.b + 1); st.due = t + INTERVALS[st.b]; }
@@ -1820,18 +1969,9 @@ function findVoice() {
   } catch (e) { plVoice = null; }
 }
 try { if (window.speechSynthesis) { findVoice(); speechSynthesis.onvoiceschanged = () => { findVoice(); }; } } catch (e) {}
-function speak(text) {
-  try {
-    if (!plVoice) return;
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.voice = plVoice; u.lang = plVoice.lang; u.rate = 0.9;
-    speechSynthesis.speak(u);
-  } catch (e) {}
-}
 const SPEAK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>';
 function sayBtn(text) {
-  if (!plVoice) return null;
+  if (!canSpeak(text)) return null;
   return h("button", { class: "say", title: "Listen", "aria-label": "Listen to " + text, onclick: (e) => { e.stopPropagation(); speak(text); }, html: SPEAK_SVG });
 }
 
@@ -1890,8 +2030,8 @@ function renderStats() {
 function setView(v) {
   view = v; inSession = false;
   if (session && session.ctl) { try { session.ctl.abort(); } catch (e) {} }
-  session = null;
-  try { speechSynthesis && speechSynthesis.cancel(); } catch (e) {}
+  session = null; keyHandler = null;
+  stopAudio();
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-current", b.dataset.view === (v === "unit" ? "course" : v) ? "page" : "false"));
   render();
   window.scrollTo({ top: 0 });
@@ -1899,6 +2039,7 @@ function setView(v) {
 document.querySelectorAll("#tabs button").forEach(b => b.addEventListener("click", () => setView(b.dataset.view)));
 function render() {
   renderStats();
+  updateBadge();
   if (view === "today") renderToday();
   else if (view === "cards") renderCards();
   else if (view === "course") renderCourse();
@@ -1911,9 +2052,11 @@ function render() {
    TODAY
    ================================================================ */
 const STEPS = [
-  { id: "review", pl: "Powtórka", en: "Flashcard review", min: 8, desc: () => { const d = dueCards().length, n = newCardsForToday().length; return `${d} due · ${n} new words`; } },
+  { id: "review", pl: "Powtórka", en: "Flashcard review", min: 6, desc: () => { const d = dueCards().length, n = newCardsForToday().length; return `${d} due · ${n} new words`; } },
   { id: "grammar", pl: "Gramatyka", en: "Grammar lesson", min: 7, desc: () => curUnit().grammar.title },
+  { id: "mini", pl: "Szybki test", en: "Quick test", min: 4, desc: () => "6 questions on this unit" },
   { id: "dialogue", pl: "Dialog", en: "Reading dialogue", min: 5, desc: () => aiOn() ? "Written for you from the words you know" : "Scripted dialogue + questions" },
+  { id: "listen", pl: "Słuchanie", en: "Listening", min: 4, desc: () => "Hear a sentence, type what you heard" },
   { id: "convo", pl: "Rozmowa", en: "Conversation", min: 8, desc: () => aiOn() ? `Roleplay with ${curUnit().partner}` : "Speak the dialogue from memory" },
   { id: "writing", pl: "Pisanie", en: "Writing", min: 4, desc: () => curUnit().writing.prompt },
   { id: "quiz", pl: "Test dnia", en: "Daily test", min: 5, desc: () => "12 questions · score 80% to finish the unit" }
@@ -1928,55 +2071,61 @@ function renderToday() {
   const d = todayRec();
   const u = curUnit();
   const now = new Date();
-  const done = STEPS.filter(s => d.steps[s.id]).length;
-  const next = STEPS.find(s => !d.steps[s.id]);
+  const plan = planSteps();
+  const done = plan.filter(s => d.steps[s.id]).length;
+  const next = plan.find(s => !d.steps[s.id]);
   const dayNo = Object.keys(S.progress.days).filter(k => Object.keys(S.progress.days[k].steps || {}).length).length || 1;
+  const goal = +settings().goal || 100;
+  const minDay = !!(d.steps.review || d.steps.mini);
+  const P = S.progress;
 
-  const plan = h("div", { class: "plan" });
-  const steps = STEPS.slice();
-  if (weakList().length) steps.push(DRILL);
-  steps.forEach((s, i) => {
+  const row = (s, i, inPlan) => {
     const isDone = !!d.steps[s.id];
-    const isNext = next && s.id === next.id;
-    plan.append(h("div", { class: "plan-item" + (isDone ? " done" : "") + (isNext ? " next" : "") },
-      h("span", { class: "tick" }, isDone ? "✓" : s.id === "drill" ? "+" : String(i + 1)),
+    const isNext = inPlan && next && s.id === next.id;
+    return h("div", { class: "plan-item" + (isDone ? " done" : "") + (isNext ? " next" : "") },
+      h("span", { class: "tick" }, isDone ? "✓" : inPlan ? String(i + 1) : "+"),
       h("div", { style: "min-width:0" },
         h("div", { class: "title" }, h("span", { class: "pl" }, s.pl), " · ", s.en, h("span", { class: "muted small" }, `  ~${s.min} min`)),
         h("div", { class: "desc" }, s.desc())),
-      h("button", { class: "btn sm" + (isNext ? " primary" : " ghost"), onclick: () => startStep(s.id) }, isDone ? "Again" : "Start")
-    ));
-  });
-
-  const weak = weakList();
+      h("button", { class: "btn sm" + (isNext ? " primary" : " ghost"), onclick: () => startStep(s.id) }, isDone ? "Again" : "Start"));
+  };
+  const extras = extraSteps().concat(weakList().length ? [DRILL] : []);
   const banner = syncBanner;
+  const lenSwitch = h("div", { class: "seg", role: "group", "aria-label": "Session length" }, Object.entries(PLANS).map(([k, p]) =>
+    h("button", { class: settings().length === k ? "on" : "", "aria-pressed": settings().length === k ? "true" : "false", onclick: () => { setSetting("length", k); render(); } }, p.label)));
+
   app.replaceChildren(h("div", { class: "stack-lg" },
     banner ? h("div", { class: banner.ok ? "feedback ok" : "feedback no" }, h("strong", null, banner.ok ? "Zsynchronizowano! Synced." : "Sync didn't work"), h("div", null, banner.msg),
       h("div", { class: "row" }, banner.ok && !IS_APP ? h("button", { class: "btn sm", onclick: () => { syncBanner = null; setView("progress"); setTimeout(() => { const el = document.getElementById("sync"); el && el.scrollIntoView({ behavior: "smooth" }); }, 50); } }, "Send progress back to the app") : null,
         h("button", { class: "btn ghost sm", onclick: () => { syncBanner = null; render(); } }, "Dismiss"))) : null,
-    h("div", { class: "hello" },
-      h("span", { class: "eyebrow" }, `${PL_DAYS[now.getDay()]}, ${now.getDate()} ${PL_MONTHS[now.getMonth()]} · dzień ${dayNo}`),
-      h("h1", null, greetingPl()),
-      h("p", { class: "muted" }, done === STEPS.length ? "You've finished today's session. Świetnie! Come back tomorrow, or practise more below." : `Today's session takes about 37 minutes. ${done} of ${STEPS.length} steps done.`)
-    ),
+    h("div", { class: "hello-row" },
+      h("div", { class: "hello" },
+        h("span", { class: "eyebrow" }, `${PL_DAYS[now.getDay()]}, ${now.getDate()} ${PL_MONTHS[now.getMonth()]} · dzień ${dayNo}`),
+        h("h1", null, greetingPl()),
+        h("p", { class: "muted" }, !next ? "Today's session is done. Świetnie! Come back tomorrow, or try some extra practice below." : minDay ? `Minimum day done: your streak is safe. ${plan.length - done} step${plan.length - done === 1 ? "" : "s"} left if you have time.` : `Today: about ${planMinutes()} minutes. Just the flashcards keep your streak going.`),
+        h("div", { class: "row small" }, h("span", { class: "chip gold" }, `🔥 ${P.streak || 0}-day streak`), h("span", { class: "chip", title: "Streak freezes protect your streak if you miss a day. You earn one for every 7 days in a row, and can hold 2." }, `❄ ${P.freezes || 0} freeze${(P.freezes || 0) === 1 ? "" : "s"}`))),
+      goalRing(d.xp || 0, goal)),
+    weeklyCard(),
     h("section", { class: "card stack" },
       h("div", { class: "unit-banner" },
         h("div", { class: "stop-num" }, String(u.id + 1)),
         h("div", { style: "min-width:0" },
           h("div", { class: "eyebrow" }, courseDone() ? "Core course complete · free practice" : `Unit ${u.id + 1} of ${UNITS.length}`),
           h("h2", { class: "pl" }, u.pl),
-          h("div", { class: "row small" }, h("span", { class: "muted" }, u.en), h("span", { class: "chip red" }, u.focus)))
-      ),
-      h("div", { class: "meter", role: "progressbar", "aria-valuenow": done, "aria-valuemax": STEPS.length }, h("span", { style: `width:${(done / STEPS.length) * 100}%` }))
-    ),
+          h("div", { class: "row small" }, h("span", { class: "muted" }, u.en), h("span", { class: "chip red" }, u.focus)))),
+      h("div", { class: "meter", role: "progressbar", "aria-valuenow": done, "aria-valuemax": plan.length }, h("span", { style: `width:${(done / plan.length) * 100}%` })),
+      h("p", { class: "small muted" }, "After this unit you can: ", CAN_DO[u.id].join("; ").replace(/^./, c => c.toLowerCase()), ".")),
     h("section", { class: "card" },
-      h("div", { class: "spread", style: "margin-bottom:4px" }, h("h3", null, "Today's plan"), next ? h("button", { class: "btn primary sm", onclick: () => startStep(next.id) }, "Continue →") : null),
-      plan),
+      h("div", { class: "spread", style: "margin-bottom:6px" }, h("h3", null, "Today's plan"), lenSwitch),
+      h("div", { class: "plan" }, plan.map((s, i) => row(s, i, true))),
+      next ? h("div", { class: "row", style: "margin-top:8px" }, h("button", { class: "btn primary", onclick: () => startStep(next.id) }, done ? "Continue →" : "Start today's session →")) : null,
+      extras.length ? h("details", { class: "ref", style: "margin-top:10px" }, h("summary", null, `Extra practice (${extras.length})`), h("div", { class: "plan" }, extras.map((s, i) => row(s, i, false)))) : null),
     writingsCard(),
-    weak.length ? h("section", { class: "stack" },
+    dailyCards(),
+    weakList().length ? h("section", { class: "stack" },
       h("h3", null, "Weak spots"),
-      h("div", { class: "row" }, weak.slice(0, 6).map(([t, v]) => h("span", { class: "chip gold" }, tagLabel(t), h("span", { class: "num" }, " ×" + Math.round(v))))),
-      h("p", { class: "small muted" }, "These come from your mistakes. Your dialogues, conversations and tests focus on them until you get them right.")
-    ) : null,
+      h("div", { class: "row" }, weakList().slice(0, 6).map(([t, v]) => h("span", { class: "chip gold" }, tagLabel(t), h("span", { class: "num" }, " ×" + Math.round(v))))),
+      h("p", { class: "small muted" }, "These come from your mistakes. Your dialogues, conversations and tests focus on them until you get them right.")) : null,
     !courseDone() && !d.steps.quiz ? h("p", { class: "small muted" }, "Already know this unit? ", h("button", { class: "btn ghost sm", onclick: () => startStep("quiz", { testOut: true }) }, "Take the unit test now")) : null,
     IS_APP ? h("div", { class: "notice" }, "You're using the installed app, which works offline. Conversation practice and writing feedback happen on claude.ai. ", packLeft(u.id) ? `Offline pack: ${packLeft(u.id)} new dialogue${packLeft(u.id) === 1 ? "" : "s"} ready for this unit. ` : "", h("button", { class: "btn ghost sm", onclick: () => { setView("progress"); setTimeout(() => { const el = document.getElementById("sync"); el && el.scrollIntoView({ behavior: "smooth" }); }, 50); } }, "Sync")) : null,
     sample && !online() ? h("div", { class: "notice" }, "You're offline. Everything you do is saved on this device and syncs when you're back online. Until then, the dialogue, conversation and writing steps use their scripted versions.") : null,
@@ -1996,7 +2145,9 @@ function startStep(id, opts = {}) {
   const all = STEPS.concat([DRILL]);
   const s = all.find(x => x.id === id);
   const d = todayRec();
-  const dots = session.revisit ? h("span", { class: "chip" }, "Revisiting unit " + (opts.unit + 1)) : h("div", { class: "steps-dots", "aria-hidden": "true" }, STEPS.map(x => h("i", { class: x.id === id ? "on" : d.steps[x.id] ? "done" : "" })));
+  keyHandler = null; stopAudio();
+  const plan = planSteps();
+  const dots = session.revisit ? h("span", { class: "chip" }, "Revisiting unit " + (opts.unit + 1)) : plan.some(x => x.id === id) ? h("div", { class: "steps-dots", "aria-hidden": "true" }, plan.map(x => h("i", { class: x.id === id ? "on" : d.steps[x.id] ? "done" : "" }))) : h("span", { class: "chip" }, "Extra practice");
   const body = h("div", { class: "stack-lg" });
   app.replaceChildren(h("div", null,
     h("div", { class: "session-head" },
@@ -2007,7 +2158,7 @@ function startStep(id, opts = {}) {
       h("h1", { class: "pl" }, s.pl)),
     body));
   window.scrollTo({ top: 0 });
-  const runners = { review: runReview, grammar: runGrammar, dialogue: runDialogue, convo: runConvo, writing: runWriting, quiz: runQuiz, drill: runDrill };
+  const runners = { review: runReview, grammar: runGrammar, dialogue: runDialogue, convo: runConvo, writing: runWriting, quiz: runQuiz, drill: runDrill, mini: runMini, listen: runListen };
   runners[id](body, opts);
 }
 function stepUnit() { return session && session.opts && session.opts.unit != null ? UNITS[session.opts.unit] : curUnit(); }
@@ -2024,8 +2175,11 @@ function finishStep(id, container, msg) {
     return;
   }
   markStep(id);
+  keyHandler = null;
   const d = todayRec();
-  const next = STEPS.find(s => !d.steps[s.id]);
+  const plan = planSteps();
+  const next = plan.find(s => !d.steps[s.id]);
+  if (!next && plan.some(s => s.id === id)) showToast("Dzień zaliczony! Day complete.", `All ${plan.length} steps done. Do zobaczenia jutro!`, "✓");
   container.append(h("div", { class: "card stack" },
     h("h2", null, "Gotowe! ", h("span", { class: "muted", style: "font-weight:500" }, "Done.")),
     msg ? h("p", null, msg) : null,
@@ -2064,6 +2218,7 @@ function runReview(body, opts = {}) {
       return;
     }
     const { c, isNew } = queue.shift();
+    let flip;
     const st = S.srs.cards[c.id];
     const reverse = !isNew && st && st.b >= 2;
     let flipped = isNew;
@@ -2079,7 +2234,7 @@ function runReview(body, opts = {}) {
         flipped && c.note ? h("div", { class: "note" }, c.note) : null
       );
       grades.replaceChildren();
-      if (!flipped) grades.append(h("button", { class: "btn primary", style: "grid-column:1/-1;justify-content:center", onclick: () => { flipped = true; if (reverse) speak(c.pl); draw(); } }, "Show answer"));
+      if (!flipped) grades.append(h("button", { class: "btn primary", style: "grid-column:1/-1;justify-content:center", onclick: () => flip() }, "Show answer"));
       else if (isNew) grades.append(h("button", { class: "btn primary", style: "grid-column:1/-1;justify-content:center", onclick: () => rate("good") }, "Got it, next →"));
       else [["again", "Again", "forgot"], ["hard", "Hard", "struggled"], ["good", "Good", "knew it"], ["easy", "Easy", "instant"]].forEach(([g, l, s]) =>
         grades.append(h("button", { class: "btn g-" + g, onclick: () => rate(g) }, l, h("small", null, s))));
@@ -2091,7 +2246,17 @@ function runReview(body, opts = {}) {
       next();
     }
     if (isNew) speak(c.pl);
-    stage.replaceChildren(card, grades, h("div", { class: "meter" }, h("span", { style: `width:${(done / total) * 100}%` })));
+    flip = () => { flipped = true; if (reverse) speak(c.pl); draw(); };
+    keyHandler = (k, typing) => {
+      if (typing) return;
+      if (!flipped) { if (k === " " || k === "Enter") { flip(); return true; } return; }
+      if (isNew) { if (k === " " || k === "Enter" || k === "ArrowRight") { rate("good"); return true; } return; }
+      const g = { "1": "again", "2": "hard", "3": "good", "4": "easy", "ArrowLeft": "again", "ArrowRight": "good", " ": "good", "Enter": "good" }[k];
+      if (g) { rate(g); return true; }
+    };
+    addSwipe(card, () => { if (!flipped) flip(); else rate(isNew ? "good" : "again"); }, () => { if (!flipped) flip(); else rate("good"); });
+    stage.replaceChildren(card, grades, h("div", { class: "meter" }, h("span", { style: `width:${(done / total) * 100}%` })),
+      h("p", { class: "small muted center" }, hoverDevice() ? "Keys: Space flips · 1 Again · 2 Hard · 3 Good · 4 Easy" : "Tip: swipe the card right for Good, left for Again"));
     draw();
   }
   next();
@@ -2129,6 +2294,7 @@ function exercise(host, item, meta = {}) {
           ruleUnit ? h("button", { class: "btn ghost sm", onclick: () => openRule(ruleUnit) }, "▦ Show the rule") : null)
       ));
       setTimeout(() => { const b = $("#ex-continue"); b && b.focus(); }, 30);
+      keyHandler = (k, typing) => { if (!typing && (k === "Enter" || k === " ")) { $("#ex-continue")?.click(); return true; } };
     }
     if (item.t === "fill") {
       const parts = item.q.split("___");
@@ -2156,8 +2322,9 @@ function exercise(host, item, meta = {}) {
         e.currentTarget.classList.add(ok ? "right" : "wrong");
         if (!ok) opts.children[order.indexOf(item.a)].classList.add("right");
         feedback(ok ? "ok" : "no", item.o[item.a]);
-      } }, item.o[i])));
+      } }, h("span", { class: "key-hint" }, String(order.indexOf(i) + 1)), item.o[i])));
       box.append(opts, fb);
+      keyHandler = (k, typing) => { const n = +k; if (!typing && !answered && n >= 1 && n <= order.length) { opts.children[n - 1].click(); return true; } };
     } else if (item.t === "order") {
       box.append(h("div", { class: "ex-q", style: "font-size:1.05rem" }, "Build the sentence: ", h("span", { class: "muted" }, item.en)));
       const words = item.a.split(/\s+/);
@@ -2186,18 +2353,22 @@ function exercise(host, item, meta = {}) {
 function fullSentence(item) {
   if (item.t === "fill") return item.q.replace("___", item.a[0]);
   if (item.t === "order") return item.a;
-  if (item.t === "choice") return /___/.test(item.q) ? item.q.replace("___", item.o[item.a]) : item.o[item.a];
+  if (item._say) return item._say;
+  if (item.t === "choice") return /___/.test(item.q) ? item.q.replace("___", item.o[item.a]) : "";
   return "";
 }
-async function runSet(host, items, { onEach } = {}) {
-  let score = 0;
-  for (let i = 0; i < items.length; i++) {
+async function runSet(host, items, { onEach, key, start = 0, score: startScore = 0 } = {}) {
+  let score = startScore || 0;
+  for (let i = start; i < items.length; i++) {
     const it = items[i];
     const r = await exercise(host, it, { counter: `${i + 1} / ${items.length}`, label: it._label });
     if (r.correct) score++;
     if (it._tag) hit(it._tag, r.correct);
     onEach && onEach(it, r);
+    if (key) saveResume(key, items, i + 1, score);
   }
+  if (key) clearResume(key);
+  keyHandler = null;
   persist("progress");
   host.replaceChildren();
   return score;
@@ -2206,8 +2377,8 @@ function vocabItems(u, n) {
   const v = u.vocab.filter(x => !/…/.test(x[0]));
   return pick(v, n).map((w, k) => {
     const others = pick(v.filter(x => x !== w), 3);
-    if (k % 2 === 0) return { t: "choice", q: `What does „${w[0]}” mean?`, o: [w[1], ...others.map(o => o[1])], a: 0, _tag: "v" + u.id, _label: "vocabulary" };
-    return { t: "choice", q: `How do you say “${w[1]}” in Polish?`, o: [w[0], ...others.map(o => o[0])], a: 0, _tag: "v" + u.id, _label: "vocabulary" };
+    if (k % 2 === 0) return { t: "choice", q: `What does „${w[0]}” mean?`, o: [w[1], ...others.map(o => o[1])], a: 0, _tag: "v" + u.id, _label: "vocabulary", _say: w[0] };
+    return { t: "choice", q: `How do you say “${w[1]}” in Polish?`, o: [w[0], ...others.map(o => o[0])], a: 0, _tag: "v" + u.id, _label: "vocabulary", _say: w[0] };
   });
 }
 const tagItems = (u, n) => pick(u.quiz, n).map(q => Object.assign({}, q, { _tag: u.tag, _label: u.focus.split(" · ")[1] || u.focus }));
@@ -2215,6 +2386,7 @@ const tagItems = (u, n) => pick(u.quiz, n).map(q => Object.assign({}, q, { _tag:
 /* ---------- Step 2: Grammar ---------- */
 function runGrammar(body) {
   const u = stepUnit(), g = u.grammar;
+  const gkey = rkey("grammar", u), R = resumeItems(gkey, () => tagItems(u, 4));
   const table = tableEl(g.table);
   const practice = h("div");
   body.append(...[
@@ -2226,9 +2398,9 @@ function runGrammar(body) {
       g.extra ? h("p", { class: "small muted" }, "Conjugation: ", h("b", { class: "pl" }, g.extra)) : null,
       refChips(u.id)),
     askTutor(u),
-    h("section", { class: "stack" }, h("h3", null, "Practice: 4 quick checks"), practice)
+    h("section", { class: "stack" }, h("h3", null, "Practice: 4 quick checks"), resumeNote(R), practice)
   ].filter(Boolean));
-  runSet(practice, tagItems(u, 4)).then(score => {
+  runSet(practice, R.items, { key: gkey, start: R.start, score: R.score }).then(score => {
     addXP(score * 5);
     finishStep("grammar", body, `${score} of 4 correct. ${score < 3 ? "Read the table again before the test. The same patterns will come up." : "You've got the pattern."}`);
   });
@@ -2272,17 +2444,22 @@ function runDialogue(body) {
   const ctl = new AbortController(); session.ctl = ctl;
   const prompt = `Write a short Polish reading dialogue for a learner.
 ${learnerContext()}
-Setting: ${u.scenario}
+${storyPrompt(u)}
 Requirements:
 - 8 to 10 lines between two named Polish speakers, natural everyday Polish, at the learner's level (${u.id >= 12 ? "A2" : "A1"}).
 - Mostly use words the learner has studied plus the current grammar focus; bring in the weak spots where natural.
 - Introduce at most 4 new words, and list them in newWords.
 - Then 3 comprehension questions in English, each with 4 answer options in English.
 Reply with only JSON in this shape:
-{"title":"Polish title","setting":"one English sentence","lines":[{"speaker":"Name","pl":"Polish line","en":"English translation"}],"newWords":[{"pl":"word","en":"meaning"}],"questions":[{"q":"question","options":["a","b","c","d"],"answer":0}]}`;
+{"title":"Polish title","setting":"one English sentence","lines":[{"speaker":"Name","pl":"Polish line","en":"English translation"}],"newWords":[{"pl":"word","en":"meaning"}],"questions":[{"q":"question","options":["a","b","c","d"],"answer":0}]${settings().story ? ',"recap":"one English sentence saying what happened in this episode"' : ""}}`;
   sample.json(prompt, { signal: ctl.signal, cache: { gcTime: 864e5 } }).then(data => {
     const dl = validDialogue(data);
     if (!dl) throw { code: "invalid_json" };
+    if (settings().story && !revisit && data && typeof data.recap === "string") {
+      const st = S.progress.story = S.progress.story || { ep: 0, recap: [] };
+      st.ep = (st.ep || 0) + 1; st.recap = (st.recap || []).concat(`Episode ${st.ep}: ${data.recap.slice(0, 200)}`).slice(-3);
+      dl.title = `Odcinek ${st.ep} · ` + dl.title;
+    }
     dl.unit = u.id; dl.ai = true;
     if (revisit) revisitCache["d" + u.id] = dl;
     else { S.progress.today.dialogue = dl; persist("progress"); }
@@ -2293,6 +2470,14 @@ Reply with only JSON in this shape:
     if (msg) holder.append(h("div", { class: "notice" }, msg, " Here's the scripted dialogue for this unit."));
     showDialogue(holder, scriptedDialogue(u), body);
   });
+}
+function storyPrompt(u) {
+  if (!settings().story) return `Setting: ${u.scenario}`;
+  const st = S.progress.story || { ep: 0, recap: [] };
+  return `This is episode ${(st.ep || 0) + 1} of an ongoing story told through short dialogues.
+${STORY_CAST}
+${st.recap && st.recap.length ? "The story so far:\n" + st.recap.join("\n") : "This is the first episode: introduce the characters."}
+Continue the story naturally, using two of the characters, in a situation that practises: ${u.scenario}`;
 }
 function validDialogue(d) {
   if (!d || !Array.isArray(d.lines) || d.lines.length < 3) return null;
@@ -2341,7 +2526,7 @@ function showDialogue(holder, dl, body) {
       h("p", { class: "small muted" }, "Read each line aloud first. Translations are blurred, so tap one to check it."),
       list,
       h("div", { class: "row" }, h("button", { class: "btn ghost sm", onclick: () => { reveal = !reveal; draw(); } }, "Show / hide all translations"),
-        plVoice ? h("button", { class: "btn ghost sm", onclick: () => speak(dl.lines.map(l => l.pl).join(" ")) }, "▶ Play the whole dialogue") : null)),
+        dl.lines.length && canSpeak(dl.lines[0].pl) ? h("button", { class: "btn ghost sm", onclick: () => speakSeq(dl.lines.map(l => l.pl)) }, "▶ Play the whole dialogue") : null)),
     nw,
     dl.questions.length ? h("section", { class: "stack" }, h("h3", null, "Did you understand it?"), qhost) : null
   ].filter(Boolean));
@@ -2444,6 +2629,8 @@ Start the scene now with your first line.`;
     if (session.ctl) try { session.ctl.abort(); } catch (e) {}
     inp.disabled = true; send.disabled = true; finishBtn.disabled = true;
     const fixes = cv.shown.filter(m => m.who === "fix").length;
+    S.progress.stats = S.progress.stats || {}; S.progress.stats.chatMax = Math.max(S.progress.stats.chatMax || 0, cv.learnerTurns);
+    checkMilestones();
     finishStep("convo", body, `You sent ${cv.learnerTurns} messages and got ${fixes} correction${fixes === 1 ? "" : "s"}. ${fixes ? "The corrections now count toward your weak spots, so they'll come up again." : ""}`);
   }
   drawAll();
@@ -2518,6 +2705,7 @@ function runWriting(body) {
     try {
       const r = await gradeWriting(u, text);
       applyGrade(u, r);
+      if (r.score === 10) { S.progress.stats = S.progress.stats || {}; S.progress.stats.w10 = (S.progress.stats.w10 || 0) + 1; }
       out.replaceChildren(feedbackCard(u, r));
       addXP(10 + r.score * 3);
       finishStep("writing", body);
@@ -2542,20 +2730,25 @@ function buildQuiz(u) {
 }
 function runQuiz(body, opts = {}) {
   const u = stepUnit();
-  const items = buildQuiz(u);
+  const qkey = rkey(opts.testOut ? "testout" : "quiz", u);
+  const R = resumeItems(qkey, () => buildQuiz(u));
+  const items = R.items;
   const need = Math.ceil(items.length * 0.8);
   const practice = S.progress.mastered.includes(u.id);
   body.append(h("p", { class: "muted" }, practice ? `A practice retake of unit ${u.id + 1}: ${items.length} questions on its grammar and words. Your best score is kept.` : `${items.length} questions covering this unit's grammar and words, plus a review of earlier units. Get ${need} or more right to finish the unit.`));
   const host = h("div");
-  body.append(host);
-  runSet(host, items).then(score => {
+  body.append(resumeNote(R) || "", host);
+  runSet(host, items, { key: qkey, start: R.start, score: R.score }).then(score => {
     const pass = score >= need;
     const P = S.progress;
+    P.stats = P.stats || {};
+    if (score === items.length) P.stats.perfect = (P.stats.perfect || 0) + 1;
     P.quizzes.push({ d: localKey(), u: u.id, s: score, t: items.length, at: Date.now() });
     let msg;
     if (pass && !P.mastered.includes(u.id)) {
       if (opts.testOut) newCardsForToday().forEach(c => { S.srs.cards[c.id] = { b: 2, due: TODAY() + 2, l: 0, n: 0 }; });
       P.mastered.push(u.id);
+      P.masteredAt = P.masteredAt || {}; P.masteredAt[u.id] = localKey();
       if (u.id === P.unit) advanceUnit();
       persist("srs");
       addXP(score * 5 + 50);
@@ -2569,7 +2762,9 @@ function runQuiz(body, opts = {}) {
     const pct = Math.round(score / items.length * 100);
     body.append(h("div", { class: "card stack" },
       h("div", { class: "spread" }, h("h2", null, `${score} / ${items.length}`), h("span", { class: "chip " + (pass ? "green" : "red") }, pass ? "passed" : "not yet")),
-      h("div", { class: "meter" }, h("span", { style: `width:${pct}%;background:var(${pass ? "--good" : "--accent"})` }))));
+      h("div", { class: "meter" }, h("span", { style: `width:${pct}%;background:var(${pass ? "--good" : "--accent"})` })),
+      pass ? h("div", { class: "stack", style: "gap:4px" }, h("span", { class: "eyebrow" }, "Now you can"), h("ul", { class: "cando" }, CAN_DO[u.id].map(t => h("li", null, t)))) : null));
+    checkMilestones();
     if (opts.testOut) { const d = todayRec(); d.steps.quiz = true; persist("progress"); body.append(h("div", { class: "card stack" }, h("p", null, msg), h("button", { class: "btn primary", onclick: () => setView("today") }, "Back to today"))); return; }
     finishStep("quiz", body, msg);
     if (!session.revisit && pass && !courseDone() && P.unit !== u.id) {
@@ -2735,7 +2930,7 @@ function renderUnitPage() {
     ["convo", "Rozmowa", "Conversation", aiOn() ? `Roleplay with ${u.partner}` : "Recall the dialogue"],
     ["writing", "Pisanie", "Writing", u.writing.prompt],
     ["quiz", "Test", mastered ? "Retake the unit test" : "Unit test", best >= 0 ? `Best so far: ${best}%` : "12 questions"]
-  ];
+  ].concat(hasAnyAudio() ? [["listen", "Słuchanie", "Listening", "Hear sentences from this unit and type them"]] : []);
   app.replaceChildren(h("div", { class: "stack-lg" },
     h("div", { class: "session-head" }, h("button", { class: "btn ghost sm", onclick: () => setView("course") }, "← Course"),
       h("div", { class: "row" },
@@ -2747,6 +2942,7 @@ function renderUnitPage() {
         h("div", { class: "eyebrow" }, `Unit ${u.id + 1} of ${UNITS.length} · ${mastered ? "finished" : "in progress"}`),
         h("h1", { class: "pl" }, u.pl),
         h("div", { class: "row small" }, h("span", { class: "muted" }, u.en), h("span", { class: "chip red" }, u.focus)))),
+    h("section", { class: "card stack" }, h("span", { class: "eyebrow" }, mastered ? "You can now" : "After this unit you can"), h("ul", { class: "cando" }, CAN_DO[u.id].map(t => h("li", null, t)))),
     h("section", { class: "stack" }, h("h3", null, "Practise this unit again"),
       h("p", { class: "small muted" }, "Revisiting earns XP and updates your weak spots, but doesn't change today's plan."),
       h("div", { class: "acts" }, acts.map(([id, pl, en, desc]) => h("button", { class: "act", onclick: () => startStep(id, { unit: u.id }) },
@@ -2919,7 +3115,7 @@ function feedbackCard(u, r, text) {
     r.mistakes.length ? h("div", { class: "stack" }, r.mistakes.map(m => h("div", { class: "fix", style: "max-width:100%;align-self:stretch" },
       h("span", { style: "text-decoration:line-through;opacity:.7" }, m.wrong), " → ", h("b", { class: "pl" }, m.right), m.why ? h("div", { class: "small" }, m.why) : null))) : h("p", { class: "small" }, "No mistakes found. Bardzo dobrze!"),
     r.tip ? h("p", { class: "small muted" }, "Tip: " + r.tip) : null,
-    h("details", null, h("summary", { class: "small" }, "Show the model answer"), h("p", { class: "pl" }, u.writing.model)));
+    h("details", null, h("summary", { class: "small" }, "Show the model answer"), h("div", { class: "row", style: "flex-wrap:nowrap" }, h("p", { class: "pl" }, u.writing.model), sayBtn(u.writing.model))));
 }
 function writingsCard() {
   const W = S.progress.writings;
@@ -2958,6 +3154,341 @@ function writingsCard() {
   return box;
 }
 
+
+/* ================================================================
+   SETTINGS (stored with progress, so they sync between devices)
+   ================================================================ */
+const DEFAULT_SETTINGS = { length: "standard", goal: 100, newPerDay: 10, rate: 0.9, story: true, voice: "auto" };
+function settings() { const P = S.progress; P.settings = Object.assign({}, DEFAULT_SETTINGS, P.settings || {}); return P.settings; }
+function setSetting(k, v) { settings()[k] = v; persist("progress"); }
+
+/* ================================================================
+   AUDIO: the device's Polish voice when it has one, otherwise the
+   recordings bundled with the app (audio/*.json, made with Piper TTS).
+   ================================================================ */
+const AUDIO_INDEX = /*AUDIO_INDEX*/{}/*END_AUDIO_INDEX*/;
+const AUDIO_OF = {};
+for (const [f, hs] of Object.entries(AUDIO_INDEX)) for (const x of hs.split(" ")) if (x) AUDIO_OF[x] = f;
+function audioKey(text) {
+  const s = String(text).normalize("NFC").toLowerCase().replace(/[^\p{L}\p{N} ]+/gu, " ").replace(/\s+/g, " ").trim();
+  let hsh = 0x811c9dc5;
+  for (const b of new TextEncoder().encode(s)) { hsh ^= b; hsh = Math.imul(hsh, 0x01000193) >>> 0; }
+  return hsh.toString(36);
+}
+const hasClip = t => !!AUDIO_OF[audioKey(t)];
+const audioFiles = {};
+function loadAudioFile(f) {
+  return audioFiles[f] || (audioFiles[f] = fetch("audio/" + f + ".json").then(r => { if (!r.ok) throw new Error("audio " + r.status); return r.json(); })
+    .catch(e => { delete audioFiles[f]; throw e; }));
+}
+let player = null, speakToken = 0;
+function stopAudio() { speakToken++; try { player && player.pause(); } catch (e) {} try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
+function deviceVoiceFor(text) { findVoice(); return !!plVoice && !(settings().voice === "recorded" && hasClip(text)); }
+function canSpeak(text) { findVoice(); return !!plVoice || hasClip(text); }
+function hasAnyAudio() { findVoice(); return !!plVoice || Object.keys(AUDIO_OF).length > 0; }
+/* Resolves when the audio finishes (or can't play) */
+function speak(text, opts = {}) {
+  const token = opts.keep ? speakToken : (stopAudio(), speakToken);
+  const rate = (opts.slow ? 0.7 : 1) * (+settings().rate || 0.9);
+  return new Promise(resolve => {
+    try {
+      if (deviceVoiceFor(text)) {
+        const u = new SpeechSynthesisUtterance(text);
+        u.voice = plVoice; u.lang = plVoice.lang; u.rate = rate;
+        u.onend = u.onerror = () => resolve(true);
+        speechSynthesis.speak(u);
+        return;
+      }
+      const k = audioKey(text), f = AUDIO_OF[k];
+      if (!f) return resolve(false);
+      loadAudioFile(f).then(data => {
+        if (token !== speakToken || !data[k]) return resolve(false);
+        player = new Audio("data:audio/mpeg;base64," + data[k]);
+        player.playbackRate = Math.max(0.5, Math.min(1.5, rate / 0.9));
+        player.onended = player.onerror = () => resolve(true);
+        player.play().catch(() => resolve(false));
+      }).catch(() => resolve(false));
+    } catch (e) { resolve(false); }
+  });
+}
+async function speakSeq(texts) { stopAudio(); const token = speakToken; for (const t of texts) { if (token !== speakToken) return; await speak(t, { keep: true }); } }
+/* Voices load a moment after the page starts, sometimes only after a delay inside
+   an embedded page, so keep looking for a few seconds and redraw when one appears. */
+[300, 1000, 2500, 5000].forEach(ms => setTimeout(() => { const had = !!plVoice; findVoice(); if (!had && plVoice && !inSession) render(); }, ms));
+try { if (window.speechSynthesis) speechSynthesis.addEventListener("voiceschanged", () => { const had = !!plVoice; findVoice(); if (!had && plVoice && !inSession) render(); }); } catch (e) {}
+
+/* ================================================================
+   SESSION PLAN, minimum day, daily goal
+   ================================================================ */
+function planSteps() {
+  const ids = (PLANS[settings().length] || PLANS.standard).steps.filter(id => id !== "listen" || hasAnyAudio());
+  return ids.map(id => STEPS.find(s => s.id === id)).filter(Boolean);
+}
+function extraSteps() { const inPlan = new Set(planSteps().map(s => s.id)); return STEPS.filter(s => !inPlan.has(s.id) && (s.id !== "listen" || hasAnyAudio())); }
+const planMinutes = () => planSteps().reduce((n, s) => n + s.min, 0);
+function goalRing(xp, goal) {
+  const r = 26, c = 2 * Math.PI * r, f = Math.min(1, xp / goal);
+  const wrap = h("div", { class: "ring", title: `${xp} of ${goal} XP today`, role: "img", "aria-label": `Daily goal: ${xp} of ${goal} XP` });
+  wrap.innerHTML = `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="${r}" class="ring-bg"/><circle cx="32" cy="32" r="${r}" class="ring-fg${f >= 1 ? " full" : ""}" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${(c * (1 - f)).toFixed(1)}" transform="rotate(-90 32 32)"/></svg>`;
+  wrap.append(h("div", { class: "ring-label" }, h("b", { class: "num" }, f >= 1 ? "✓" : String(xp)), h("small", null, f >= 1 ? "goal met" : `/ ${goal} XP`)));
+  return wrap;
+}
+function checkGoal() {
+  const d = todayRec();
+  if (!d.goalHit && d.xp >= (+settings().goal || 100)) { d.goalHit = true; showToast("Cel dnia osiągnięty!", `You reached today's goal of ${settings().goal} XP.`); }
+}
+
+/* ================================================================
+   STREAK FREEZES: earn one per 7 days of streak (hold at most 2).
+   A missed day is covered automatically if you have one.
+   ================================================================ */
+function isActiveDay(P, k) { const d = P.days[k]; return !!((d && (Object.keys(d.steps || {}).length || d.xp > 0)) || (P.frozen && P.frozen[k])); }
+function applyFreezes() {
+  const P = S.progress;
+  P.frozen = P.frozen || {};
+  if (!(P.freezes > 0)) return;
+  const dt = new Date(); dt.setDate(dt.getDate() - 1);
+  const gap = [];
+  while (gap.length <= P.freezes && !isActiveDay(P, localKey(dt))) { gap.push(localKey(dt)); dt.setDate(dt.getDate() - 1); }
+  if (!gap.length || gap.length > P.freezes || !isActiveDay(P, localKey(dt))) return;
+  gap.forEach(k => { P.frozen[k] = true; });
+  P.freezes -= gap.length;
+  P.streak = computeStreak(P);
+  persist("progress");
+  showToast("Streak saved ❄", `A streak freeze covered ${gap.length === 1 ? "the day you missed" : gap.length + " missed days"}. Your ${P.streak}-day streak is safe.`);
+}
+function maybeEarnFreeze() {
+  const P = S.progress, k = localKey();
+  if (P.streak > 0 && P.streak % 7 === 0 && P.freezeEarned !== k) {
+    P.freezeEarned = k;
+    if ((P.freezes || 0) < 2) { P.freezes = (P.freezes || 0) + 1; showToast("Streak freeze earned ❄", `${P.streak} days in a row! A freeze will protect your streak if you miss a day.`); }
+  }
+}
+
+/* ================================================================
+   MILESTONES & TOASTS
+   ================================================================ */
+function learnedCount() { return Object.values(S.srs.cards).filter(c => c.b >= 3).length; }
+function checkMilestones() {
+  const P = S.progress; P.milestones = P.milestones || {}; P.stats = P.stats || {};
+  const L = { learned: learnedCount() };
+  let changed = false;
+  for (const m of MILESTONES) if (!P.milestones[m.id] && m.check(P, L)) { P.milestones[m.id] = localKey(); changed = true; showToast("Nowe osiągnięcie! " + m.pl, m.en, m.icon); }
+  if (changed) persist("progress");
+}
+function showToast(title, text, icon) {
+  let box = document.getElementById("toasts");
+  if (!box) { box = h("div", { id: "toasts", "aria-live": "polite" }); document.body.append(box); }
+  const t = h("div", { class: "toast" }, icon ? h("span", { class: "toast-icon" }, icon) : null, h("div", null, h("b", null, title), h("div", { class: "small" }, text)));
+  box.append(t);
+  setTimeout(() => t.classList.add("out"), 4200);
+  setTimeout(() => t.remove(), 4700);
+}
+
+/* ================================================================
+   WEEKLY SUMMARY (shown from Monday until dismissed)
+   ================================================================ */
+function mondayOf(d) { const x = new Date(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); x.setHours(0, 0, 0, 0); return x; }
+function weeklyCard() {
+  const P = S.progress;
+  const thisMon = mondayOf(new Date()), wk = localKey(thisMon);
+  if (P.weekSeen === wk) return null;
+  const start = new Date(thisMon); start.setDate(start.getDate() - 7);
+  const keys = []; for (let i = 0; i < 7; i++) { const d = new Date(start); d.setDate(start.getDate() + i); keys.push(localKey(d)); }
+  const active = keys.filter(k => isActiveDay(P, k) && !(P.frozen || {})[k]).length;
+  if (!active) return null;
+  const xp = keys.reduce((n, k) => n + ((P.days[k] || {}).xp || 0), 0);
+  const inWeek = k => k >= keys[0] && k <= keys[6];
+  const t0 = start.getTime(), t1 = thisMon.getTime();
+  const words = Object.values(S.srs.cards).filter(c => c.f >= t0 && c.f < t1).length;
+  const tests = P.quizzes.filter(q => inWeek(q.d));
+  const best = tests.reduce((m, q) => Math.max(m, Math.round(q.s / q.t * 100)), -1);
+  const units = Object.entries(P.masteredAt || {}).filter(([, k]) => inWeek(k)).map(([u]) => UNITS[+u]).filter(Boolean);
+  const earned = Object.entries(P.milestones || {}).filter(([, k]) => inWeek(k)).map(([id]) => MILESTONES.find(m => m.id === id)).filter(Boolean);
+  return h("section", { class: "card stack week" },
+    h("div", { class: "spread" }, h("div", null, h("span", { class: "eyebrow" }, "Podsumowanie tygodnia"), h("h3", null, `Last week: ${keys[0].slice(8)}.${keys[0].slice(5, 7)} – ${keys[6].slice(8)}.${keys[6].slice(5, 7)}`)),
+      h("button", { class: "btn ghost sm", onclick: () => { P.weekSeen = wk; persist("progress"); render(); } }, "Got it")),
+    h("div", { class: "tiles" }, stat(`${active} / 7`, "days studied", active >= 5 ? "Świetnie!" : active >= 3 ? "Dobrze!" : "Every day counts"),
+      stat(String(xp), "XP earned", ""), stat(String(words), "new words", ""), stat(best >= 0 ? best + "%" : "–", "best test", tests.length ? `${tests.length} test${tests.length === 1 ? "" : "s"}` : "no tests")),
+    units.length ? h("p", { class: "small" }, "Finished: ", units.map(u => `unit ${u.id + 1} (${u.en})`).join(", "), ".") : null,
+    earned.length ? h("p", { class: "small" }, "New milestones: ", earned.map(m => m.en).join(", "), ".") : null);
+}
+
+/* ================================================================
+   WORD OF THE DAY & CULTURE NOTE
+   ================================================================ */
+function wordOfDay() {
+  const P = S.progress, max = Math.min(UNITS.length - 1, P.unit + 1);
+  const pool = allCards().filter(c => c.unit >= 0 && c.unit <= max && !/…/.test(c.pl));
+  return pool.length ? pool[(TODAY() * 7919) % pool.length] : null;
+}
+function dailyCards() {
+  const w = wordOfDay(), note = CULTURE[TODAY() % CULTURE.length];
+  const known = w && S.srs.cards[w.id];
+  const add = w && !known ? h("button", { class: "btn ghost sm", onclick: e => { S.srs.cards[w.id] = { b: 0, due: TODAY() + 1, l: 0, n: 0, t: Date.now(), f: Date.now() }; persist("srs"); e.currentTarget.replaceWith(h("span", { class: "chip green" }, "✓ in your flashcards")); } }, "+ Add to flashcards") : null;
+  return h("div", { class: "daily" },
+    w ? h("section", { class: "card stack" }, h("span", { class: "eyebrow" }, "Słowo dnia · word of the day"),
+      h("div", { class: "row", style: "flex-wrap:nowrap" }, h("div", { class: "pl", style: "font-size:1.5rem;min-width:0;overflow-wrap:anywhere" }, w.pl), sayBtn(w.pl)),
+      h("div", null, w.en, w.note ? h("span", { class: "muted small" }, " · " + w.note) : null),
+      h("div", { class: "row small muted" }, `Unit ${w.unit + 1}`, known ? h("span", { class: "chip green" }, "in your flashcards") : add)) : null,
+    h("section", { class: "card stack" }, h("span", { class: "eyebrow" }, "Ciekawostka · culture note"),
+      h("h3", null, note.t),
+      h("p", { class: "small" }, note.text),
+      h("div", { class: "row small", style: "flex-wrap:nowrap;align-items:flex-start" }, sayBtn(note.pl), h("div", { style: "min-width:0" }, h("b", { class: "pl" }, note.pl), h("div", { class: "muted" }, note.en)))));
+}
+
+/* ================================================================
+   RESUME: saves the question you're on for tests and practice sets
+   ================================================================ */
+function resumeItems(key, build) {
+  try {
+    const s = JSON.parse(localStorage.getItem("pc.resume." + key) || "null");
+    if (s && s.d === localKey() && Array.isArray(s.items) && s.i > 0 && s.i < s.items.length) return { items: s.items, start: s.i, score: s.score, resumed: true };
+  } catch (e) {}
+  return { items: build(), start: 0, score: 0, resumed: false };
+}
+function saveResume(key, items, i, score) { try { localStorage.setItem("pc.resume." + key, JSON.stringify({ d: localKey(), items, i, score })); } catch (e) {} }
+function clearResume(key) { try { localStorage.removeItem("pc.resume." + key); } catch (e) {} }
+function resumeNote(R) { return R.resumed ? h("div", { class: "notice" }, `Picking up where you left off: question ${R.start + 1} of ${R.items.length}.`) : null; }
+const rkey = (step, u) => `${step}:${u.id}${session && session.revisit ? ":r" : ""}`;
+
+/* ================================================================
+   KEYBOARD SHORTCUTS (Windows) and SWIPES (phones)
+   ================================================================ */
+let keyHandler = null;
+document.addEventListener("keydown", e => {
+  if (!keyHandler || e.ctrlKey || e.metaKey || e.altKey) return;
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test((e.target && e.target.tagName) || "");
+  if (typing && e.key !== "Enter") return;
+  if (document.querySelector(".sheet-back")) return;
+  if (keyHandler(e.key, typing) === true) e.preventDefault();
+});
+const hoverDevice = () => { try { return matchMedia("(hover: hover) and (pointer: fine)").matches; } catch (e) { return false; } };
+function addSwipe(el, onLeft, onRight) {
+  let x0 = null, y0 = 0, id = null;
+  el.addEventListener("pointerdown", e => { if (e.pointerType === "mouse") return; x0 = e.clientX; y0 = e.clientY; id = e.pointerId; });
+  el.addEventListener("pointermove", e => { if (x0 === null || e.pointerId !== id) return; const dx = e.clientX - x0; if (Math.abs(dx) > Math.abs(e.clientY - y0)) el.style.transform = `translateX(${dx * 0.5}px) rotate(${dx * 0.02}deg)`; });
+  const end = e => {
+    if (x0 === null || e.pointerId !== id) return;
+    const dx = e.clientX - x0, dy = e.clientY - y0; x0 = null; el.style.transform = "";
+    if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) (dx > 0 ? onRight : onLeft)();
+  };
+  el.addEventListener("pointerup", end); el.addEventListener("pointercancel", () => { x0 = null; el.style.transform = ""; });
+}
+
+/* ================================================================
+   QUICK TEST (mini) and LISTENING steps
+   ================================================================ */
+function runMini(body) {
+  const u = stepUnit(), key = rkey("mini", u);
+  const R = resumeItems(key, () => shuffle(tagItems(u, 4).concat(vocabItems(u, 2))));
+  const host = h("div");
+  body.append(h("p", { class: "muted" }, `A 6-question check on unit ${u.id + 1}. It doesn't count towards finishing the unit (the daily test does).`), resumeNote(R), host);
+  runSet(host, R.items, { key, start: R.start, score: R.score }).then(score => {
+    addXP(score * 5);
+    finishStep("mini", body, `${score} of ${R.items.length} right.`);
+  });
+}
+function listenPool(u) {
+  const pool = [];
+  const add = (pl, en) => { if (pl && pl.split(" ").length >= 2 && pl.length <= 70 && canSpeak(pl)) pool.push({ pl, en }); };
+  u.dialogue.forEach(([, pl, en]) => add(pl, en));
+  u.quiz.forEach(q => { const s = fullSentence(q); if (s && (q.t !== "choice" || /___/.test(q.q))) add(s, q.en || ""); });
+  UNITS.filter(x => x.id < u.id && reached(x.id)).forEach(x => x.dialogue.forEach(([, pl, en]) => add(pl, en)));
+  return pool;
+}
+function runListen(body) {
+  const u = stepUnit(), key = rkey("listen", u);
+  const pool = listenPool(u);
+  if (pool.length < 3) { body.append(h("div", { class: "card stack" }, h("p", null, "Listening practice needs audio, and none is available on this device right now."))); return finishStep("listen", body); }
+  const R = resumeItems(key, () => pick(pool.slice(0, 30), 8).map(x => ({ t: "listen", pl: x.pl, en: x.en })));
+  const host = h("div");
+  body.append(h("p", { class: "muted" }, "Listen, then type what you hear. Missing accents count as almost right."), resumeNote(R), host);
+  (async () => {
+    let score = R.score || 0;
+    for (let i = R.start; i < R.items.length; i++) {
+      const it = R.items[i];
+      const ok = await listenOne(host, it, `${i + 1} / ${R.items.length}`);
+      if (ok) { score++; S.progress.stats = S.progress.stats || {}; S.progress.stats.listenOk = (S.progress.stats.listenOk || 0) + 1; }
+      saveResume(key, R.items, i + 1, score);
+    }
+    clearResume(key);
+    host.replaceChildren();
+    addXP(score * 5);
+    finishStep("listen", body, `You understood ${score} of ${R.items.length} sentences by ear.`);
+  })();
+}
+function listenOne(host, it, counter) {
+  return new Promise(resolve => {
+    const inp = h("input", { type: "text", id: "listen-input", autocomplete: "off", autocapitalize: "off", spellcheck: "false", "aria-label": "What you heard" });
+    const fb = h("div");
+    let answered = false;
+    const play = slow => speak(it.pl, { slow });
+    const check = () => {
+      if (answered) return;
+      if (!inp.value.trim()) { inp.focus(); return; }
+      answered = true; inp.disabled = true;
+      const a = norm(inp.value), b = norm(it.pl);
+      const kind = a === b ? "ok" : strip(a) === strip(b) || similarity(strip(a), strip(b)) >= 0.85 ? "almost" : "no";
+      fb.replaceChildren(h("div", { class: "feedback " + kind },
+        h("strong", null, kind === "ok" ? "Dobrze! Correct." : kind === "almost" ? "Almost! Compare carefully." : "Not quite."),
+        h("div", null, h("b", { class: "pl" }, it.pl)),
+        it.en ? h("div", { class: "muted small" }, it.en) : null,
+        h("div", { class: "row", style: "margin-top:6px" }, h("button", { class: "btn primary sm", id: "ex-continue", onclick: () => { keyHandler = null; resolve(kind !== "no"); } }, "Continue →"), sayBtn(it.pl))));
+      setTimeout(() => { const c = document.getElementById("ex-continue"); c && c.focus(); }, 30);
+    };
+    inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); if (!answered) check(); else document.getElementById("ex-continue")?.click(); } });
+    host.replaceChildren(h("div", { class: "card stack" },
+      h("span", { class: "eyebrow" }, counter),
+      h("div", { class: "row" }, h("button", { class: "btn primary", onclick: () => play(false) }, "▶ Play"), h("button", { class: "btn ghost", onclick: () => play(true) }, "🐢 Slower")),
+      inp, keypad(inp),
+      h("div", { class: "row" }, h("button", { class: "btn", onclick: check }, "Check"), h("button", { class: "btn ghost", onclick: () => { if (!answered) { inp.value = inp.value || "…"; check(); } } }, "I don't know")),
+      fb));
+    keyHandler = (k, typing) => { if (!typing && (k === "r" || k === "R")) { play(false); return true; } };
+    setTimeout(() => { inp.focus(); play(false); }, 50);
+  });
+}
+
+/* ================================================================
+   SETTINGS PANEL, CAN-DO LIST, MILESTONE GRID (Postępy tab)
+   ================================================================ */
+function settingsPanel() {
+  const st = settings();
+  const sel = (id, label, value, options, onchange, note) => {
+    const s = h("select", { id, onchange: e => { onchange(e.target.value); } }, options.map(([v, l]) => h("option", { value: String(v), selected: String(v) === String(value) ? true : null }, l)));
+    return h("label", { class: "setting", for: id }, h("span", null, h("b", null, label), note ? h("span", { class: "small muted" }, note) : null), s);
+  };
+  const lens = Object.entries(PLANS).map(([k, p]) => [k, `${p.label} · ${p.steps.filter(id => id !== "listen" || hasAnyAudio()).map(id => STEPS.find(s => s.id === id)).reduce((n, s) => n + s.min, 0)} min`]);
+  return h("section", { class: "card stack", id: "settings" },
+    h("h3", null, "Ustawienia · settings"),
+    sel("set-length", "Session length", st.length, lens, v => { setSetting("length", v); }, "Quick: flashcards + a short test. Full adds listening, conversation and writing."),
+    sel("set-goal", "Daily goal", st.goal, [[30, "30 XP · light"], [60, "60 XP · regular"], [100, "100 XP · serious"], [150, "150 XP · intense"], [200, "200 XP · maximum"]], v => setSetting("goal", +v), "Fills the ring on the Today page."),
+    sel("set-new", "New words per day", st.newPerDay, [[5, "5"], [10, "10"], [15, "15"], [99, "All from the unit"]], v => setSetting("newPerDay", +v)),
+    sel("set-rate", "Speech speed", st.rate, [[0.7, "Slow"], [0.9, "Normal"], [1.05, "Fast"]], v => setSetting("rate", +v)),
+    Object.keys(AUDIO_OF).length ? sel("set-voice", "Voice", st.voice, [["auto", "This device's voice (when it has one)"], ["recorded", "The app's recorded voice"]], v => setSetting("voice", v), plVoice ? `This device has a Polish voice: ${plVoice.name}.` : "No Polish voice on this device, so the recordings are used.") : null,
+    sel("set-story", "Story mode", st.story ? "on" : "off", [["on", "On: AI dialogues follow the same characters"], ["off", "Off: a new situation each day"]], v => setSetting("story", v === "on")),
+    h("p", { class: "small muted" }, "Shortcuts on a keyboard: Space flips a flashcard, 1–4 grade it, 1–4 also pick answers, Enter checks and continues, R replays in listening. On a phone, swipe a flashcard right for Good or left for Again."));
+}
+function canDoPanel() {
+  const P = S.progress;
+  const done = UNITS.filter(u => P.mastered.includes(u.id));
+  return h("section", { class: "card stack" },
+    h("div", { class: "spread" }, h("h3", null, "Co już umiesz · what you can do now"), h("span", { class: "chip green" }, `${done.length} / ${UNITS.length} units`)),
+    done.length ? h("ul", { class: "cando" }, done.flatMap(u => CAN_DO[u.id].map(t => h("li", null, t)))) : h("p", { class: "small muted" }, "Finish your first unit and the things you can now do in Polish will be listed here."),
+    !courseDone() ? h("p", { class: "small muted" }, `Next, in unit ${curUnit().id + 1}: `, CAN_DO[curUnit().id].join("; "), ".") : null);
+}
+function milestonesPanel() {
+  const P = S.progress, got = P.milestones || {};
+  return h("section", { class: "card stack" },
+    h("div", { class: "spread" }, h("h3", null, "Osiągnięcia · milestones"), h("span", { class: "chip" }, `${Object.keys(got).length} / ${MILESTONES.length}`)),
+    h("div", { class: "badges" }, MILESTONES.map(m => h("div", { class: "badge" + (got[m.id] ? " on" : ""), title: got[m.id] ? `Earned ${got[m.id]}` : "Not yet" },
+      h("span", { class: "badge-icon" }, m.icon), h("b", { class: "pl" }, m.pl), h("small", null, m.en)))));
+}
+function updateBadge() {
+  if (!IS_APP || !navigator.setAppBadge) return;
+  try { const n = dueCards().length; (n ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => {}); } catch (e) {}
+}
+
 /* ================================================================
    PROGRESS view
    ================================================================ */
@@ -2983,8 +3514,10 @@ function renderProgress() {
   app.replaceChildren(h("div", { class: "stack-lg" },
     h("div", { class: "stack" }, h("span", { class: "eyebrow" }, "Your progress"), h("h1", { class: "pl" }, "Postępy")),
     syncPanel(),
+    canDoPanel(),
+    milestonesPanel(),
     h("div", { class: "tiles" },
-      stat(String(P.streak || 0), "day streak", `best ${P.best || 0}`),
+      stat(String(P.streak || 0), "day streak", `best ${P.best || 0} · ❄ ${P.freezes || 0} freeze${(P.freezes || 0) === 1 ? "" : "s"}`),
       stat(String(P.mastered.length) + " / " + UNITS.length, "units finished", levelLabel()),
       stat(String(learned), "words learned", `${intro.length} started`),
       stat(String(P.xp || 0), "XP", `${todayRec().xp} today`)),
@@ -2994,7 +3527,8 @@ function renderProgress() {
     h("section", { class: "card stack" }, h("h3", null, "Weak spots"),
       weak.length ? h("div", { class: "stack" }, weak.map(([t, v]) => h("div", { class: "hbar" }, h("span", null, tagLabel(t)), h("div", { class: "track" }, h("span", { style: `width:${Math.min(100, v / maxW * 100)}%` })), h("span", { class: "num small muted" }, "×" + Math.round(v)))))
         : h("p", { class: "muted small" }, "No weak spots yet. Mistakes in tests, conversations and writing will show up here and shrink as you get them right.")),
-    h("section", { class: "stack" }, h("h3", null, "Settings"), resetBox())
+    settingsPanel(),
+    h("section", { class: "stack" }, h("h3", null, "Reset"), resetBox())
   ));
 }
 function stat(v, label, sub) { return h("div", { class: "tile-stat" }, h("div", { class: "v" }, v), h("div", { class: "small" }, label), h("div", { class: "small muted" }, sub)); }
@@ -3012,6 +3546,9 @@ function resetBox() {
 readLocal();
 advanceIfDone();
 todayRec();
+if (!S.progress.milestones || !Object.keys(S.progress.milestones).length) { const P = S.progress; P.milestones = {}; P.stats = P.stats || {}; const L = { learned: learnedCount() }; MILESTONES.forEach(m => { if (m.check(P, L)) P.milestones[m.id] = localKey(); }); }
+S.progress.streak = computeStreak(S.progress);
+applyFreezes();
 setView("today");
 
 /* A sync link puts the code after # (e.g. …/artifact/ID#s1.xxxx). Import it once. */
@@ -3064,6 +3601,8 @@ async function takeIncomingLink() {
   await takeIncomingLink();
   advanceIfDone();
   todayRec();
+  S.progress.streak = computeStreak(S.progress);
+  applyFreezes();
   if (!inSession) render(); else renderStats();
 })();
 </script>

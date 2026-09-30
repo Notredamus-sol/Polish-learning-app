@@ -3,12 +3,13 @@
    Pages are served from the cache first and refreshed in the background, so
    a new version appears on the next launch. Fonts are cached the first time
    they load. */
-const VERSION = "pc-2146e92f83";
+const VERSION = "pc-fdd910dd8d";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./apple-touch-icon.png"];
+const AUDIO = ["./audio/extra.json", "./audio/u0.json", "./audio/u1.json", "./audio/u10.json", "./audio/u11.json", "./audio/u12.json", "./audio/u13.json", "./audio/u14.json", "./audio/u15.json", "./audio/u16.json", "./audio/u17.json", "./audio/u18.json", "./audio/u19.json", "./audio/u2.json", "./audio/u20.json", "./audio/u3.json", "./audio/u4.json", "./audio/u5.json", "./audio/u6.json", "./audio/u7.json", "./audio/u8.json", "./audio/u9.json"].filter(Boolean);  /* recordings, cached so audio works offline */
 const FONT_CACHE = "pc-fonts";
 
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL.concat(AUDIO))).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", e => {
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION && k !== FONT_CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
