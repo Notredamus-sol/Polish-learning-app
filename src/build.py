@@ -7,11 +7,6 @@ import sys, hashlib, json, os
 APP_URL = "https://notredamus-sol.github.io/Polish-learning-app/"
 app_url = sys.argv[1] if len(sys.argv) > 1 else APP_URL
 src = open("src/polski.html", encoding="utf-8").read().replace("__APP_URL__", app_url)
-# Recordings index (made by src/make_audio.py); the audio itself is in docs/audio/
-import re
-audio_index = open("src/audio_index.json", encoding="utf-8").read().strip() if os.path.exists("src/audio_index.json") else "{}"
-src = re.sub(r"/\*AUDIO_INDEX\*/.*?/\*END_AUDIO_INDEX\*/", lambda m: "/*AUDIO_INDEX*/" + audio_index + "/*END_AUDIO_INDEX*/", src, flags=re.S)
-audio_files = sorted(f for f in os.listdir("docs/audio") if f.endswith(".json")) if os.path.isdir("docs/audio") else []
 os.makedirs("dist", exist_ok=True); os.makedirs("docs", exist_ok=True)
 open("dist/artifact.html", "w", encoding="utf-8").write(src)
 
@@ -51,7 +46,7 @@ open("docs/manifest.webmanifest", "w").write(json.dumps({
     {"src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
   ]
 }, indent=2))
-sw = open("src/sw.template.js").read().replace("__VERSION__", version).replace('"__AUDIO__"', ", ".join('"./audio/%s"' % f for f in audio_files) or '""')
+sw = open("src/sw.template.js").read().replace("__VERSION__", version)
 open("docs/sw.js", "w").write(sw)
 open("docs/.nojekyll", "w").write("")
 print("built", version, "app url:", app_url)

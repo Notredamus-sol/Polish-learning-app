@@ -1968,7 +1968,7 @@ function findVoice() {
     plVoice = vs.find(v => /^pl/i.test(v.lang)) || null;
   } catch (e) { plVoice = null; }
 }
-try { if (window.speechSynthesis) { findVoice(); speechSynthesis.onvoiceschanged = () => { findVoice(); }; } } catch (e) {}
+try { if (window.speechSynthesis) findVoice(); } catch (e) {}
 const SPEAK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>';
 function sayBtn(text) {
   if (!canSpeak(text)) return null;
@@ -3158,64 +3158,40 @@ function writingsCard() {
 /* ================================================================
    SETTINGS (stored with progress, so they sync between devices)
    ================================================================ */
-const DEFAULT_SETTINGS = { length: "standard", goal: 100, newPerDay: 10, rate: 0.9, story: true, voice: "auto" };
+const DEFAULT_SETTINGS = { length: "standard", goal: 100, newPerDay: 10, rate: 0.9, story: true };
 function settings() { const P = S.progress; P.settings = Object.assign({}, DEFAULT_SETTINGS, P.settings || {}); return P.settings; }
 function setSetting(k, v) { settings()[k] = v; persist("progress"); }
 
 /* ================================================================
-   AUDIO: the device's Polish voice when it has one, otherwise the
-   recordings bundled with the app (audio/*.json, made with Piper TTS).
+   AUDIO: the device's own Polish voice (Web Speech API)
    ================================================================ */
-const AUDIO_INDEX = /*AUDIO_INDEX*/{}/*END_AUDIO_INDEX*/;
-const AUDIO_OF = {};
-for (const [f, hs] of Object.entries(AUDIO_INDEX)) for (const x of hs.split(" ")) if (x) AUDIO_OF[x] = f;
-function audioKey(text) {
-  const s = String(text).normalize("NFC").toLowerCase().replace(/[^\p{L}\p{N} ]+/gu, " ").replace(/\s+/g, " ").trim();
-  let hsh = 0x811c9dc5;
-  for (const b of new TextEncoder().encode(s)) { hsh ^= b; hsh = Math.imul(hsh, 0x01000193) >>> 0; }
-  return hsh.toString(36);
-}
-const hasClip = t => !!AUDIO_OF[audioKey(t)];
-const audioFiles = {};
-function loadAudioFile(f) {
-  return audioFiles[f] || (audioFiles[f] = fetch("audio/" + f + ".json").then(r => { if (!r.ok) throw new Error("audio " + r.status); return r.json(); })
-    .catch(e => { delete audioFiles[f]; throw e; }));
-}
-let player = null, speakToken = 0;
-function stopAudio() { speakToken++; try { player && player.pause(); } catch (e) {} try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
-function deviceVoiceFor(text) { findVoice(); return !!plVoice && !(settings().voice === "recorded" && hasClip(text)); }
-function canSpeak(text) { findVoice(); return !!plVoice || hasClip(text); }
-function hasAnyAudio() { findVoice(); return !!plVoice || Object.keys(AUDIO_OF).length > 0; }
+let speakToken = 0;
+function stopAudio() { speakToken++; try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
+function canSpeak() { findVoice(); return !!plVoice; }
+const hasAnyAudio = canSpeak;
 /* Resolves when the audio finishes (or can't play) */
 function speak(text, opts = {}) {
-  const token = opts.keep ? speakToken : (stopAudio(), speakToken);
+  if (!opts.keep) stopAudio();
   const rate = (opts.slow ? 0.7 : 1) * (+settings().rate || 0.9);
   return new Promise(resolve => {
     try {
-      if (deviceVoiceFor(text)) {
-        const u = new SpeechSynthesisUtterance(text);
-        u.voice = plVoice; u.lang = plVoice.lang; u.rate = rate;
-        u.onend = u.onerror = () => resolve(true);
-        speechSynthesis.speak(u);
-        return;
-      }
-      const k = audioKey(text), f = AUDIO_OF[k];
-      if (!f) return resolve(false);
-      loadAudioFile(f).then(data => {
-        if (token !== speakToken || !data[k]) return resolve(false);
-        player = new Audio("data:audio/mpeg;base64," + data[k]);
-        player.playbackRate = Math.max(0.5, Math.min(1.5, rate / 0.9));
-        player.onended = player.onerror = () => resolve(true);
-        player.play().catch(() => resolve(false));
-      }).catch(() => resolve(false));
+      if (!canSpeak()) return resolve(false);
+      const u = new SpeechSynthesisUtterance(text);
+      u.voice = plVoice; u.lang = plVoice.lang; u.rate = rate;
+      u.onend = u.onerror = () => resolve(true);
+      speechSynthesis.speak(u);
     } catch (e) { resolve(false); }
   });
 }
 async function speakSeq(texts) { stopAudio(); const token = speakToken; for (const t of texts) { if (token !== speakToken) return; await speak(t, { keep: true }); } }
 /* Voices load a moment after the page starts, sometimes only after a delay inside
-   an embedded page, so keep looking for a few seconds and redraw when one appears. */
-[300, 1000, 2500, 5000].forEach(ms => setTimeout(() => { const had = !!plVoice; findVoice(); if (!had && plVoice && !inSession) render(); }, ms));
-try { if (window.speechSynthesis) speechSynthesis.addEventListener("voiceschanged", () => { const had = !!plVoice; findVoice(); if (!had && plVoice && !inSession) render(); }); } catch (e) {}
+   an embedded page. Keep checking for a few seconds, and redraw once a voice
+   appears so the speaker buttons show up. voiceDrawn tracks whether the screen
+   was already drawn with a voice (plVoice alone can be set by any findVoice call). */
+let voiceDrawn = false;
+function voiceCheck() { findVoice(); if (plVoice && !voiceDrawn) { voiceDrawn = true; if (!inSession) render(); } }
+[300, 1000, 2500, 5000, 9000].forEach(ms => setTimeout(voiceCheck, ms));
+try { if (window.speechSynthesis) speechSynthesis.addEventListener("voiceschanged", voiceCheck); } catch (e) {}
 
 /* ================================================================
    SESSION PLAN, minimum day, daily goal
@@ -3465,7 +3441,7 @@ function settingsPanel() {
     sel("set-goal", "Daily goal", st.goal, [[30, "30 XP · light"], [60, "60 XP · regular"], [100, "100 XP · serious"], [150, "150 XP · intense"], [200, "200 XP · maximum"]], v => setSetting("goal", +v), "Fills the ring on the Today page."),
     sel("set-new", "New words per day", st.newPerDay, [[5, "5"], [10, "10"], [15, "15"], [99, "All from the unit"]], v => setSetting("newPerDay", +v)),
     sel("set-rate", "Speech speed", st.rate, [[0.7, "Slow"], [0.9, "Normal"], [1.05, "Fast"]], v => setSetting("rate", +v)),
-    Object.keys(AUDIO_OF).length ? sel("set-voice", "Voice", st.voice, [["auto", "This device's voice (when it has one)"], ["recorded", "The app's recorded voice"]], v => setSetting("voice", v), plVoice ? `This device has a Polish voice: ${plVoice.name}.` : "No Polish voice on this device, so the recordings are used.") : null,
+    h("p", { class: "small muted" }, plVoice ? `Voice: ${plVoice.name}, this device's Polish voice.` : "This device has no Polish voice, so speaker buttons and listening practice are hidden. Chrome and Edge include one."),
     sel("set-story", "Story mode", st.story ? "on" : "off", [["on", "On: AI dialogues follow the same characters"], ["off", "Off: a new situation each day"]], v => setSetting("story", v === "on")),
     h("p", { class: "small muted" }, "Shortcuts on a keyboard: Space flips a flashcard, 1–4 grade it, 1–4 also pick answers, Enter checks and continues, R replays in listening. On a phone, swipe a flashcard right for Good or left for Again."));
 }

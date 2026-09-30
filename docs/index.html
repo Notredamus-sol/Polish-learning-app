@@ -1982,7 +1982,7 @@ function findVoice() {
     plVoice = vs.find(v => /^pl/i.test(v.lang)) || null;
   } catch (e) { plVoice = null; }
 }
-try { if (window.speechSynthesis) { findVoice(); speechSynthesis.onvoiceschanged = () => { findVoice(); }; } } catch (e) {}
+try { if (window.speechSynthesis) findVoice(); } catch (e) {}
 const SPEAK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>';
 function sayBtn(text) {
   if (!canSpeak(text)) return null;
@@ -3172,64 +3172,40 @@ function writingsCard() {
 /* ================================================================
    SETTINGS (stored with progress, so they sync between devices)
    ================================================================ */
-const DEFAULT_SETTINGS = { length: "standard", goal: 100, newPerDay: 10, rate: 0.9, story: true, voice: "auto" };
+const DEFAULT_SETTINGS = { length: "standard", goal: 100, newPerDay: 10, rate: 0.9, story: true };
 function settings() { const P = S.progress; P.settings = Object.assign({}, DEFAULT_SETTINGS, P.settings || {}); return P.settings; }
 function setSetting(k, v) { settings()[k] = v; persist("progress"); }
 
 /* ================================================================
-   AUDIO: the device's Polish voice when it has one, otherwise the
-   recordings bundled with the app (audio/*.json, made with Piper TTS).
+   AUDIO: the device's own Polish voice (Web Speech API)
    ================================================================ */
-const AUDIO_INDEX = /*AUDIO_INDEX*/{"u0": "17ple0q 84beo gryqvn 77e77n 1i1x9k6 e4ov36 1sxoc8w 18xtwtz 6a5gyf 1vphrir z9q1r5 18baoch 42qnt1 vxq5zf ovdsrt 18dupg1 1k1jhnp 1fgarsq 16khxl1 1ltu56i 1q493qt 1q6x00i 1s9jp30 14017t2 14wzomj jysrox 1e87yuu 1w2bnnr o9igjt", "u1": "1hpvm55 3ycr6d razgt4 1pd32n8 1hdahy5 1ps6m9u 17ooy1c 1fbqucq bkghg4 12zfiq 14fhzdy 1tlfcl7 15oq3o2 15ov12y 5sjf1a nrxwps v6h3oh 1lhzkzx a2exhl thr2mi 14qt96r 1fdoe9c kbbmdc lzvelk 9fn6bv 1jecrox 1d931pf", "u2": "12osqxv 1vvu5rb 1nzasbb r44dgm 1q0by4e 2pkxfs 12xwgx6 1q1cpn2 1g293nk 16pvnr 1pcw263 1giaizd fg24wt 1gyggj9 zhpjz6 1971spz 14pt7z iqd6kn 1c59cn 1kdp0fu 1suo00f 193bc74 1pwey6u eq1jy3 1q73t37 7g3nco 16xw1y7 1xe6sw9", "u3": "hd44ll 1aful2y tcw57o 1r1k110 8d2he8 1qejvtt 1sc3tf5 6urzek 1o8k8f1 mhb0wg 1n7ta3z w6utia 1tr9dcc buv8yr 8jshai 1edduat x05nnt 1ciiira 1f7zfzr 10oozgt 4yy73 1lyy9tx jsd929 1n1z6c8 y2przy 1hndywe 67ut0j hv3qc2", "u4": "487899 z85kye q50zm1 1evckwd 20q9sr gn1e22 1gixlqb 1bnd0hs 4hrm1l 1dzrws3 1jd1wkw jie2jw nhtfnw 5nwhon 1pf6llx 3dbge7 qa4z7w 1rpiqkr w0rzt7 1qlw9i6 1oif1cy 8cimm9 1n9rdt1 84tr2o 43yney 8akbhy 1j7wgxu 18xzaws fc54pp 6fidnv l18cys", "u5": "1vroc4m 1454vra eavbf0 1jo872o 1qr7l2i 1qq88ry rlkfy1 m0nb0 v23ok 1boba6a rhjuel 9m1hnl 1gfimp 1bwe5vn 1q75qem 9mg9tb y8q9h9 bl5is5 1co8q2p wodvn6 s9sznn 138dgsz uscu3t zzw787 d4wq0x cebte1 91g7b yytrip 1h5s6cq", "u6": "1ex3smu 4n40ci 1rbch7y u5v7o6 1dn4yqj d4s4q5 xdlnu0 kalfkv fekccp cplse6 3cqqh tg8f4t 1wdsozc wsy8d0 12hgsw5 1nbs55d 1bjkoo4 10j9akx 13lw4jk 18wdv6v sy5niw eviggk 2vo641 8553qi c3g3gv ohp8oo cxzhve nd4a45", "u7": "xhxi5f 1kocioz qnnpjt a3i46y 1adgva3 1vx7nrb s4lut4 12jt7tl 1nq9o7r 5il91p 1as6cbf xn1xv3 1moqksj 1ueweqz 1iw7r8y 1utdc2l 188eviw 1sknb5p 16rq38u 1gqh9ai cghqdd qfdxqy 1m6y3vx 3ajqxq 1ky7yhe 1mrdtjq tzhjtg", "u8": "19ome6j 1b7k0ph ne8i9i 196c7lv 17q3dl6 swi848 9ci7sq 1toya4g 2tglsz pbwn2w qx7gzr 1jybor fkjm7q effq42 3tqj37 wxzqt3 gm6v2a huu7zq 1uguojt ok6up3 ucjp3x zffe9y idr3v6 1kbpfix wdad2 18anisi 15mcgdu 1ek6m4l usw959 1eypg3i", "u9": "1228w4p y7nm9n d3b7ze r80q38 706trc w2osc9 1gxsd0 l898lo 1418mxh 2i08yb 3cmojd 1auof2o 5x4kn7 1v6yukd 1qxx69q 1wc32cc 1jstoqc 1hcd725 1ksc52m 1yd1axc 1oitipq xhjpq ehbubi 1fa16m0 s2usxo 17ehzfc 1h80jns 1mysjf9 huh3x8 jdnarj", "u10": "ilh4gy 1d9ocor 9sngrl 1h2sx5j w6lyno 9lt9dq 2943jx 2oqorb 1huenkw 17yzzsh xmnofh ixltj8 19pbziy 1nxw6g 137962i oqzj2g 1jm162s 1umoi5n dmqgo1 u5crma 1p80y7w du3bsz 411qdu 42s6qo 1sfa8zh 1kegmz8 qf3xn7", "u11": "18g3rkz gy621x fph7kr 1le9hgi bsoy6n kpl2ei 53a830 19ildh4 18urm9s trt4x9 ttf8bz 1fwz088 1y9kfr0 1b0of97 1169094 1fe8bqj 1qexcri 186ig76 78zmml 1ai72ma 1vxpbp5 40feuc 14q8a5u 1tu7src 728fwo 1ckpugs 1uiuauh", "u12": "8eg0et lx23s9 4l8t23 1kk0pus qaha4w 1hlrkl4 1w8w13d 9afbzd 108rbj2 6958o7 e9g6ba hlcs34 1q9ji78 u48rv5 1jw791g 1mgif13 1o1h8l7 1s5arbi 3qd2k0 nlqh06 zmo9wr zkn8xe 1his3u7 1tfo9cd gcgkns jafax6 1somgfy", "u13": "13yens4 1mk3ohb 1uyr7rv 7syxp0 1gf8h29 tlo2x7 b8w04t 1azk40q pjgx5m 1krutif yif5k4 syd043 10v9ijk xjq4z5 ts7u5o 1krg150 rh9rh4 14x952o 1yx2mvs u29p7s 75jyi6 9omjrd ogajvf 11wwtfu t1cu4v wr4504 fv26h2 mlbree hhwnml mg2y5l", "u14": "vckucx 2v1tbm wovdwo 1ka6ioa g5ikfj 1kqn56c 1yt1ijr s02fzx my3a4y u990pf eittye 6e99h3 16eg6o5 95q6hb 19kby23 1yqsq2g 1bzbi8q 1vt880a 1mwvpf4 4swt3n 157a3ao 1y00lxa em9ieb ng7mi l6xi8r pronqo 1v5osfc 1awryb 1org8vq", "u15": "1vowkvb t8i6gd ma0yhh 1uac3oz 1rvrkvg 1goi7bf 13cfnew 164okbg 140k1vw q9p2qq 3f91dc aqqj31 j3bm9x 1h3c5ze 1wylydp 9smurl 8lgjgv shoib0 1kv68qh dflcm8 1akl9k5 tvtggi o5okvf 190kzj3 17uh3oa 60obwe 3a96sa p3so3w", "u16": "rtu15x 2y8m7q 1o2sxgq 1k95tse 1pkv4wg 9dth2r 64lkdl 2p12h2 11p713b cv82qo 1dj8ipb 1mzcnhg aslrjn jkft5j fqqgt9 sffi13 vdbu2r hvvhhf 1oro9zr hsjdx1 90r2oz 1c6048m 1cfhcy 1ob0k8u uhf2r7 awi502 11ae53d itsuyf 4mqzxl", "u17": "cs8isn 1vw6hbe 1tfb85u au16ez 1wobrcf fdc8m1 17ki722 7u9nzz 1qjai3r 1q54m7w ee3qv3 1dxsm8q owriyp rioygz 8pblp1 1blldez 6o7gip f5cc3h 1op4ggb vco09k 14srdk1 1ux7ugu 1qele7o 1310w3f qzh336 2ynb74 1c04qgj 1qkj830 1gwe0b2 15tx5j2", "u18": "pkre0z qojhsx ogsz93 1goq5ty cx2aef hthc7f 14xlz7n 1yf1lj8 5uyunt tt2gb6 9xi011 16pf7uu 1d8x9v7 i0u9xe 19tpcs9 1eqp1df 10g45pr 197wwkv zo30su t4et15 m7w9wu 43mxqi 1o3u8v8 1gsdqb9 ed8s3u 1fxj0fs ml35q0 1vuk508 6siflz", "u19": "1xdf7mm 1ocsuju 1ocldcd 1b5ohci 1ejs33o 95rnmn 1uydeus 1f6qyx2 yxtwb1 ywgtam s3tpcg 1pduek0 1ljyhu5 f3kznt 1ivdjwj 1b25vnx 1xag3ab 10allti ihs3wk 1pg9e06 eqt6w6 16ftwqc 10az68s 18sztv5 1pkdzfe r195c0 15oe9jy 2pgpsy", "u20": "24tkvu npx14d srqtn5 2lswcm 1ywc8wt r6qxzl 1et12vv 13q25v q6jetk 1tvgbkv 1v7mvzr ljt68h 92f4kg 14ak62m 1n3z389 yjz645 15ymro2 1u4jffi 1u7vojq 16x31vh 1rt5hwg 10mjncs c1tanq dbmb5b 3wahfl 1to5zw6 1a9cip3 bbe461 1j69qj0 hij2kd", "extra": "1rx8czn rfwymd jq2fx8 1agh6gf 1hvpr0f d0j5o5 13lkjff 1x0kgbp 1pyrdnq 1tubnys 13wjx7u 11e1jw9 o01lfy 1jr4oin 4jhj4z 1x08ll9 6p8in 1whxwm8 uc9wif 1seq8av 1sj1po9 jwwdyq 1dlsx8w 1aabscu ea992x 16yj13k 1u0zhie 14wqj7q"}/*END_AUDIO_INDEX*/;
-const AUDIO_OF = {};
-for (const [f, hs] of Object.entries(AUDIO_INDEX)) for (const x of hs.split(" ")) if (x) AUDIO_OF[x] = f;
-function audioKey(text) {
-  const s = String(text).normalize("NFC").toLowerCase().replace(/[^\p{L}\p{N} ]+/gu, " ").replace(/\s+/g, " ").trim();
-  let hsh = 0x811c9dc5;
-  for (const b of new TextEncoder().encode(s)) { hsh ^= b; hsh = Math.imul(hsh, 0x01000193) >>> 0; }
-  return hsh.toString(36);
-}
-const hasClip = t => !!AUDIO_OF[audioKey(t)];
-const audioFiles = {};
-function loadAudioFile(f) {
-  return audioFiles[f] || (audioFiles[f] = fetch("audio/" + f + ".json").then(r => { if (!r.ok) throw new Error("audio " + r.status); return r.json(); })
-    .catch(e => { delete audioFiles[f]; throw e; }));
-}
-let player = null, speakToken = 0;
-function stopAudio() { speakToken++; try { player && player.pause(); } catch (e) {} try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
-function deviceVoiceFor(text) { findVoice(); return !!plVoice && !(settings().voice === "recorded" && hasClip(text)); }
-function canSpeak(text) { findVoice(); return !!plVoice || hasClip(text); }
-function hasAnyAudio() { findVoice(); return !!plVoice || Object.keys(AUDIO_OF).length > 0; }
+let speakToken = 0;
+function stopAudio() { speakToken++; try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
+function canSpeak() { findVoice(); return !!plVoice; }
+const hasAnyAudio = canSpeak;
 /* Resolves when the audio finishes (or can't play) */
 function speak(text, opts = {}) {
-  const token = opts.keep ? speakToken : (stopAudio(), speakToken);
+  if (!opts.keep) stopAudio();
   const rate = (opts.slow ? 0.7 : 1) * (+settings().rate || 0.9);
   return new Promise(resolve => {
     try {
-      if (deviceVoiceFor(text)) {
-        const u = new SpeechSynthesisUtterance(text);
-        u.voice = plVoice; u.lang = plVoice.lang; u.rate = rate;
-        u.onend = u.onerror = () => resolve(true);
-        speechSynthesis.speak(u);
-        return;
-      }
-      const k = audioKey(text), f = AUDIO_OF[k];
-      if (!f) return resolve(false);
-      loadAudioFile(f).then(data => {
-        if (token !== speakToken || !data[k]) return resolve(false);
-        player = new Audio("data:audio/mpeg;base64," + data[k]);
-        player.playbackRate = Math.max(0.5, Math.min(1.5, rate / 0.9));
-        player.onended = player.onerror = () => resolve(true);
-        player.play().catch(() => resolve(false));
-      }).catch(() => resolve(false));
+      if (!canSpeak()) return resolve(false);
+      const u = new SpeechSynthesisUtterance(text);
+      u.voice = plVoice; u.lang = plVoice.lang; u.rate = rate;
+      u.onend = u.onerror = () => resolve(true);
+      speechSynthesis.speak(u);
     } catch (e) { resolve(false); }
   });
 }
 async function speakSeq(texts) { stopAudio(); const token = speakToken; for (const t of texts) { if (token !== speakToken) return; await speak(t, { keep: true }); } }
 /* Voices load a moment after the page starts, sometimes only after a delay inside
-   an embedded page, so keep looking for a few seconds and redraw when one appears. */
-[300, 1000, 2500, 5000].forEach(ms => setTimeout(() => { const had = !!plVoice; findVoice(); if (!had && plVoice && !inSession) render(); }, ms));
-try { if (window.speechSynthesis) speechSynthesis.addEventListener("voiceschanged", () => { const had = !!plVoice; findVoice(); if (!had && plVoice && !inSession) render(); }); } catch (e) {}
+   an embedded page. Keep checking for a few seconds, and redraw once a voice
+   appears so the speaker buttons show up. voiceDrawn tracks whether the screen
+   was already drawn with a voice (plVoice alone can be set by any findVoice call). */
+let voiceDrawn = false;
+function voiceCheck() { findVoice(); if (plVoice && !voiceDrawn) { voiceDrawn = true; if (!inSession) render(); } }
+[300, 1000, 2500, 5000, 9000].forEach(ms => setTimeout(voiceCheck, ms));
+try { if (window.speechSynthesis) speechSynthesis.addEventListener("voiceschanged", voiceCheck); } catch (e) {}
 
 /* ================================================================
    SESSION PLAN, minimum day, daily goal
@@ -3479,7 +3455,7 @@ function settingsPanel() {
     sel("set-goal", "Daily goal", st.goal, [[30, "30 XP · light"], [60, "60 XP · regular"], [100, "100 XP · serious"], [150, "150 XP · intense"], [200, "200 XP · maximum"]], v => setSetting("goal", +v), "Fills the ring on the Today page."),
     sel("set-new", "New words per day", st.newPerDay, [[5, "5"], [10, "10"], [15, "15"], [99, "All from the unit"]], v => setSetting("newPerDay", +v)),
     sel("set-rate", "Speech speed", st.rate, [[0.7, "Slow"], [0.9, "Normal"], [1.05, "Fast"]], v => setSetting("rate", +v)),
-    Object.keys(AUDIO_OF).length ? sel("set-voice", "Voice", st.voice, [["auto", "This device's voice (when it has one)"], ["recorded", "The app's recorded voice"]], v => setSetting("voice", v), plVoice ? `This device has a Polish voice: ${plVoice.name}.` : "No Polish voice on this device, so the recordings are used.") : null,
+    h("p", { class: "small muted" }, plVoice ? `Voice: ${plVoice.name}, this device's Polish voice.` : "This device has no Polish voice, so speaker buttons and listening practice are hidden. Chrome and Edge include one."),
     sel("set-story", "Story mode", st.story ? "on" : "off", [["on", "On: AI dialogues follow the same characters"], ["off", "Off: a new situation each day"]], v => setSetting("story", v === "on")),
     h("p", { class: "small muted" }, "Shortcuts on a keyboard: Space flips a flashcard, 1–4 grade it, 1–4 also pick answers, Enter checks and continues, R replays in listening. On a phone, swipe a flashcard right for Good or left for Again."));
 }
