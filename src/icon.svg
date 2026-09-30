@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#1B2233"/>
+  <rect x="96" y="96" width="320" height="320" rx="56" fill="#FFFFFF"/>
+  <path d="M96 256h320v104a56 56 0 0 1-56 56H152a56 56 0 0 1-56-56z" fill="#BF2B38"/>
+  <text x="256" y="236" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-weight="700" font-size="150" fill="#1B2233">Pl</text>
+  <text x="256" y="382" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-weight="700" font-size="92" fill="#FFFFFF">ą ę</text>
+</svg>
