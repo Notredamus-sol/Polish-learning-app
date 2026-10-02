@@ -2825,22 +2825,14 @@ Each gap is exactly one word. Use simple vocabulary. Reply with only JSON: {"ite
 /* ================================================================
    FLASHCARDS view
    ================================================================ */
-/* Word list sorting: Polish alphabetical order (ą after a, ł after l…) or by the
-   date a card was added (st.f, recorded since the 30 Sep 2026 update). */
+/* Word list sorting: Polish alphabetical order (ą after a, ł after l…) or course
+   order, grouped by unit (words added from dialogues sit in the unit they came from). */
 const PL_COLLATOR = new Intl.Collator("pl", { sensitivity: "base" });
 const PL_ALPHABET = "AĄBCĆDEĘFGHIJKLŁMNŃOÓPQRSŚTUVWXYZŹŻ".split("");
 const firstLetter = t => { const m = String(t).toLocaleLowerCase("pl").match(/\p{L}/u); return m ? m[0].toLocaleUpperCase("pl") : "#"; };
 const sortKey = t => String(t).replace(/^[^\p{L}]+/u, "");
-function addedLabel(ts) {
-  if (!ts) return "Added before 30 Sep 2026 (date not recorded)";
-  const d = new Date(ts), t0 = new Date(); t0.setHours(0, 0, 0, 0);
-  const days = Math.round((t0 - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 864e5);
-  if (days === 0) return "Today";
-  if (days === 1) return "Yesterday";
-  return `${PL_DAYS[d.getDay()]}, ${d.getDate()} ${PL_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
-}
 let deckSort = "az", deckLetter = null;
-try { deckSort = localStorage.getItem("pc.deckSort") || "az"; } catch (e) {}
+try { deckSort = localStorage.getItem("pc.deckSort") === "unit" ? "unit" : "az"; } catch (e) {}
 function renderCards() {
   const intro = introduced();
   const due = dueCards();
@@ -2851,13 +2843,13 @@ function renderCards() {
   const count = h("span", { class: "small muted" });
   const letters = h("div", { class: "row letter-bar", role: "group", "aria-label": "Filter by first letter" });
   const sortBar = h("div", { class: "seg", role: "group", "aria-label": "Sort words" });
-  const added = c => S.srs.cards[c.id].f || 0;
+  const unitRank = c => c.unit >= 0 ? c.unit : UNITS.length;
   const drawList = () => {
     const s = strip(norm(q.value));
     let rows = intro.filter(c => !s || strip(norm(c.pl)).includes(s) || norm(c.en).includes(s));
     const present = new Set(rows.map(c => firstLetter(c.pl)));
     if (deckLetter && !present.has(deckLetter)) deckLetter = null;
-    sortBar.replaceChildren(...[["az", "A–Z"], ["new", "Newest first"], ["old", "Oldest first"]].map(([k, l]) =>
+    sortBar.replaceChildren(...[["az", "A–Z"], ["unit", "By course"]].map(([k, l]) =>
       h("button", { class: deckSort === k ? "on" : "", "aria-pressed": deckSort === k ? "true" : "false", onclick: () => { deckSort = k; try { localStorage.setItem("pc.deckSort", k); } catch (e) {} drawList(); } }, l)));
     letters.hidden = deckSort !== "az" || !rows.length;
     letters.replaceChildren(h("button", { class: "letter" + (deckLetter ? "" : " on"), onclick: () => { deckLetter = null; drawList(); } }, "All"),
@@ -2869,9 +2861,8 @@ function renderCards() {
       rows.sort((a, b) => PL_COLLATOR.compare(sortKey(a.pl), sortKey(b.pl)));
       groupOf = c => firstLetter(c.pl);
     } else {
-      const dir = deckSort === "new" ? -1 : 1;
-      rows.sort((a, b) => (!added(a) - !added(b)) || dir * (added(a) - added(b)) || PL_COLLATOR.compare(sortKey(a.pl), sortKey(b.pl)));
-      groupOf = c => addedLabel(added(c));
+      rows.sort((a, b) => unitRank(a) - unitRank(b));  /* stable: keeps lesson order, added words after */
+      groupOf = c => c.unit >= 0 && UNITS[c.unit] ? `Unit ${c.unit + 1} · ${UNITS[c.unit].pl}` : "Other words you added";
     }
     count.textContent = rows.length === intro.length ? "" : `Showing ${rows.length} of ${intro.length}`;
     const out = []; let last = null;
