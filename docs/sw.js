@@ -3,7 +3,7 @@
    Pages are served from the cache first and refreshed in the background, so
    a new version appears on the next launch. Fonts are cached the first time
    they load. */
-const VERSION = "pc-fe755b6d85";
+const VERSION = "pc-5e3467397c";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./apple-touch-icon.png"];
 const FONT_CACHE = "pc-fonts";
 

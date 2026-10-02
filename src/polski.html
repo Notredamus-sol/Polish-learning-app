@@ -277,6 +277,11 @@ ul.cando li::before { content: "✓"; position: absolute; left: 0; color: var(--
 @media (hover: none) { .key-hint { display: none; } }
 .center { text-align: center; }
 .flash { touch-action: pan-y; transition: transform .15s; }
+.vocab-list .grp { grid-column: 1 / -1; display: block; border: 0; margin: 10px 0 0; padding: 0 0 2px; font-family: var(--display); font-size: 0.85rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+.vocab-list .grp:first-child { margin-top: 0; }
+.letter-bar { gap: 4px; }
+.letter { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 7px; min-width: 32px; height: 32px; padding: 0 8px; font-family: var(--display); font-weight: 700; }
+.letter.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .notice { border-left: 4px solid var(--blue); background: var(--blue-soft); padding: 10px 14px; border-radius: 0 10px 10px 0; font-size: 0.9rem; }
 .confirm { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 10px; padding: 12px 14px; }
 @media (max-width: 480px) {
@@ -2514,7 +2519,7 @@ function showDialogue(holder, dl, body) {
       const have = !!(S.srs.custom[id]);
       const b = h("button", { class: "btn sm" + (have ? " ghost" : ""), disabled: have, onclick: () => {
         S.srs.custom[id] = { pl: w.pl, en: w.en, unit: dl.unit ?? curUnit().id };
-        S.srs.cards[id] = { b: 0, due: TODAY() + 1, l: 0, n: 0 };
+        S.srs.cards[id] = { b: 0, due: TODAY() + 1, l: 0, n: 0, t: Date.now(), f: Date.now() };
         persist("srs"); b.disabled = true; b.textContent = "✓ " + w.pl + " added";
       } }, have ? "✓ " + w.pl : "+ " + w.pl + " · " + w.en);
       return b;
@@ -2746,7 +2751,7 @@ function runQuiz(body, opts = {}) {
     P.quizzes.push({ d: localKey(), u: u.id, s: score, t: items.length, at: Date.now() });
     let msg;
     if (pass && !P.mastered.includes(u.id)) {
-      if (opts.testOut) newCardsForToday().forEach(c => { S.srs.cards[c.id] = { b: 2, due: TODAY() + 2, l: 0, n: 0 }; });
+      if (opts.testOut) newCardsForToday().forEach(c => { S.srs.cards[c.id] = { b: 2, due: TODAY() + 2, l: 0, n: 0, t: Date.now(), f: Date.now() }; });
       P.mastered.push(u.id);
       P.masteredAt = P.masteredAt || {}; P.masteredAt[u.id] = localKey();
       if (u.id === P.unit) advanceUnit();
@@ -2806,6 +2811,22 @@ Each gap is exactly one word. Use simple vocabulary. Reply with only JSON: {"ite
 /* ================================================================
    FLASHCARDS view
    ================================================================ */
+/* Word list sorting: Polish alphabetical order (ą after a, ł after l…) or by the
+   date a card was added (st.f, recorded since the 30 Sep 2026 update). */
+const PL_COLLATOR = new Intl.Collator("pl", { sensitivity: "base" });
+const PL_ALPHABET = "AĄBCĆDEĘFGHIJKLŁMNŃOÓPQRSŚTUVWXYZŹŻ".split("");
+const firstLetter = t => { const m = String(t).toLocaleLowerCase("pl").match(/\p{L}/u); return m ? m[0].toLocaleUpperCase("pl") : "#"; };
+const sortKey = t => String(t).replace(/^[^\p{L}]+/u, "");
+function addedLabel(ts) {
+  if (!ts) return "Added before 30 Sep 2026 (date not recorded)";
+  const d = new Date(ts), t0 = new Date(); t0.setHours(0, 0, 0, 0);
+  const days = Math.round((t0 - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 864e5);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  return `${PL_DAYS[d.getDay()]}, ${d.getDate()} ${PL_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+let deckSort = "az", deckLetter = null;
+try { deckSort = localStorage.getItem("pc.deckSort") || "az"; } catch (e) {}
 function renderCards() {
   const intro = introduced();
   const due = dueCards();
@@ -2813,10 +2834,40 @@ function renderCards() {
   intro.forEach(c => boxes[S.srs.cards[c.id].b]++);
   const q = h("input", { type: "text", id: "deck-search", placeholder: "Search your words (Polish or English)", "aria-label": "Search words" });
   const list = h("div", { class: "vocab-list" });
+  const count = h("span", { class: "small muted" });
+  const letters = h("div", { class: "row letter-bar", role: "group", "aria-label": "Filter by first letter" });
+  const sortBar = h("div", { class: "seg", role: "group", "aria-label": "Sort words" });
+  const added = c => S.srs.cards[c.id].f || 0;
   const drawList = () => {
     const s = strip(norm(q.value));
-    list.replaceChildren(...intro.filter(c => !s || strip(norm(c.pl)).includes(s) || norm(c.en).includes(s)).map(c =>
-      h("div", null, h("span", { class: "pl" }, c.pl), h("span", { class: "muted small", style: "text-align:right" }, c.en, " ", h("span", { class: "chip", title: "Memory box (0 = new, 6 = long-term)" }, String(S.srs.cards[c.id].b))))));
+    let rows = intro.filter(c => !s || strip(norm(c.pl)).includes(s) || norm(c.en).includes(s));
+    const present = new Set(rows.map(c => firstLetter(c.pl)));
+    if (deckLetter && !present.has(deckLetter)) deckLetter = null;
+    sortBar.replaceChildren(...[["az", "A–Z"], ["new", "Newest first"], ["old", "Oldest first"]].map(([k, l]) =>
+      h("button", { class: deckSort === k ? "on" : "", "aria-pressed": deckSort === k ? "true" : "false", onclick: () => { deckSort = k; try { localStorage.setItem("pc.deckSort", k); } catch (e) {} drawList(); } }, l)));
+    letters.hidden = deckSort !== "az" || !rows.length;
+    letters.replaceChildren(h("button", { class: "letter" + (deckLetter ? "" : " on"), onclick: () => { deckLetter = null; drawList(); } }, "All"),
+      ...PL_ALPHABET.filter(L => present.has(L)).concat(present.has("#") ? ["#"] : []).map(L =>
+        h("button", { class: "letter" + (deckLetter === L ? " on" : ""), "aria-pressed": deckLetter === L ? "true" : "false", onclick: () => { deckLetter = deckLetter === L ? null : L; drawList(); } }, L)));
+    let groupOf;
+    if (deckSort === "az") {
+      if (deckLetter) rows = rows.filter(c => firstLetter(c.pl) === deckLetter);
+      rows.sort((a, b) => PL_COLLATOR.compare(sortKey(a.pl), sortKey(b.pl)));
+      groupOf = c => firstLetter(c.pl);
+    } else {
+      const dir = deckSort === "new" ? -1 : 1;
+      rows.sort((a, b) => (!added(a) - !added(b)) || dir * (added(a) - added(b)) || PL_COLLATOR.compare(sortKey(a.pl), sortKey(b.pl)));
+      groupOf = c => addedLabel(added(c));
+    }
+    count.textContent = rows.length === intro.length ? "" : `Showing ${rows.length} of ${intro.length}`;
+    const out = []; let last = null;
+    for (const c of rows) {
+      const g = groupOf(c);
+      if (g !== last) { out.push(h("h4", { class: "grp" }, g)); last = g; }
+      out.push(h("div", null, h("span", { class: "row", style: "gap:6px;flex-wrap:nowrap;min-width:0" }, h("span", { class: "pl" }, c.pl), sayBtn(c.pl)),
+        h("span", { class: "muted small", style: "text-align:right" }, c.en, " ", h("span", { class: "chip", title: "Memory box (0 = new, 6 = long-term)" }, String(S.srs.cards[c.id].b)))));
+    }
+    list.replaceChildren(...(out.length ? out : [h("p", { class: "muted small grp" }, "No words match.")]));
   };
   q.addEventListener("input", drawList);
   app.replaceChildren(h("div", { class: "stack-lg" },
@@ -2829,7 +2880,10 @@ function renderCards() {
       h("p", { class: "small muted" }, "Each word sits in a memory box. When you answer 'Good', it moves up a box and comes back later: after 1, 2, 4, 8, 16, then 32 days. When you answer 'Again', it goes back to box 0.")),
     h("section", { class: "stack" }, h("h3", null, "Memory boxes"),
       h("div", { class: "boxes" }, boxes.map((n, i) => h("div", null, h("b", null, String(n)), h("small", null, i === 0 ? "new" : INTERVALS[i] + "d"))))),
-    h("section", { class: "stack" }, h("h3", null, `Your words (${intro.length})`), q, intro.length ? list : h("p", { class: "muted" }, "No words yet. Start today's review to meet your first words."))
+    h("section", { class: "stack" },
+      h("div", { class: "spread" }, h("h3", null, `Your words (${intro.length})`), count),
+      intro.length ? h("div", { class: "stack" }, q, h("div", { class: "spread" }, h("span", { class: "small muted" }, "Sort"), sortBar), letters, list)
+        : h("p", { class: "muted" }, "No words yet. Start today's review to meet your first words."))
   ));
   drawList();
 }
