@@ -159,6 +159,33 @@ th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--lin
 th { font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 td.pl { color: var(--accent); }
 
+/* Exams */
+.x-head { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 6px 0; }
+.x-timer.red { background: var(--accent-soft); color: var(--accent); }
+.x-task h3 { font-family: var(--display); }
+.x-item { padding: 8px 0; border-top: 1px solid var(--line); }
+.x-opts { display: flex; flex-direction: column; gap: 4px; }
+.x-opt { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1.5px solid var(--line); border-radius: 8px; cursor: pointer; min-width: 0; }
+.x-opt input { margin: 0; }
+.x-opt.right { border-color: var(--good); background: var(--good-soft); }
+.x-opt.wrong { border-color: var(--accent); background: var(--accent-soft); }
+.x-letter { font-weight: 700; color: var(--muted); }
+.x-tf-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
+.x-tf-row .row { flex: none; flex-wrap: nowrap; }
+.x-legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 4px 14px; }
+.x-legend.emoji { grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); font-size: 1.6rem; }
+.x-legend.emoji b { font-size: 1rem; }
+.x-match { flex-wrap: wrap; }
+.x-pic { font-size: 1.8rem; letter-spacing: 2px; }
+.x-pic.big { font-size: 3rem; }
+.x-sign { border: 2.5px solid var(--ink); border-radius: 6px; padding: 8px 14px; font-weight: 800; align-self: flex-start; }
+.x-bank { display: flex; flex-wrap: wrap; gap: 6px; border: 1.5px dashed var(--line); border-radius: 10px; padding: 8px; }
+.x-input { max-width: 100%; }
+.x-num { width: 5.5em; display: inline-block; margin: 0 4px; }
+.x-input.right, .x-num.right { border-color: var(--good); }
+.x-input.wrong, .x-num.wrong { border-color: var(--accent); }
+.x-area { min-height: 120px; }
+
 /* Serbian comparison box */
 .sr-note { border-left: 4px solid var(--warn); background: var(--warn-soft); border-radius: 0 10px 10px 0; padding: 10px 14px; display: flex; flex-direction: column; gap: 4px; }
 .sr-note p { margin: 0; }
@@ -1555,6 +1582,7 @@ const MILESTONES = [
   { id: "a11", icon: "A1.1", pl: "Połowa A1", en: "Finished units 1–12", check: P => COURSE.slice(0, 12).every(u => P.mastered.includes(u.id)) },
   { id: "a1", icon: "A1", pl: "Poziom A1", en: "Finished all A1 units", check: P => COURSE.slice(0, A1_COUNT).every(u => P.mastered.includes(u.id)) },
   { id: "a2", icon: "A2", pl: "Poziom A2", en: "Finished the whole course", check: P => UNITS.every(u => P.mastered.includes(u.id)) },
+  { id: "mock", icon: "📝", pl: "Egzamin próbny", en: "Passed the written part of the A2 mock exam", check: P => (P.exams || []).some(x => x.exam === "a2" && x.pass) },
   { id: "words50", icon: "50", pl: "50 słów", en: "50 words learned", check: (P, L) => L.learned >= 50 },
   { id: "words100", icon: "100", pl: "100 słów", en: "100 words learned", check: (P, L) => L.learned >= 100 },
   { id: "words250", icon: "250", pl: "250 słów", en: "250 words learned", check: (P, L) => L.learned >= 250 },
@@ -1588,6 +1616,7 @@ const PLANS = {
 /*@include content/expansion.js*/
 /*@include content/vocab2.js*/
 /*@include content/serbian.js*/
+/*@include content/exams.js*/
 NEW_UNITS_A1.concat(NEW_UNITS_A2).forEach(u => { UNITS[u.id] = u; });
 /* word lists are only ever appended to, so existing card ids stay the same */
 for (const [id, words] of Object.entries(EXTRA_VOCAB)) UNITS[id].vocab.push(...words);
@@ -1689,6 +1718,7 @@ function normalizeProgress(P) {
   if (!Array.isArray(P.writings)) P.writings = [];
   if (!Array.isArray(P.quizzes)) P.quizzes = [];
   if (!Array.isArray(P.mastered)) P.mastered = [];
+  if (!Array.isArray(P.exams)) P.exams = [];
   for (const k of ["stats", "milestones", "frozen", "masteredAt"]) if (!P[k] || typeof P[k] !== "object") P[k] = {};
   return P;
 }
@@ -1720,6 +1750,9 @@ function mergeProgress(local, incoming) {
   const ws = {};
   [...older.writings, ...newer.writings].forEach(w => { const o = ws[w.id]; ws[w.id] = !o ? w : Object.assign({}, o, w, { fb: w.fb || o.fb, seen: w.seen || o.seen }); });
   m.writings = Object.values(ws).sort((x, y) => (x.at || 0) - (y.at || 0)).slice(-30);
+  const ex = {};
+  [...older.exams, ...newer.exams].forEach(x => { const o = ex[x.id]; ex[x.id] = !o ? x : Object.assign({}, o, x, { sec: Object.assign({}, o.sec, x.sec), done: o.done || x.done }); });
+  m.exams = Object.values(ex).sort((x, y) => (x.at || 0) - (y.at || 0)).slice(-30);
   m.today = a.today;
   m.frozen = Object.assign({}, older.frozen, newer.frozen);
   m.milestones = Object.assign({}, older.milestones, newer.milestones);
@@ -2141,7 +2174,7 @@ function setView(v) {
   if (session && session.ctl) { try { session.ctl.abort(); } catch (e) {} }
   session = null; keyHandler = null;
   stopAudio();
-  document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-current", b.dataset.view === (v === "unit" ? "course" : v) ? "page" : "false"));
+  document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-current", b.dataset.view === (v === "unit" || v === "exam" ? "course" : v) ? "page" : "false"));
   render();
   window.scrollTo({ top: 0 });
 }
@@ -2155,6 +2188,7 @@ function render() {
   else if (view === "unit") renderUnitPage();
   else if (view === "tables") renderTables();
   else if (view === "progress") renderProgress();
+  else if (view === "exam") renderExam();
 }
 
 /* ================================================================
@@ -3175,6 +3209,13 @@ function renderCourse() {
     h("div", { class: "stack" }, h("span", { class: "eyebrow" }, `Linia A1–A2 · ${n} ${stops} (${n} stops)`), h("h1", { class: "pl" }, "Kurs")),
     h("p", { class: "muted" }, `Each stop is one unit. You move on when you score 80% on the daily test. Units 1–${A1_COUNT} cover A1 and units ${A1_COUNT + 1}–${n} cover A2, following the official Polish standard for adult learners (the state certificate exams). Open any unit you've reached to redo its lesson, flashcards, reading, dialogue, conversation, writing or test.`),
     catchUp.size ? h("p", { class: "small muted" }, `Stops marked „new” were added before your current position. They're optional catch-up: your place in the course doesn't change.`) : null,
+    h("section", { class: "card stack" }, h("h3", null, "Testy · tests"),
+      h("div", { class: "acts" }, [["a2", "Egzamin próbny A2", "A2 mock exam", "Like the state certificate exam: listening, reading and grammar, writing, speaking"],
+        ["a1", "Sprawdzian A1", "A1 checkpoint", "A shorter test in the same style, A1 words and grammar only"],
+        ["place", "Test poziomujący", "Placement test", "About 18 questions to find the first unit you don't know yet"]].map(([id, pl, en, d]) => {
+        const last = id !== "place" && examAttempts(id).filter(x => x.done && !x.abandoned).pop();
+        return h("button", { class: "act", onclick: () => openExam(id) }, h("span", { class: "pl" }, pl), h("span", { class: "act-en" }, en), h("span", { class: "small muted" }, last ? `Last: ${fmtPts(last.total)} / ${last.max} p. · ${last.pass ? "pass" : "not yet"}` : d));
+      }))),
     h("section", { class: "card" }, map)
   ));
 }
@@ -3276,6 +3317,404 @@ function renderUnitPage() {
       h("span", { class: "eyebrow" }, "Model dialogue"),
       h("div", { class: "dlg" }, u.dialogue.map(([who, pl, en]) => h("div", { class: "line" }, h("div", { class: "who" }, who), h("div", { class: "txt" }, h("div", { class: "pl" }, pl), h("div", { class: "en" }, en)), sayBtn(pl) || h("span")))))
   ));
+}
+
+/* ================================================================
+   EXAMS: A2 mock exam, A1 checkpoint and placement test
+   An attempt lives in S.progress.exams ({id, exam, at, d, sec:{id:{s,max,...}}, done, pass})
+   so it syncs; answers being typed live in localStorage until the section is handed in.
+   ================================================================ */
+let examPage = { exam: "a2", sec: null };
+let examTimer = null;
+function openExam(exam, sec = null) { examPage = { exam, sec }; setView("exam"); }
+const examAttempts = id => (S.progress.exams || []).filter(a => a.exam === id).sort((x, y) => (x.at || 0) - (y.at || 0));
+function openAttempt(id) { const l = examAttempts(id), a = l[l.length - 1]; return a && !a.done ? a : null; }
+function newAttempt(id) {
+  const a = { id: rid(), exam: id, at: Date.now(), d: localKey(), sec: {}, done: false };
+  S.progress.exams = (S.progress.exams || []).concat([a]).slice(-30);
+  persist("progress");
+  return a;
+}
+const examDraftKey = (a, sec) => `pc.examdraft.${a.id}.${sec.id}`;
+function loadExamDraft(a, sec) { try { return JSON.parse(localStorage.getItem(examDraftKey(a, sec)) || "null") || { ans: {}, start: Date.now(), plays: {} }; } catch (e) { return { ans: {}, start: Date.now(), plays: {} }; } }
+function saveExamDraft(a, sec, d) { try { localStorage.setItem(examDraftKey(a, sec), JSON.stringify(d)); } catch (e) {} }
+function clearExamDraft(a, sec) { try { localStorage.removeItem(examDraftKey(a, sec)); } catch (e) {} }
+function examTimed() { try { return localStorage.getItem("pc.examTimed") !== "0"; } catch (e) { return true; } }
+const fmtPts = n => String(Math.round(n * 10) / 10).replace(".", ",");
+const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII"];
+/* written part = every scored section except speaking; pass = 50% of it (and 50% of speaking, if done) */
+function examTotals(ex, a) {
+  const written = ex.sections.filter(s => s.kindW !== "speaking");
+  const done = written.filter(s => a.sec[s.id]);
+  const got = done.reduce((n, s) => n + a.sec[s.id].s, 0), max = written.reduce((n, s) => n + s.max, 0);
+  const sp = ex.sections.find(s => s.kindW === "speaking"), spr = sp && a.sec[sp.id];
+  return { got, max, complete: done.length === written.length, pass: got >= max / 2, speak: spr ? { s: spr.s, max: sp.max, pass: spr.s >= sp.max / 2 } : null };
+}
+function finishAttemptIfComplete(ex, a) {
+  const t = examTotals(ex, a);
+  if (t.complete && !a.done) { a.done = true; a.pass = t.pass; a.total = t.got; a.max = t.max; a.doneAt = Date.now(); checkMilestones(); }
+}
+
+/* ---------- audio: the device voice reads a script; each recording can be played twice ---------- */
+function examAudio(script, key, draft, save) {
+  if (!canSpeak()) return h("details", { class: "ref" }, h("summary", null, "No Polish voice on this device: read the transcript instead"),
+    h("div", { class: "small pl" }, script.map(([who, t]) => h("p", null, h("b", null, who + ": "), t))));
+  const voices = [...new Set(script.map(l => l[0]))], pitch = [1, 1.3, 0.8, 1.15, 0.9];
+  const left = () => 2 - (draft.plays[key] || 0);
+  const btn = h("button", { class: "btn sm", type: "button" });
+  const label = () => { btn.textContent = left() > 0 ? `▶ Odtwórz · ${left()} left` : "Played twice"; btn.disabled = left() <= 0; };
+  btn.onclick = async () => {
+    if (left() <= 0) return;
+    draft.plays[key] = (draft.plays[key] || 0) + 1; save(); label();
+    stopAudio(); const token = speakToken;
+    for (const [who, line] of script) { if (token !== speakToken) return; await speak(line, { keep: true, pitch: pitch[voices.indexOf(who) % pitch.length] }); await new Promise(r => setTimeout(r, 350)); }
+  };
+  label();
+  return btn;
+}
+
+/* ---------- one section of a test: renders the tasks, collects answers, marks them ---------- */
+function examCheckField(f, v) {
+  const x = strip(norm(v || ""));
+  if (!x) return false;
+  if (f.exact) return f.exact.some(e => strip(norm(e)) === x);
+  if (f.all) return f.all.every(k => x.includes(k));
+  return (f.any || []).some(k => x.includes(k));
+}
+function renderExamTasks(sec, draft, save, host) {
+  const slots = {};   /* key -> {pts, right, check(v), show(ok)} */
+  const opt = (key, value, text, letter) => {
+    const inp = h("input", { type: "radio", name: "x" + key, value: String(value) });
+    if (draft.ans[key] === String(value)) inp.checked = true;
+    inp.addEventListener("change", () => { draft.ans[key] = String(value); save(); });
+    return h("label", { class: "x-opt", "data-v": String(value) }, inp, h("span", { class: "x-letter" }, letter), h("span", { class: "pl" }, text));
+  };
+  const select = (key, choices, placeholder = "…") => {
+    const s = h("select", { class: "gap", "aria-label": "Answer " + key }, h("option", { value: "" }, placeholder), choices.map(c => h("option", { value: c }, c)));
+    s.value = draft.ans[key] || ""; s.addEventListener("change", () => { draft.ans[key] = s.value; save(); });
+    return s;
+  };
+  const input = (key, attrs = {}) => {
+    const i = h("input", Object.assign({ type: "text", class: "x-input", autocomplete: "off", spellcheck: "false", "aria-label": "Answer " + key }, attrs));
+    i.value = draft.ans[key] || ""; i.addEventListener("input", () => { draft.ans[key] = i.value; save(); });
+    return i;
+  };
+  sec.tasks.forEach((t, ti) => {
+    const n = t.items ? t.items.length : t.fields ? t.fields.length : (t.text.match(/\{\{|\[\[/g) || []).length;
+    const box = h("section", { class: "card stack x-task" },
+      h("div", { class: "spread" }, h("h3", null, `Zadanie ${ROMAN[ti]}`), h("span", { class: "chip" }, `${fmtPts(n * t.pts)} p. (${n} × ${fmtPts(t.pts)} p.)`)),
+      h("p", { class: "pl", style: "font-weight:700" }, t.pl), h("p", { class: "small muted" }, t.en));
+    host.append(box);
+    const K = i => `${ti}.${i}`;
+    if (t.kind === "mc") {
+      let lastG = -1;
+      t.items.forEach((it, i) => {
+        if (t.groups && it.g !== lastG) { lastG = it.g; box.append(h("div", { class: "eyebrow" }, t.groups[it.g])); }
+        const key = K(i), opts = h("div", { class: "x-opts" }, it.o.map((o, j) => opt(key, j, o, "abc"[j] + ")")));
+        box.append(h("div", { class: "x-item stack" },
+          h("div", { class: "row" }, h("b", null, `${i + 1}.`), it.audio ? examAudio(it.audio, key, draft, save) : null, it.q ? h("span", { class: "pl" }, it.q) : null),
+          it.sign ? h("div", { class: "x-sign pl" }, it.sign) : null,
+          it.text ? h("div", { class: "read-doc pl" }, it.text) : null, opts));
+        slots[key] = { pts: t.pts, check: v => v === String(it.a), show: ok => { opts.querySelectorAll(".x-opt").forEach(l => { l.querySelector("input").disabled = true; if (l.dataset.v === String(it.a)) l.classList.add("right"); else if (l.querySelector("input").checked) l.classList.add("wrong"); }); } };
+      });
+    } else if (t.kind === "tf") {
+      box.append(examAudio(t.audio, K("a"), draft, save));
+      const tbl = h("div", { class: "x-tf" });
+      t.items.forEach((it, i) => {
+        const key = K(i), cell = h("div", { class: "row" }, opt(key, "P", "", "P"), opt(key, "F", "", "F"));
+        tbl.append(h("div", { class: "x-tf-row" }, h("span", { class: "pl" }, `${i + 1}. ${it.q}`), cell));
+        slots[key] = { pts: t.pts, check: v => v === (it.a ? "P" : "F"), show: () => cell.querySelectorAll(".x-opt").forEach(l => { l.querySelector("input").disabled = true; if (l.dataset.v === (it.a ? "P" : "F")) l.classList.add("right"); else if (l.querySelector("input").checked) l.classList.add("wrong"); }) };
+      });
+      box.append(tbl);
+    } else if (t.kind === "match") {
+      const emoji = Object.values(t.options).every(v => /^\p{Extended_Pictographic}/u.test(v));
+      box.append(h("div", { class: "x-legend" + (emoji ? " emoji" : "") }, Object.entries(t.options).map(([L, v]) => h("div", null, h("b", null, L), " ", h("span", { class: emoji ? "" : "pl" }, v)))));
+      if (t.audio) box.append(examAudio(t.audio, K("a"), draft, save));
+      if (t.example) box.append(h("p", { class: "small muted" }, `Przykład: ${t.example[0]} → ${t.example[1]}`));
+      t.items.forEach((it, i) => {
+        const key = K(i), s = select(key, Object.keys(t.options).filter(L => !t.example || L !== t.example[1]));
+        const big = /^\p{Extended_Pictographic}/u.test(it.label);
+        box.append(h("div", { class: "x-item row x-match" }, h("b", null, `${i + 1}.`), it.audio ? examAudio(it.audio, key, draft, save) : null, h("span", { class: big ? "x-pic" : "pl" }, it.label), s));
+        slots[key] = { pts: t.pts, check: v => v === it.a, show: ok => { s.disabled = true; s.classList.add(ok ? "right" : "wrong"); if (!ok) s.after(h("b", { class: "gap-fix" }, " → " + it.a)); } };
+      });
+    } else if (t.kind === "numbers") {
+      box.append(examAudio(t.audio, K("a"), draft, save));
+      t.items.forEach((it, i) => {
+        const key = K(i), inp = input(key, { inputmode: "numeric", class: "x-input x-num" });
+        const [b, a2] = it.q.split("___");
+        box.append(h("div", { class: "x-item pl" }, `${i + 1}. ${b}`, inp, a2 || ""));
+        slots[key] = { pts: t.pts, check: v => (String(v || "").match(/\d+/) || [""])[0] === it.a, show: ok => { inp.disabled = true; inp.classList.add(ok ? "right" : "wrong"); if (!ok) inp.after(h("b", { class: "gap-fix" }, " → " + it.a)); } };
+      });
+    } else if (t.kind === "forms" || t.kind === "bank") {
+      if (t.kind === "bank") box.append(h("div", { class: "x-bank" }, t.box.map(w => h("span", { class: "chip pl" }, w))));
+      const para = h("p", { class: "cloze pl" }); let gi = 0;
+      const re = t.kind === "forms" ? /\{\{([^}]+)\}\}/g : /\[\[([^\]]+)\]\]/g;
+      let last = 0, m;
+      while ((m = re.exec(t.text))) {
+        para.append(t.text.slice(last, m.index)); last = re.lastIndex;
+        const key = K(gi++), right = t.kind === "forms" ? m[1].split("|")[0] : m[1];
+        const choices = t.kind === "forms" ? m[1].split("|").slice().sort(PL_COLLATOR.compare) : t.box.slice().sort(PL_COLLATOR.compare);
+        const s = select(key, choices, `(${gi})`);
+        para.append(s);
+        slots[key] = { pts: t.pts, check: v => v === right, show: ok => { s.disabled = true; s.classList.add(ok ? "right" : "wrong"); if (!ok) s.after(h("b", { class: "gap-fix" }, " → " + right)); } };
+      }
+      para.append(t.text.slice(last));
+      box.append(para);
+    } else if (t.kind === "fill") {
+      box.append(h("div", { class: "read-doc pl" }, t.text));
+      const grid = h("div", { class: "form-grid" });
+      t.fields.forEach((f, i) => {
+        const key = K(i), inp = input(key);
+        grid.append(h("label", { class: "form-row" }, h("span", { class: "small muted" }, `${i + 1}. ${f.label}`), inp));
+        slots[key] = { pts: t.pts, check: v => examCheckField(f, v), show: ok => { inp.disabled = true; inp.classList.add(ok ? "right" : "wrong"); if (!ok) inp.after(h("b", { class: "gap-fix" }, "→ " + f.show)); } };
+      });
+      box.append(grid);
+    }
+  });
+  return slots;
+}
+
+/* ---------- writing / speaking: AI marking with the official criteria, or self-assessment offline ---------- */
+const WRITE_CRIT = [["task", "Wykonanie zadania", "Task completion", 6, "All the required points in both tasks, about the required length, the right kind of text (SMS, e-mail, description)."],
+  ["range", "Bogactwo językowe", "Range of language", 7, "Varied words and structures for the level: linking words, past and future, not the same few words repeated."],
+  ["accuracy", "Poprawność językowa", "Accuracy", 7, "Grammar, vocabulary and spelling. Mistakes that make the meaning unclear count most."]];
+const SPEAK_CRIT = [["t1", "Zadanie 1: przedstawienie siebie", "Task 1: about yourself", 4, "Answers every question with relevant information."],
+  ["t2", "Zadanie 2: monolog", "Task 2: describing the person", 10, "Appearance, clothes, what the person is doing and what they might be like, in connected sentences."],
+  ["t3", "Zadanie 3: sytuacja komunikacyjna", "Task 3: the invitation", 10, "Date, time, place, what's planned, and a question; natural for the situation."],
+  ["vocab", "Słownictwo", "Vocabulary", 6, "Range and accuracy of words."], ["grammar", "Struktury gramatyczne", "Grammar", 6, "Endings, verb forms, word order."]];
+async function aiMarkExam(ex, sec, crit, tasksText, answer) {
+  const r = await sample.json(`You are an examiner for the Polish state certificate exam (Państwowy egzamin certyfikatowy z języka polskiego jako obcego), ${ex.official ? "level " + ex.level : "an A1-level practice checkpoint"}.
+${learnerContext(curUnit())}
+Mark the candidate with these criteria (whole numbers): ${crit.map(([k, pl, en, max, d]) => `${k} = ${pl} (${en}), 0-${max}: ${d}`).join(" | ")}.
+At this level, reward successful communication over perfection; mistakes that don't block understanding cost little.
+Tasks:
+${tasksText}
+Candidate's answer:
+"""${String(answer).slice(0, 4000)}"""
+Reply with only JSON: {${crit.map(c => `"${c[0]}": n`).join(", ")}, "summary": "two sentences in English", "mistakes": [{"wrong": "...", "right": "...", "why": "short English"}], "corrected": "the answer with mistakes fixed"}`, { modelTier: "default", cache: false });
+  const out = {};
+  crit.forEach(([k, , , max]) => { out[k] = Math.max(0, Math.min(max, parseInt(r && r[k], 10) || 0)); });
+  return { scores: out, summary: r && r.summary ? String(r.summary) : "", corrected: r && r.corrected ? String(r.corrected) : "",
+    mistakes: (r && Array.isArray(r.mistakes) ? r.mistakes : []).slice(0, 8).map(m => ({ wrong: String(m.wrong || ""), right: String(m.right || ""), why: String(m.why || "") })) };
+}
+function critSelects(crit, onChange) {
+  const vals = {};
+  return h("div", { class: "stack" }, crit.map(([k, pl, en, max, d]) => {
+    const s = h("select", { "aria-label": en }, h("option", { value: "" }, "–"), Array.from({ length: max + 1 }, (_, i) => h("option", { value: String(i) }, `${i} / ${max}`)));
+    s.addEventListener("change", () => { vals[k] = s.value === "" ? null : +s.value; onChange(vals); });
+    return h("label", { class: "setting" }, h("span", null, h("b", { class: "pl" }, pl), h("span", { class: "small muted" }, `${en}. ${d}`)), s);
+  }));
+}
+const wordCount = s => (String(s).match(/\p{L}+/gu) || []).length;
+function renderOpenSection(ex, sec, a, draft, save, body, finish) {
+  const speaking = sec.kindW === "speaking", crit = speaking ? SPEAK_CRIT : WRITE_CRIT;
+  const critMax = crit.reduce((n, c) => n + c[3], 0);
+  const scale = sec.max / critMax;   /* speaking leaves out pronunciation (4 p.), so scale 36 → 40; the A1 writing is out of 10 */
+  const areas = [];
+  const area = (key, label, target) => {
+    const ta = h("textarea", { class: "x-area", "aria-label": label, placeholder: "Pisz tutaj…" });
+    ta.value = draft.ans[key] || "";
+    const cnt = h("span", { class: "small muted" });
+    const upd = () => { cnt.textContent = `${wordCount(ta.value)} words${target ? " · aim for about " + target : ""}`; };
+    ta.addEventListener("input", () => { draft.ans[key] = ta.value; save(); upd(); }); upd();
+    areas.push([key, label, ta]);
+    return h("div", { class: "stack", style: "gap:4px" }, ta, keypad(ta), cnt);
+  };
+  const tasksBox = h("div", { class: "stack-lg" });
+  let tasksText = "";
+  if (speaking) {
+    body.append(h("div", { class: "notice" }, "In the real exam you speak to an examiner for up to 10 minutes. Here, say each answer out loud first, then type it (or dictate it with your keyboard's microphone). Pronunciation can't be marked this way, so the score is an estimate."));
+    sec.tasks.forEach((t, i) => {
+      tasksText += `Task ${i + 1}: ${t.pl}${t.qs ? " Questions: " + t.qs.join(" ") : ""}${t.scene ? " Picture: " + t.scene : ""}\n`;
+      tasksBox.append(h("section", { class: "card stack" }, h("div", { class: "spread" }, h("h3", null, `Zadanie ${i + 1}`), h("span", { class: "chip" }, `0–${t.pts} p.`)),
+        h("p", { class: "pl", style: "font-weight:700" }, t.pl), h("p", { class: "small muted" }, t.en),
+        t.qs ? h("ul", { class: "pl" }, t.qs.map(q => h("li", null, q))) : null,
+        t.picture ? h("div", { class: "stack", style: "gap:2px" }, h("div", { class: "x-pic big" }, t.picture), h("p", { class: "small muted" }, "The photo: " + t.scene)) : null,
+        area("t" + i, "Task " + (i + 1))));
+    });
+  } else {
+    const setBtns = h("div", { class: "seg" });
+    const draw = () => {
+      tasksBox.replaceChildren(); areas.length = 0;
+      const st = sec.sets[draft.set ?? 0];
+      tasksText = `Task a (about ${st.a.words} words): ${st.a.pl}\nTask b (about ${st.b.words} words): ${st.b.pl}`;
+      tasksBox.append(...["a", "b"].map(k => h("section", { class: "card stack" }, h("h3", null, `Zadanie ${k}`), h("p", { class: "pl", style: "font-weight:700" }, st[k].pl, ` (${st[k].words} słów)`), h("p", { class: "small muted" }, st[k].en), area(`${draft.set ?? 0}${k}`, "Task " + k, st[k].words))));
+      setBtns.replaceChildren(...sec.sets.map((_, i) => h("button", { class: (draft.set ?? 0) === i ? "on" : "", onclick: () => { draft.set = i; save(); draw(); } }, `Zestaw ${ROMAN[i]}`)));
+    };
+    body.append(h("div", { class: "spread" }, h("span", { class: "small muted" }, "Choose one set and do both tasks, a and b."), setBtns));
+    draw();
+  }
+  const out = h("div", { class: "stack" });
+  const btn = h("button", { class: "btn primary", onclick: submit }, aiOn() ? "Hand in for marking" : "Hand in and assess myself");
+  body.append(tasksBox, h("div", { class: "row" }, btn), out);
+  const answerText = () => areas.map(([, label, ta]) => `${label}: ${ta.value.trim()}`).join("\n\n");
+  const model = speaking ? sec.model : sec.sets[draft.set ?? 0].model;
+  async function submit() {
+    if (!areas.some(([, , ta]) => ta.value.trim())) { areas[0] && areas[0][2].focus(); return; }
+    btn.disabled = true; areas.forEach(([, , ta]) => ta.disabled = true);
+    if (aiOn()) {
+      out.replaceChildren(h("p", { class: "thinking" }, "The examiner is reading your answers…"));
+      try {
+        const r = await aiMarkExam(ex, sec, crit, tasksText, answerText());
+        const raw = crit.reduce((n, c) => n + r.scores[c[0]], 0);
+        out.replaceChildren(h("div", { class: "card stack" },
+          h("div", { class: "spread" }, h("h3", null, "Ocena · marks"), h("span", { class: "chip" }, `${fmtPts(raw * scale)} / ${sec.max} p.`)),
+          h("div", { class: "stack", style: "gap:4px" }, crit.map(([k, pl, en, max]) => h("div", { class: "spread small" }, h("span", null, h("b", { class: "pl" }, pl), " · ", en), h("b", null, `${r.scores[k]} / ${max}`)))),
+          r.summary ? h("p", null, r.summary) : null,
+          r.mistakes.length ? h("ul", { class: "small" }, r.mistakes.map(m => h("li", null, h("s", { class: "pl" }, m.wrong), " → ", h("b", { class: "pl" }, m.right), m.why ? " · " + m.why : ""))) : null,
+          r.corrected ? h("details", { class: "ref" }, h("summary", null, "Corrected version"), h("p", { class: "pl", style: "white-space:pre-wrap" }, r.corrected)) : null,
+          h("details", { class: "ref" }, h("summary", null, "Model answer"), h("p", { class: "pl", style: "white-space:pre-wrap" }, model))));
+        finish({ s: Math.round(raw * scale * 10) / 10, max: sec.max, by: "ai", crit: r.scores });
+      } catch (e) {
+        out.replaceChildren(h("div", { class: "notice" }, aiErrorText(e) || "Marking didn't work."));
+        btn.disabled = false; areas.forEach(([, , ta]) => ta.disabled = false);
+      }
+      return;
+    }
+    /* offline: compare with a model answer and mark yourself with the official criteria */
+    const save2 = h("button", { class: "btn primary", disabled: true }, "Save my marks");
+    let vals = {};
+    out.replaceChildren(h("div", { class: "card stack" },
+      h("h3", null, "Model answer"), h("p", { class: "pl", style: "white-space:pre-wrap" }, model),
+      h("p", { class: "small muted" }, "No AI marking right now, so mark yourself with the exam's criteria. Be strict. For an examiner's marks, do this part again on claude.ai."),
+      critSelects(crit, v => { vals = v; save2.disabled = crit.some(c => v[c[0]] == null); }), h("div", { class: "row" }, save2)));
+    save2.onclick = () => { const raw = crit.reduce((n, c) => n + vals[c[0]], 0); save2.disabled = true; finish({ s: Math.round(raw * scale * 10) / 10, max: sec.max, by: "self", crit: vals }); };
+  }
+}
+
+/* ---------- views ---------- */
+function renderExam() {
+  clearInterval(examTimer);
+  if (examPage.exam === "place") return renderPlacement();
+  const ex = EXAMS[examPage.exam];
+  if (examPage.sec != null) return renderExamSection(ex, ex.sections[examPage.sec]);
+  const all = examAttempts(ex.id).filter(x => !x.abandoned), latest = all[all.length - 1];
+  const a = latest && (!latest.done || Object.keys(latest.sec).length) ? latest : null;   /* the attempt shown: in progress, or the last finished one */
+  const past = all.filter(x => x.done && x !== a).reverse();
+  const t = a ? examTotals(ex, a) : null;
+  const timed = h("input", { type: "checkbox", id: "x-timed" }); timed.checked = examTimed();
+  timed.addEventListener("change", () => { try { localStorage.setItem("pc.examTimed", timed.checked ? "1" : "0"); } catch (e) {} });
+  app.replaceChildren(h("div", { class: "stack-lg" },
+    h("div", { class: "session-head" }, h("button", { class: "btn ghost sm", onclick: () => setView("course") }, "← Course")),
+    h("div", { class: "stack" }, h("span", { class: "eyebrow" }, ex.official ? "Egzamin certyfikatowy · practice" : "Practice checkpoint"), h("h1", { class: "pl" }, ex.pl), h("p", { class: "muted" }, ex.note)),
+    h("section", { class: "card stack" },
+      h("p", { class: "small" }, ex.official
+        ? "Pass mark: at least 50% of the written part (listening + reading and grammar + writing = 80 points) and 50% of the speaking part (40 points). Each recording can be played twice, as in the exam."
+        : "Pass mark used here: 50% of the written part. Each recording can be played twice."),
+      h("label", { class: "row small", for: "x-timed" }, timed, " Timed, like the real exam (each part hands itself in when time runs out)")),
+    h("section", { class: "stack" }, ex.sections.map((s, i) => {
+      const r = a && a.sec[s.id];
+      return h("div", { class: "card spread x-sec" },
+        h("div", { style: "min-width:0" }, h("div", { class: "pl", style: "font-weight:700" }, s.pl), h("div", { class: "small muted" }, `${s.en} · ${s.minutes} min · ${s.max} p.${s.optional ? " · optional" : ""}`)),
+        r ? h("span", { class: "chip " + (r.s >= s.max / 2 ? "green" : "red") }, `${fmtPts(r.s)} / ${s.max}${r.by === "self" ? " (self)" : ""}`)
+          : a && a.done ? h("span", { class: "small muted" }, "not done")
+          : h("button", { class: "btn sm primary", onclick: () => openExam(ex.id, i) }, (() => { try { return a && localStorage.getItem(examDraftKey(a, s)) ? "Continue" : "Start"; } catch (e) { return "Start"; } })()));
+    })),
+    t && Object.keys(a.sec).length ? h("section", { class: "card stack" },
+      h("div", { class: "spread" }, h("h3", null, "Wynik · result so far"), h("span", { class: "chip " + (t.complete ? (t.pass ? "green" : "red") : "") }, t.complete ? (t.pass ? "pass" : "not yet") : "in progress")),
+      h("p", null, `Written part: ${fmtPts(t.got)} / ${t.max} p. (${Math.round(t.got / t.max * 100)}%)`, t.speak ? ` · Speaking: ${fmtPts(t.speak.s)} / ${t.speak.max} p.` : ""),
+      h("p", { class: "small muted" }, t.complete ? (t.pass ? "That's a pass on the written part." : "You need half the written points to pass.") : "Finish the written parts for a verdict. You can do them on different days.")) : null,
+    h("div", { class: "row" }, a && a.done ? h("button", { class: "btn primary", onclick: () => { newAttempt(ex.id); renderExam(); } }, "Take the test again")
+      : a ? h("button", { class: "btn ghost sm", onclick: () => { a.done = true; a.abandoned = true; persist("progress"); renderExam(); } }, "Start again from scratch") : null),
+    past.length ? h("section", { class: "stack" }, h("h3", null, "Earlier attempts"),
+      past.slice(0, 8).map(p => { const tt = examTotals(ex, p); return h("div", { class: "spread small" }, h("span", null, p.d), h("span", { class: "chip " + (tt.complete ? (tt.pass ? "green" : "red") : "") }, `${fmtPts(tt.got)} / ${tt.max}`)); })) : null));
+}
+function renderExamSection(ex, sec) {
+  const a = openAttempt(ex.id) || newAttempt(ex.id);
+  const draft = loadExamDraft(a, sec), save = () => saveExamDraft(a, sec, draft);
+  if (!draft.start) draft.start = Date.now();
+  save();
+  inSession = true;
+  const timer = h("span", { class: "chip x-timer" });
+  const body = h("div", { class: "stack-lg" });
+  app.replaceChildren(h("div", null,
+    h("div", { class: "session-head x-head" }, h("button", { class: "btn ghost sm", onclick: () => { stopAudio(); openExam(ex.id); } }, "← Overview"), timer),
+    h("div", { class: "stack", style: "margin-bottom:18px" }, h("span", { class: "eyebrow" }, `${ex.pl} · ${sec.en}`), h("h1", { class: "pl" }, sec.pl), h("p", { class: "small muted" }, `${sec.minutes} min · ${sec.max} p. Your answers are saved as you go.`)),
+    body));
+  window.scrollTo({ top: 0 });
+  let handedIn = false;
+  const finish = res => {
+    handedIn = true; clearInterval(examTimer); timer.textContent = "Handed in";
+    a.sec[sec.id] = Object.assign({ at: Date.now() }, res);
+    clearExamDraft(a, sec);
+    finishAttemptIfComplete(ex, a);
+    addXP(Math.round(res.s / res.max * 40));
+    persist("progress");
+    body.append(h("div", { class: "card stack" }, h("h2", null, `${fmtPts(res.s)} / ${res.max} p.`),
+      h("div", { class: "meter" }, h("span", { style: `width:${res.s / res.max * 100}%;background:var(${res.s >= res.max / 2 ? "--good" : "--accent"})` })),
+      h("div", { class: "row" }, h("button", { class: "btn primary", onclick: () => openExam(ex.id) }, "Back to the overview"))));
+    body.lastChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  };
+  let autoSubmit = null;
+  if (sec.kindW) renderOpenSection(ex, sec, a, draft, save, body, finish);
+  else {
+    const slots = renderExamTasks(sec, draft, save, body);
+    const btn = h("button", { class: "btn primary", onclick: () => submit(false) }, "Hand in this part");
+    const warn = h("div");
+    body.append(h("div", { class: "row" }, btn), warn);
+    function submit(timeUp) {
+      if (handedIn) return;
+      const empty = Object.keys(slots).filter(k => !String(draft.ans[k] || "").trim()).length;
+      if (empty && !timeUp && !btn.dataset.sure) { btn.dataset.sure = "1"; btn.textContent = "Hand in anyway"; warn.replaceChildren(h("p", { class: "small muted" }, `${empty} answer${empty === 1 ? " is" : "s are"} still empty.`)); return; }
+      stopAudio(); btn.disabled = true; warn.replaceChildren();
+      let s = 0;
+      for (const [k, sl] of Object.entries(slots)) { const ok = sl.check(draft.ans[k]); if (ok) s += sl.pts; sl.show(ok); }
+      finish({ s, max: sec.max, by: "auto" });
+    }
+    autoSubmit = () => submit(true);
+  }
+  const tick = () => {
+    if (handedIn || !document.body.contains(timer)) { clearInterval(examTimer); return; }
+    const left = sec.minutes * 60 - Math.floor((Date.now() - draft.start) / 1000);
+    if (!examTimed()) { const used = Math.floor((Date.now() - draft.start) / 60000); timer.textContent = `⏱ ${used} min`; return; }
+    if (left <= 0) {
+      timer.textContent = "Time's up"; clearInterval(examTimer);
+      if (autoSubmit) autoSubmit(); else body.prepend(h("div", { class: "notice" }, "Time's up. In the exam your paper would be collected now. Hand in when you're ready."));
+      return;
+    }
+    timer.textContent = `⏱ ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+    timer.classList.toggle("red", left < 300);
+  };
+  tick(); examTimer = setInterval(tick, 1000);
+}
+
+/* ---------- placement test: a binary search over the course ---------- */
+function renderPlacement() {
+  const host = h("div");
+  const P = S.progress;
+  app.replaceChildren(h("div", { class: "stack-lg" },
+    h("div", { class: "session-head" }, h("button", { class: "btn ghost sm", onclick: () => setView("course") }, "← Course")),
+    h("div", { class: "stack" }, h("span", { class: "eyebrow" }, "Test poziomujący · placement test"), h("h1", { class: "pl" }, "Gdzie zacząć?"),
+      h("p", { class: "muted" }, "About 18 questions from across the course. Each round jumps up or down depending on how you did, to find the first unit you don't know yet. Nothing changes in your course unless you choose to skip ahead at the end.")),
+    host));
+  host.append(h("button", { class: "btn primary", onclick: run }, "Start the placement test"));
+  async function run() {
+    inSession = true;
+    let lo = 0, hi = COURSE.length - 1, pos = Math.min(12, hi), best = -1, n = 0, rounds = 0;
+    while (lo <= hi && rounds < 6) {
+      const u = COURSE[pos]; rounds++;
+      const items = shuffle(pick(u.quiz.filter(q => !q.sr), 2).concat(vocabItems(u, 1)));
+      let ok = 0;
+      for (const it of items) { n++; const r = await exercise(host, it, { counter: `Question ${n}`, label: "level check" }); if (r.correct) ok++; }
+      if (ok >= 2) { best = Math.max(best, pos); lo = pos + 1; } else hi = pos - 1;
+      pos = Math.floor((lo + hi) / 2);
+    }
+    keyHandler = null; inSession = false;
+    const start = Math.min(best + 1, COURSE.length - 1), su = COURSE[start];
+    const ahead = start > POS[P.unit] && !courseDone();
+    P.placement = { d: localKey(), unit: su.id }; persist("progress");
+    const go = h("button", { class: "btn primary" }, `Skip ahead to unit ${start + 1}`);
+    go.onclick = () => {
+      if (!go.dataset.sure) { go.dataset.sure = "1"; go.textContent = `Tap again: mark units 1–${start} as done`; return; }
+      COURSE.slice(0, start).forEach(x => { if (!P.mastered.includes(x.id)) { P.mastered.push(x.id); P.masteredAt[x.id] = localKey(); } });
+      P.unit = su.id; persist("progress"); checkMilestones(); setView("today");
+    };
+    host.replaceChildren(h("div", { class: "card stack" },
+      h("h2", null, best < 0 ? "Start at the beginning" : `Suggested start: unit ${start + 1}`),
+      h("p", null, best < 0 ? "Unit 1 is the right place to start." : `You seem comfortable up to unit ${best + 1}, „${COURSE[best].pl}”. The next one is „${su.pl}” (${su.en}).`),
+      h("p", { class: "small muted" }, ahead ? "Skipping ahead marks the earlier units as finished. Their words still join your flashcards over the coming days." : "You're already at or past this point in the course, so nothing needs to change."),
+      h("div", { class: "row" }, ahead ? go : null, h("button", { class: "btn ghost", onclick: () => setView("course") }, "Back to the course"))));
+  }
 }
 
 /* ---------- Tables view ---------- */
@@ -3493,6 +3932,7 @@ function speak(text, opts = {}) {
       if (!canSpeak()) return resolve(false);
       const u = new SpeechSynthesisUtterance(text);
       u.voice = plVoice; u.lang = plVoice.lang; u.rate = rate;
+      if (opts.pitch) u.pitch = opts.pitch;
       u.onend = u.onerror = () => resolve(true);
       speechSynthesis.speak(u);
     } catch (e) { resolve(false); }
