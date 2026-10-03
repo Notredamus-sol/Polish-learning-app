@@ -161,11 +161,11 @@ const NEW_CAN_DO = {
 };
 
 /* Course order. The original units keep their ids (0–20) so saved progress,
-   flashcards and test scores stay attached; new units (21–33) are placed where
-   they belong. The first 25 positions are A1, the rest A2. */
-const COURSE_ORDER = [0, 1, 21, 2, 3, 4, 5, 6, 23, 7, 24, 8, 22, 9, 26, 10, 11, 12, 25, 13, 27, 14, 15, 16, 28,
-                      17, 29, 18, 30, 19, 31, 32, 20, 33];
-const A1_COUNT = 25;
+   flashcards and test scores stay attached; new units (21–45) are placed where
+   they belong. The first 27 positions are A1, the rest A2. */
+const COURSE_ORDER = [0, 1, 21, 2, 3, 4, 5, 6, 23, 7, 24, 8, 22, 9, 26, 10, 11, 12, 35, 25, 13, 27, 14, 34, 15, 16, 28,
+                      17, 37, 29, 18, 44, 30, 36, 19, 31, 38, 32, 40, 20, 39, 45, 33, 41, 42, 43];
+const A1_COUNT = 27;
 
 /* Extra grammar reminder tables */
 const NEW_REF = [

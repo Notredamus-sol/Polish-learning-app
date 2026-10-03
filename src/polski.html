@@ -200,6 +200,9 @@ td.pl { color: var(--accent); }
 .rd-sign .read-lines { display: flex; flex-wrap: wrap; gap: 8px; }
 .rd-sign .read-lines p { margin: 0; border: 2px solid var(--ink); border-radius: 6px; padding: 4px 10px; font-weight: 800; letter-spacing: 0.02em; }
 .rd-notice, .rd-ad { border-style: dashed; }
+.rd-press .read-title, .rd-press .read-lines p { font-family: Georgia, "Times New Roman", serif; font-weight: 400; }
+.rd-press .read-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.rd-press .read-lines p:first-child { font-size: 1.25rem; font-weight: 700; }
 .read-form { display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); gap: 4px 14px; margin: 0; }
 .read-form dt { color: var(--muted); font-size: 0.85rem; padding-top: 2px; overflow-wrap: anywhere; }
 .read-form dd { margin: 0; overflow-wrap: anywhere; }
@@ -1617,17 +1620,26 @@ const PLANS = {
 /*@include content/vocab2.js*/
 /*@include content/serbian.js*/
 /*@include content/exams.js*/
-NEW_UNITS_A1.concat(NEW_UNITS_A2).forEach(u => { UNITS[u.id] = u; });
+/*@include content/new_units_a1b.js*/
+/*@include content/new_units_a2b.js*/
+/*@include content/fixes_a1.js*/
+NEW_UNITS_A1.concat(NEW_UNITS_A2, NEW_UNITS_A1B, NEW_UNITS_A2B).forEach(u => { UNITS[u.id] = u; });
 /* word lists are only ever appended to, so existing card ids stay the same */
 for (const [id, words] of Object.entries(EXTRA_VOCAB)) UNITS[id].vocab.push(...words);
 for (const [id, words] of Object.entries(EXTRA_VOCAB_2)) UNITS[id].vocab.push(...words);
+for (const [id, words] of Object.entries(EXTRA_VOCAB_3)) UNITS[id].vocab.push(...words);
+/* fixes from the audit against the adult standard (research/standards_audit.md) */
+for (const [id, html] of Object.entries(GRAMMAR_ADD)) UNITS[id].grammar.html += html;
+for (const [id, items] of Object.entries(QUIZ_ADD)) UNITS[id].quiz.push(...items);
+for (const [id, w] of Object.entries(WRITING_SET)) Object.assign(UNITS[id].writing, w);
+for (const [id, qs] of Object.entries(Object.assign({}, LISTEN_Q, LISTEN_Q_2))) UNITS[id].lq = qs.map(([q, ...o]) => ({ t: "choice", q, o, a: 0, _label: "listening" }));
 /* Serbian-speaker layer: comparisons, drills and false-friend warnings */
-for (const [id, html] of Object.entries(SR_NOTES)) UNITS[id].sr = html;
+for (const [id, html] of Object.entries(Object.assign({}, SR_NOTES, SR_NOTES_2))) UNITS[id].sr = html;
 for (const [id, items] of Object.entries(SR_QUIZ)) UNITS[id].quiz.push(...items);
 UNITS.forEach(u => u.vocab.forEach(v => { const n = SR_CARD_NOTES[v[0]]; if (n && !String(v[2] || "").includes(n)) v[2] = v[2] ? v[2] + " · " + n : n; }));
 for (const [id, extra] of Object.entries(UNIT_READS)) Object.assign(UNITS[id], extra);
-for (const [id, lines] of Object.entries(NEW_CAN_DO)) CAN_DO[id] = lines;
-REF.push(...NEW_REF, {
+for (const [id, lines] of Object.entries(Object.assign({}, NEW_CAN_DO, NEW_CAN_DO_A1B, NEW_CAN_DO_A2B))) CAN_DO[id] = lines;
+REF.push(...NEW_REF, ...NEW_REF_2, {
   id: "false-friends", pl: "Fałszywi przyjaciele", en: "False friends for Serbian speakers", units: [0],
   note: "Polish words that look like Serbian ones but mean something else.",
   tables: [{ head: ["polski", "means", "srpski", "which in Polish is"], pl: [0], rows: FALSE_FRIENDS }]
@@ -2200,7 +2212,7 @@ const STEPS = [
   { id: "read", pl: "Czytanie", en: "Reading", min: 5, desc: () => (curUnit().read ? curUnit().read.title + " · " : "") + "a real-life text and a gap-fill" },
   { id: "mini", pl: "Szybki test", en: "Quick test", min: 4, desc: () => "6 questions on this unit" },
   { id: "dialogue", pl: "Dialog", en: "Reading dialogue", min: 5, desc: () => aiOn() ? "Written for you from the words you know" : "Scripted dialogue + questions" },
-  { id: "listen", pl: "Słuchanie", en: "Listening", min: 4, desc: () => "Hear a sentence, type what you heard" },
+  { id: "listen", pl: "Słuchanie", en: "Listening", min: 6, desc: () => curUnit().lq ? "A conversation with questions, then dictation" : "Hear a sentence, type what you heard" },
   { id: "convo", pl: "Rozmowa", en: "Conversation", min: 8, desc: () => aiOn() ? `Roleplay with ${curUnit().partner}` : "Speak the dialogue from memory" },
   { id: "writing", pl: "Pisanie", en: "Writing", min: 4, desc: () => curUnit().writing.prompt },
   { id: "quiz", pl: "Test dnia", en: "Daily test", min: 5, desc: () => "12 questions · score 80% to finish the unit" }
@@ -2698,7 +2710,7 @@ function validDialogue(d) {
 }
 function scriptedDialogue(u) {
   const lines = u.dialogue.map(([s, pl, en]) => ({ speaker: s, pl, en }));
-  const qs = pick(lines, Math.min(3, lines.length)).map(l => {
+  const qs = u.lq ? u.lq.map(q => Object.assign({}, q, { _label: "comprehension" })) : pick(lines, Math.min(3, lines.length)).map(l => {
     const others = pick(lines.filter(x => x !== l), 3).map(x => x.en);
     return { t: "choice", q: `What does „${l.pl}” mean?`, o: [l.en, ...others], a: 0 };
   });
@@ -2946,7 +2958,7 @@ function runWriting(body) {
 }
 
 /* ---------- Reading: a real-life text, questions, then a gap-fill ---------- */
-const READ_KIND = { form: "Formularz · a form", sms: "Wiadomość · a message", email: "E-mail", notice: "Ogłoszenie · a notice", ad: "Ogłoszenie · an advert", timetable: "Rozkład · a timetable", menu: "Cennik · a price list", sign: "Napisy · signs" };
+const READ_KIND = { form: "Formularz · a form", sms: "Wiadomość · a message", email: "E-mail", notice: "Ogłoszenie · a notice", ad: "Ogłoszenie · an advert", timetable: "Rozkład · a timetable", menu: "Cennik · a price list", sign: "Napisy · signs", press: "Prasa · a news article", leaflet: "Ulotka · instructions" };
 function readText(r) {
   let inner;
   if (r.kind === "timetable" || r.kind === "menu") {
@@ -4132,10 +4144,26 @@ function runListen(body) {
   const u = stepUnit(), key = rkey("listen", u);
   const pool = listenPool(u);
   if (pool.length < 3) { body.append(h("div", { class: "card stack" }, h("p", null, "Listening practice needs audio, and none is available on this device right now."))); return finishStep("listen", body); }
-  const R = resumeItems(key, () => pick(pool.slice(0, 30), 8).map(x => ({ t: "listen", pl: x.pl, en: x.en })));
+  const R = resumeItems(key, () => pick(pool.slice(0, 30), u.lq ? 5 : 8).map(x => ({ t: "listen", pl: x.pl, en: x.en })));
   const host = h("div");
-  body.append(h("p", { class: "muted" }, "Listen, then type what you hear. Missing accents count as almost right."), resumeNote(R) || "", host);
   (async () => {
+    /* part 1: hear the whole conversation without the text, then answer questions (as in the exam) */
+    let comp = 0;
+    if (u.lq && !R.resumed) {
+      const voices = [...new Set(u.dialogue.map(l => l[0]))], pitch = [1, 1.3, 0.85, 1.15];
+      const playAll = async slow => { stopAudio(); const token = speakToken; for (const [who, pl] of u.dialogue) { if (token !== speakToken) return; await speak(pl, { keep: true, slow, pitch: pitch[voices.indexOf(who) % pitch.length] }); await new Promise(r => setTimeout(r, 300)); } };
+      const qhost = h("div");
+      body.append(h("section", { class: "card stack" }, h("span", { class: "eyebrow" }, "Część 1 · listen to the conversation"),
+        h("p", { class: "small muted" }, `${voices.join(" and ")} are talking. Listen (twice if you like), then answer the questions. The text appears afterwards.`),
+        h("div", { class: "row" }, h("button", { class: "btn primary", onclick: () => playAll(false) }, "▶ Play"), h("button", { class: "btn ghost", onclick: () => playAll(true) }, "🐢 Slower"))), qhost);
+      playAll(false);
+      comp = await runSet(qhost, u.lq.map(q => Object.assign({}, q, { _tag: u.tag })));
+      stopAudio();
+      qhost.replaceWith(h("details", { class: "ref" }, h("summary", null, `${comp} of ${u.lq.length} right · show the conversation`),
+        h("div", { class: "dlg" }, u.dialogue.map(([who, pl, en]) => h("div", { class: "line" }, h("div", { class: "who" }, who), h("div", { class: "txt" }, h("div", { class: "pl" }, pl), h("div", { class: "en" }, en)), h("span"))))));
+      addXP(comp * 5);
+    }
+    body.append(h("span", { class: "eyebrow" }, u.lq ? "Część 2 · dictation" : "Dictation"), h("p", { class: "muted" }, "Listen, then type what you hear. Missing accents count as almost right."), resumeNote(R) || "", host);
     let score = R.score || 0;
     for (let i = R.start; i < R.items.length; i++) {
       const it = R.items[i];
@@ -4146,7 +4174,7 @@ function runListen(body) {
     clearResume(key);
     host.replaceChildren();
     addXP(score * 5);
-    finishStep("listen", body, `You understood ${score} of ${R.items.length} sentences by ear.`);
+    finishStep("listen", body, `${u.lq && !R.resumed ? `Conversation: ${comp} of ${u.lq.length} questions. ` : ""}Dictation: ${score} of ${R.items.length} sentences.`);
   })();
 }
 function listenOne(host, it, counter) {
