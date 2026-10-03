@@ -31,7 +31,7 @@
 ## Unit 5 (A1): W kawiarni — At the café
 - Grammar: The accusative case (biernik)
 - Can-do: Order food and drinks in a café; Ask for the bill
-- Words: 42
+- Words: 48
 - Reading text: menu — Kawiarnia „Pod Wawelem”
 - Writing task: Order two things at a café, then ask for the bill.
 
@@ -45,7 +45,7 @@
 ## Unit 7 (A1): Gdzie jesteś? — Where are you?
 - Grammar: Where? w / na + locative
 - Can-do: Say where you are: at home, at work, in the shop, in Poland
-- Words: 45
+- Words: 50
 - Reading text: sms — SMS od Ani
 - Writing task: Where are you at different times of the day? Write 3 sentences.
 
@@ -59,7 +59,7 @@
 ## Unit 9 (A1): Nie ma… — There isn't any…
 - Grammar: The genitive (dopełniacz)
 - Can-do: Say what there isn't or what's run out; Ask for quantities and everyday household things
-- Words: 44
+- Words: 47
 - Reading text: notice — Sklep spożywczy „U Basi”
 - Writing task: Write a note for your flatmate: what's missing at home and what you need from the shop.
 
@@ -75,7 +75,7 @@
 - Can-do: Name the months and seasons and talk about the weather; Say dates and give birthday and holiday wishes
 - Words: 47
 - Reading text: notice — Prognoza pogody na weekend
-- Writing task: Write a short message with name day or birthday wishes for a friend, and say what the weather is like today.
+- Writing task: Write a holiday postcard to a friend: greetings from where you are, the weather, what you do every day and a goodbye.
 
 ## Unit 12 (A1): Jaki? Jaka? Jakie? — What is it like?
 - Grammar: Adjectives match the noun
@@ -94,7 +94,7 @@
 ## Unit 14 (A1): Dokąd idziesz? — Where are you going?
 - Grammar: iść vs jechać, and do + genitive
 - Can-do: Say where you're going and how you'll get there; Understand simple directions
-- Words: 46
+- Words: 51
 - Reading text: notice — Jak do nas dojechać?
 - Writing task: Describe how you get to work or school.
 
@@ -117,7 +117,7 @@
 - Can-do: Say what you did yesterday or last weekend
 - Words: 44
 - Reading text: email — Weekend
-- Writing task: What did you do yesterday? Write 3 sentences.
+- Writing task: Write an email to a friend about your weekend: a greeting, what you did on Saturday and Sunday, and a goodbye (5–6 sentences).
 
 ## Unit 18 (A1): Kim jesteś z zawodu? — What do you do for a living?
 - Grammar: The instrumental case (narzędnik)
@@ -126,117 +126,201 @@
 - Reading text: ad — PRACA
 - Writing task: Write 3 sentences: your job or studies, who you live with and what you're interested in.
 
-## Unit 19 (A1): Mój dom — My home
+## Unit 19 (A1): Mam nowego kolegę — I've got a new colleague
+- Grammar: Adjectives, ten and jeden in every case
+- Can-do: Use adjectives, ten and jeden in every case: mam starszego brata, w dużym mieście; Understand a lost-and-found notice
+- Words: 28
+- Reading text: notice — ZAGINĄŁ PIES!
+- Writing task: Describe someone in your family: who they live with, where they live and work, and what they have (4–5 sentences, adjectives in different cases).
+
+## Unit 20 (A1): Mój dom — My home
 - Grammar: Where is it? Location words
 - Can-do: Describe your flat or house, room by room; Say where things are: on, under, above, behind, between
 - Words: 45
 - Reading text: ad — SPRZEDAM
 - Writing task: Describe your home: the rooms and where the main furniture is.
 
-## Unit 20 (A1): Muszę, mogę, chcę — Must, can, want
+## Unit 21 (A1): Muszę, mogę, chcę — Must, can, want
 - Grammar: Modal verbs + infinitive
 - Can-do: Say what you want, can, must and know how to do; Ask for permission politely
 - Words: 47
 - Reading text: sign — Muzeum Narodowe
 - Writing task: Write about your week: something you have to do, something you can't do and something you want to do.
 
-## Unit 21 (A1): U lekarza i w aptece — At the doctor's and the pharmacy
+## Unit 22 (A1): U lekarza i w aptece — At the doctor's and the pharmacy
 - Grammar: Boli mnie… — saying what hurts
 - Can-do: Say what hurts and how you feel; See a doctor and buy medicine at a pharmacy
 - Words: 53
 - Reading text: notice — Przychodnia „Zdrowie” · godziny przyjęć
 - Writing task: Text your boss or teacher: you're ill and can't come today. Say what hurts.
 
-## Unit 22 (A1): Dwa koty, pięć kotów — Two cats, five cats
+## Unit 23 (A1): Dwa koty, pięć kotów — Two cats, five cats
 - Grammar: Plurals and counting things
 - Can-do: Count things: two cats, five windows; Describe your home
 - Words: 48
 - Reading text: ad — SPRZEDAM DOM
 - Writing task: Describe your home: how many rooms and windows it has, and what's in it.
 
-## Unit 23 (A1): Codziennie rano — Every morning
+## Unit 24 (A1): W sklepach, z kolegami — In shops, with friends
+- Grammar: Plural cases: -om, -ami, -ach
+- Can-do: Talk about groups: with friends, in shops, about the holidays (plural cases); Say where people live in countries with plural names: w Niemczech, we Włoszech
+- Words: 28
+- Reading text: notice — Ogłoszenie dla mieszkańców
+- Writing task: Write about the people you spend time with: who, where you meet and what you talk about (4–5 sentences with plural forms).
+
+## Unit 25 (A1): Codziennie rano — Every morning
 - Grammar: Reflexive verbs with się
 - Can-do: Describe your daily routine
 - Words: 47
 - Reading text: timetable — Plan dnia – Ania
 - Writing task: Describe your morning routine in 3–4 sentences.
 
-## Unit 24 (A1): Co będziesz robić? — What will you do?
+## Unit 26 (A1): Co będziesz robić? — What will you do?
 - Grammar: Talking about the future
 - Can-do: Talk about your plans for the weekend and holidays
 - Words: 42
 - Reading text: email — Plany na wakacje
 - Writing task: Write about your plans for next weekend or your next holiday.
 
-## Unit 25 (A1): Dlaczego? Bo… — Why? Because…
+## Unit 27 (A1): Dlaczego? Bo… — Why? Because…
 - Grammar: Joining sentences
 - Can-do: Join sentences with and, but, so, because, that and when; Write a text message, a short email and a „Mój dzień” essay
 - Words: 61
 - Reading text: email — Od: Marta · Temat: Sobota
 - Writing task: Write a short essay „Mój dzień” (My day): 5–6 sentences with linking words (i, ale, więc, bo, kiedy). Mind the commas.
 
-## Unit 26 (A2): Robić czy zrobić? — Doing or done?
+## Unit 28 (A2): Robić czy zrobić? — Doing or done?
 - Grammar: Aspect: process or result?
 - Can-do: Say whether something was in progress or got done
 - Words: 60
 - Reading text: sms — SMS od mamy
 - Writing task: Write 3 sentences: something you finished yesterday, something you did for a long time, and something you'll get done tomorrow.
 
-## Unit 27 (A2): Chciałbym… — I'd like…
+## Unit 29 (A2): Wchodzę, wychodzę — In and out
+- Grammar: Going in, out and across: prefixes on iść and jechać
+- Can-do: Say how you get in, out, across and to places, on foot or by vehicle; Describe a journey: leaving, changing and arriving
+- Words: 23
+- Reading text: sign — Centrum handlowe „Galeria”
+- Writing task: Describe your way to work or school today: when you left, how you got there, where you changed and when you arrived (5 sentences).
+
+## Unit 30 (A2): Chciałbym… — I'd like…
 - Grammar: The conditional: would
 - Can-do: Order in a restaurant politely with 'would'; Say what you would like to do
 - Words: 59
 - Reading text: menu — Restauracja „Pod Lipą” · KARTA DAŃ
 - Writing task: Write what you would like to do next year and where you'd like to travel (4–5 sentences with the conditional).
 
-## Unit 28 (A2): Daj mi to! — Give it to me!
+## Unit 31 (A2): Daj mi to! — Give it to me!
 - Grammar: The dative (celownik) and pronouns
 - Can-do: Say who you're giving things to; Thank people properly
 - Words: 60
 - Reading text: sms — Kartka urodzinowa
 - Writing task: What will you give to 3 people you know, and why?
 
-## Unit 29 (A2): Panowie i panie — Ladies and gentlemen
+## Unit 32 (A2): Szkoła i nauka — School and studying
+- Grammar: Verbs and their cases (rekcja)
+- Can-do: Talk about school, studies, subjects and marks; fill in a questionnaire; Use common verbs with the right case: uczyć się czego, interesować się czym
+- Words: 29
+- Reading text: form — ANKIETA · Kurs języka polskiego
+- Writing task: Fill in this course questionnaire about yourself.
+
+## Unit 33 (A2): Panowie i panie — Ladies and gentlemen
 - Grammar: Groups of men, and calling people by name
 - Can-do: Talk about groups of men and mixed groups correctly; Address people politely and start formal and informal letters
 - Words: 52
 - Reading text: email — Od: Dział kadr · Temat: Spotkanie zespołu
 - Writing task: Write a short letter or email to a friend about the people at your work or course: describe two or three of them.
 
-## Unit 30 (A2): Proszę usiąść! — Please sit down!
+## Unit 34 (A2): W pracy — At work
+- Grammar: który: the one who, the one which
+- Can-do: Understand job adverts and talk about your experience in an interview; Say which person or thing you mean with który (the one who / which)
+- Words: 26
+- Reading text: ad — PRACA · Trans-Pol
+- Writing task: Write a short formal email applying for a job from an advert: which job, your education and experience, your languages and when you could start (5–6 sentences).
+
+## Unit 35 (A2): Proszę usiąść! — Please sit down!
 - Grammar: Commands and polite requests
 - Can-do: Give instructions and directions; Make polite requests to strangers
 - Words: 60
 - Reading text: notice — Przepis: jajecznica
 - Writing task: Give a friend directions from your home to your favourite café, using commands.
 
-## Unit 31 (A2): Halo? Zapraszam! — Hello? You're invited!
+## Unit 36 (A2): Halo? Zapraszam! — Hello? You're invited!
 - Grammar: Phone calls, invitations and żeby
 - Can-do: Make and answer simple phone calls; Invite people, accept and decline, and say why
 - Words: 70
 - Reading text: ad — Kino „Nowe Horyzonty” zaprasza!
 - Writing task: Write two text messages: one inviting a friend to something, and one politely declining an invitation with a reason.
 
-## Unit 32 (A2): Załatwiam sprawy — Running errands
+## Unit 37 (A2): Media i internet — Media and the internet
+- Grammar: Reporting: mówi, że… / pyta, czy… / prosi, żeby…
+- Can-do: Talk about news, the press, TV and the internet; Report what someone said or asked: mówi, że…; pyta, czy…
+- Words: 29
+- Reading text: press — Gazeta Krakowska · Miasto
+- Writing task: Write a short message to a friend passing on some news you read or heard: what happened, where you read or heard it, what people say and what you think (4–5 sentences).
+
+## Unit 38 (A2): Załatwiam sprawy — Running errands
 - Grammar: Official situations: from when, for how long, how much
 - Can-do: Deal with a bank, a post office and simple official matters; Rent a flat and fill in forms and applications
 - Words: 59
 - Reading text: ad — WYNAJMĘ
 - Writing task: Fill in this application to open a bank account. You can invent the details.
 
-## Unit 33 (A2): Lepszy czy gorszy? — Better or worse?
+## Unit 39 (A2): Reklamacja — Making a complaint
+- Grammar: żeby + past form: I want you to…
+- Can-do: Complain about a product or service and ask for a repair, exchange or refund; Say what you want someone else to do: Proszę, żeby pan…
+- Words: 30
+- Reading text: email — Reklamacja – zamówienie nr 4512
+- Writing task: Write a formal complaint email: what you bought or ordered and when, what's wrong, and what you want the company to do (use żeby; 5–6 sentences).
+
+## Unit 40 (A2): Lepszy czy gorszy? — Better or worse?
 - Grammar: Comparing: -szy and naj-
 - Can-do: Compare two things and say which is best
 - Words: 85
 - Reading text: ad — Porównaj telefony
 - Writing task: Compare two places you know, such as cities, cafés or shops.
 
-## Unit 34 (A2): Podróże i zabytki — Trips and sights
+## Unit 41 (A2): Zdrowy styl życia — A healthy lifestyle
+- Grammar: Advice: powinieneś… and comparing how: zdrowiej, częściej
+- Can-do: Talk about a healthy lifestyle, sport and minor injuries; read a medicine leaflet; Give advice with powinieneś / powinnaś and compare how you do things: zdrowiej, częściej
+- Words: 28
+- Reading text: leaflet — Ulotka: Bólex 200 mg · Dawkowanie
+- Writing task: Write advice for a friend who is always tired and stressed: what he or she should and shouldn't do (5 sentences with powinieneś / powinnaś and comparative adverbs).
+
+## Unit 42 (A2): Ludzie i relacje — People and relationships
+- Grammar: Explaining a word you don't know
+- Can-do: Describe someone's character in detail, with examples (charakterystyka); Explain a word you don't know: ktoś, kto… / coś, czym… / miejsce, gdzie…
+- Words: 27
+- Reading text: email — Od: Ania · Temat: Mój nowy współlokator
+- Writing task: Write a character portrait (charakterystyka) of a friend or relative: appearance, character with an example for each trait, what you do together and why the person is important to you (7–8 sentences).
+
+## Unit 43 (A2): Podróże i zabytki — Trips and sights
 - Grammar: Telling what happened: since, for, ago, never
 - Can-do: Talk about trips, sights and nature; Say how long, since when and how long ago things happened
 - Words: 63
 - Reading text: ad — Biuro Podróży „Wakacje”
 - Writing task: Write a postcard or email from a trip: where you are, since when, what you've seen and the weather.
+
+## Unit 44 (A2): Przyroda — Nature
+- Grammar: If: jeśli (real) and gdyby (imagined)
+- Can-do: Name common plants, animals and features of the landscape; Say what will happen if… (jeśli) and what would happen if… (gdyby)
+- Words: 32
+- Reading text: sign — Ojcowski Park Narodowy · Regulamin
+- Writing task: Describe a place in nature you like (where it is, what you can see there, which animals and plants live there) and say what you would do if you had a free week there (5–6 sentences).
+
+## Unit 45 (A2): Opowiadam historię — Telling a story
+- Grammar: Telling a story: scene and events
+- Can-do: Tell the story of something that happened: the scene, the events and the ending; Organise a story with najpierw, potem, nagle, na szczęście, w końcu
+- Words: 27
+- Reading text: press — Kronika policyjna
+- Writing task: Describe a situation (opis sytuacji): something surprising that happened to you or someone you know. Say where and when, what was going on, what happened next and how it ended (7–8 sentences).
+
+## Unit 46 (A2): Kultura — Culture
+- Grammar: Years and centuries: w 1989 roku, w XIX wieku
+- Can-do: Talk about films, books, music and art, and give your opinion with reasons; Say years and centuries: w 1989 roku, w XIX wieku
+- Words: 26
+- Reading text: timetable — Teatr im. Juliusza Słowackiego · Repertuar
+- Writing task: Write a short review (opinia) of a film, book or concert: what it is, when and where you saw or read it, what you liked or didn't, and whether you recommend it and why (5–6 sentences).
 
 # Grammar reminder tables
 - Najważniejsze czasowniki (Key verbs: present tense)
@@ -262,4 +346,5 @@
 - Wołacz (Calling people (vocative))
 - Rodzaj męskoosobowy (Men and mixed groups)
 - Spójniki (Linking words)
+- Gdzie? Dokąd? (Where? and where to?)
 - Fałszywi przyjaciele (False friends for Serbian speakers)

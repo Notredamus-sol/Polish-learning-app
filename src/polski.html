@@ -192,6 +192,7 @@ td.pl { color: var(--accent); }
 .sr-note p + p { margin-top: 6px; }
 
 /* Reading texts, gap-fill, forms */
+.story p { margin: 0; line-height: 1.6; font-weight: 500; }
 .read-doc { border: 1px solid var(--line); background: var(--surface-2); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .read-title { font-family: var(--display); font-weight: 800; font-size: 1.05rem; overflow-wrap: anywhere; }
 .read-lines p { margin: 0; overflow-wrap: anywhere; }
@@ -1605,7 +1606,7 @@ const STORY_PAIRS = [["Ola", "Tomek"], ["Tomek", "Marek"], ["Ola", "Pani Ewa"], 
 const PLANS = {
   quick: { label: "Quick", steps: ["review", "mini"] },
   standard: { label: "Standard", steps: ["review", "grammar", "read", "dialogue", "quiz"] },
-  full: { label: "Full", steps: ["review", "grammar", "read", "dialogue", "listen", "convo", "writing", "quiz"] }
+  full: { label: "Full", steps: ["review", "grammar", "read", "dialogue", "listen", "convo", "writing", "story", "quiz"] }
 };
 
 /* ================================================================
@@ -1731,7 +1732,7 @@ function normalizeProgress(P) {
   if (!Array.isArray(P.quizzes)) P.quizzes = [];
   if (!Array.isArray(P.mastered)) P.mastered = [];
   if (!Array.isArray(P.exams)) P.exams = [];
-  for (const k of ["stats", "milestones", "frozen", "masteredAt"]) if (!P[k] || typeof P[k] !== "object") P[k] = {};
+  for (const k of ["stats", "milestones", "frozen", "masteredAt", "passed", "timeBy"]) if (!P[k] || typeof P[k] !== "object") P[k] = {};
   return P;
 }
 function computeStreak(P) {
@@ -1754,7 +1755,7 @@ function mergeProgress(local, incoming) {
   m.days = clone(older.days);
   for (const [k, d] of Object.entries(newer.days)) {
     const o = m.days[k];
-    m.days[k] = o ? { steps: Object.assign({}, o.steps, d.steps), xp: Math.max(o.xp || 0, d.xp || 0) } : d;
+    m.days[k] = o ? { steps: Object.assign({}, o.steps, d.steps), xp: Math.max(o.xp || 0, d.xp || 0), sec: Math.max(o.sec || 0, d.sec || 0) } : d;
   }
   const seen = new Set();
   m.quizzes = [...older.quizzes, ...newer.quizzes].filter(q => { const k = [q.d, q.u, q.s, q.t, q.at || ""].join("|"); if (seen.has(k)) return false; seen.add(k); return true; })
@@ -1775,7 +1776,13 @@ function mergeProgress(local, incoming) {
   m.lastDay = Math.max(a.lastDay || 0, b.lastDay || 0) || null;
   m.streak = computeStreak(m);
   m.best = Math.max(a.best || 0, b.best || 0, m.streak);
-  m.unit = nextUnitFrom(m.mastered, (POS[b.unit] ?? -1) > (POS[a.unit] ?? -1) ? b.unit : a.unit);
+  const pa = Object.assign({}, older.passed);
+  for (const [k, v] of Object.entries(newer.passed)) { const o = pa[k]; pa[k] = !o ? v : { first: o.first < v.first ? o.first : v.first, second: o.second || v.second }; }
+  m.mastered.forEach(id => { delete pa[id]; });
+  m.passed = pa;
+  m.timeBy = Object.assign({}, older.timeBy);   /* study time per device, merged like XP */
+  for (const [dev, t] of Object.entries(newer.timeBy)) { const o = m.timeBy[dev] || {}; m.timeBy[dev] = { A1: Math.max(o.A1 || 0, t.A1 || 0), A2: Math.max(o.A2 || 0, t.A2 || 0) }; }
+  m.unit = nextUnitFrom(m.mastered.concat(Object.keys(pa).map(Number)), (POS[b.unit] ?? -1) > (POS[a.unit] ?? -1) ? b.unit : a.unit);
   return m;
 }
 function mergeSrs(local, incoming) {
@@ -2034,10 +2041,42 @@ function advanceIfDone() { if (S.progress.mastered.includes(S.progress.unit)) ad
    learner's position don't pull them back: they show up as optional catch-up. */
 function advanceUnit() {
   const P = S.progress;
-  P.unit = nextUnitFrom(P.mastered, P.unit);
+  P.unit = nextUnitFrom(doneOrPassed(), P.unit);
 }
 /* Unfinished units that sit before the learner's position (added after they passed that point) */
-function catchUpUnits() { const P = S.progress; return COURSE.filter(u => !P.mastered.includes(u.id) && POS[u.id] < POS[P.unit]); }
+function catchUpUnits() { const P = S.progress; return COURSE.filter(u => !P.mastered.includes(u.id) && !(u.id in passedUnits()) && POS[u.id] < POS[P.unit]); }
+
+/* A unit is finished in two steps: passing its test moves you on, and a short
+   check-back test at least two days later (it appears in the daily plan) ticks
+   it off, once most of the unit's words have been reviewed. Retesting after a
+   gap is what shows the material has stuck. */
+const CHECK_GAP = 2, WORDS_NEEDED = 0.6;
+const keyDay = k => { const [y, m, d] = String(k).split("-").map(Number); return Date.UTC(y, m - 1, d) / 864e5; };
+const dayLabel = (k, plus = 0) => { const d = new Date((keyDay(k) + plus) * 864e5); return `${d.getUTCDate()} ${PL_MONTHS[d.getUTCMonth()]}`; };
+const passedUnits = () => S.progress.passed || {};
+const doneOrPassed = () => S.progress.mastered.concat(Object.keys(passedUnits()).map(Number));
+function unitWords(id) {
+  const cards = allCards().filter(c => c.unit === id);
+  const ok = cards.filter(c => { const st = S.srs.cards[c.id]; return st && (st.n || 0) >= 2 && st.b >= 1; }).length;
+  return { ok, total: cards.length, need: Math.ceil(cards.length * WORDS_NEEDED) };
+}
+function checkDue(id) { const p = passedUnits()[id]; return !!p && !p.second && TODAY() - keyDay(p.first) >= CHECK_GAP; }
+const dueChecks = () => COURSE.filter(u => checkDue(u.id) && !S.progress.mastered.includes(u.id));
+function masterUnit(id) { const P = S.progress; if (!P.mastered.includes(id)) P.mastered.push(id); P.masteredAt[id] = localKey(); if (P.passed) delete P.passed[id]; }
+/* tick off units whose check-back test is passed once enough of their words are reviewed */
+function settlePassedUnits() {
+  let n = 0;
+  for (const [id, p] of Object.entries(passedUnits())) { const w = unitWords(+id); if (p.second && w.ok >= w.need) { masterUnit(+id); n++; } }
+  if (n) { persist("progress"); checkMilestones(); }
+  return n;
+}
+function unitProgressText(id) {
+  if (S.progress.mastered.includes(id)) return "Finished.";
+  const p = passedUnits()[id], w = unitWords(id);
+  return [p ? `Test passed on ${dayLabel(p.first)}` : "Unit test not passed yet",
+    p ? (p.second ? `check-back test passed on ${dayLabel(p.second)}` : checkDue(id) ? "check-back test due now" : `check-back test from ${dayLabel(p.first, CHECK_GAP)}`) : null,
+    `words reviewed: ${w.ok} of the ${w.need} needed`].filter(Boolean).join(" · ");
+}
 const courseDone = () => S.progress.mastered.length >= UNITS.length;
 function levelLabel() {
   const P = S.progress, done = list => list.filter(u => P.mastered.includes(u.id)).length;
@@ -2065,9 +2104,11 @@ function newCardsForToday() {
   const t0 = new Date(); t0.setHours(0, 0, 0, 0);
   const today = Object.values(S.srs.cards).filter(c => c.f >= t0.getTime()).length;
   const left = Math.max(0, (+settings().newPerDay || 10) - today);
-  /* this unit's words first, then words added to units already finished */
-  const rank = { [u.id]: 0 };
-  COURSE.forEach(x => { if (x.id !== u.id && S.progress.mastered.includes(x.id)) rank[x.id] = 1 + POS[x.id]; });
+  /* words of units waiting for their check-back test first (they're needed to finish those units),
+     then this unit's words, then words added to units already finished */
+  const rank = { [u.id]: 1 };
+  Object.keys(passedUnits()).forEach(id => { if (+id !== u.id) rank[id] = POS[id] / 100; });
+  COURSE.forEach(x => { if (x.id !== u.id && !(x.id in rank) && S.progress.mastered.includes(x.id)) rank[x.id] = 2 + POS[x.id]; });
   return allCards().filter(c => c.unit in rank && !S.srs.cards[c.id]).sort((a, b) => rank[a.unit] - rank[b.unit]).slice(0, left);
 }
 /* FSRS-5 with its default parameters: each card has a stability s (days until
@@ -2215,6 +2256,8 @@ const STEPS = [
   { id: "listen", pl: "Słuchanie", en: "Listening", min: 6, desc: () => curUnit().lq ? "A conversation with questions, then dictation" : "Hear a sentence, type what you heard" },
   { id: "convo", pl: "Rozmowa", en: "Conversation", min: 8, desc: () => aiOn() ? `Roleplay with ${curUnit().partner}` : "Speak the dialogue from memory" },
   { id: "writing", pl: "Pisanie", en: "Writing", min: 4, desc: () => curUnit().writing.prompt },
+  { id: "story", pl: "Czytanka", en: "Daily reading", min: 6, desc: () => aiOn() ? "A short new story written from the words you know" : "Read again: a text from an earlier unit" },
+  { id: "check", pl: "Sprawdzian", en: "Check-back test", min: 5, desc: () => { const d = dueChecks()[0]; return d ? `Unit ${unitNo(d)}, „${d.pl}”: pass it again to finish the unit` : "Nothing due"; } },
   { id: "quiz", pl: "Test dnia", en: "Daily test", min: 5, desc: () => "12 questions · score 80% to finish the unit" }
 ];
 const DRILL = { id: "drill", pl: "Słabe punkty", en: "Weak-spot drill", min: 5, desc: () => "Extra practice on: " + weakList().slice(0, 3).map(([t]) => tagLabel(t)).join(", ") };
@@ -2224,6 +2267,7 @@ function greetingPl() {
   return hr >= 18 ? "Dobry wieczór!" : "Dzień dobry!";
 }
 function renderToday() {
+  settlePassedUnits();
   const d = todayRec();
   const u = curUnit();
   const now = new Date();
@@ -2271,6 +2315,8 @@ function renderToday() {
           h("div", { class: "row small" }, h("span", { class: "muted" }, u.en), h("span", { class: "chip red" }, u.focus)))),
       h("div", { class: "meter", role: "progressbar", "aria-valuenow": done, "aria-valuemax": plan.length }, h("span", { style: `width:${(done / plan.length) * 100}%` })),
       h("p", { class: "small muted" }, "After this unit you can: ", CAN_DO[u.id].join("; ").replace(/^./, c => c.toLowerCase()), ".")),
+    Object.keys(passedUnits()).length ? h("div", { class: "notice" }, h("b", null, "Units waiting to be ticked off: "),
+      COURSE.filter(x => x.id in passedUnits()).map(x => `${unitNo(x)} („${x.pl}”): ${unitProgressText(x.id).replace(/^Test passed on [^·]+· /, "")}`).join(" · ")) : null,
     catchUpCard(),
     h("section", { class: "card" },
       h("div", { class: "spread", style: "margin-bottom:6px" }, h("h3", null, "Today's plan"), lenSwitch),
@@ -2325,10 +2371,10 @@ function startStep(id, opts = {}) {
       h("h1", { class: "pl" }, s.pl)),
     body));
   window.scrollTo({ top: 0 });
-  const runners = { review: runReview, grammar: runGrammar, dialogue: runDialogue, convo: runConvo, writing: runWriting, quiz: runQuiz, drill: runDrill, mini: runMini, listen: runListen, read: runRead };
+  const runners = { review: runReview, grammar: runGrammar, dialogue: runDialogue, convo: runConvo, writing: runWriting, quiz: runQuiz, drill: runDrill, mini: runMini, listen: runListen, read: runRead, story: runStory, check: runCheck };
   runners[id](body, opts);
 }
-function stepUnit() { return session && session.opts && session.opts.unit != null ? UNITS[session.opts.unit] : curUnit(); }
+function stepUnit() { return session && session.opts && session.opts.unit != null ? UNITS[session.opts.unit] : session && session.opts && session.opts.checkUnit != null ? UNITS[session.opts.checkUnit] : curUnit(); }
 function finishStep(id, container, msg) {
   if (session && session.revisit) {
     const uid = session.opts.unit;
@@ -3030,6 +3076,63 @@ function runCloze(body, host, u, before) {
   }
 }
 
+/* ---------- Check-back test: a unit passed a few days ago ---------- */
+function runCheck(body) {
+  const u = dueChecks()[0];
+  if (!u) { body.append(h("div", { class: "card" }, h("p", { class: "muted" }, "No check-back test is due today."))); return finishStep("check", body); }
+  session.opts.checkUnit = u.id;
+  runQuiz(body, { check: true });
+}
+
+/* ---------- Daily reading: a short story at your level (AI), or a text from an earlier unit ---------- */
+function validStory(d) {
+  if (!d || typeof d.title !== "string" || !Array.isArray(d.paragraphs) || !d.paragraphs.length || !Array.isArray(d.questions)) return null;
+  const qs = d.questions.filter(q => q && typeof q.q === "string" && Array.isArray(q.options) && q.options.length >= 2 && Number.isInteger(q.answer) && q.answer >= 0 && q.answer < q.options.length).slice(0, 4);
+  if (!qs.length) return null;
+  return { ai: true, title: d.title.slice(0, 120), paras: d.paragraphs.map(String).slice(0, 8), glossary: (Array.isArray(d.glossary) ? d.glossary : []).filter(g => g && g.pl).slice(0, 8).map(g => ({ pl: String(g.pl), en: String(g.en || "") })),
+    questions: qs.map(q => ({ t: "choice", q: String(q.q), o: q.options.map(String), a: q.answer, _label: "reading" })) };
+}
+function offlineStory(u) {
+  const pool = COURSE.filter(x => x.read && x.id !== u.id && (S.progress.mastered.includes(x.id) || x.id in passedUnits() || POS[x.id] < POS[u.id]));
+  const x = pool.length ? pool[TODAY() % pool.length] : u;
+  return { ai: false, unit: x.id, title: x.read.title, read: x.read, questions: x.read.q.map(q => ({ t: "choice", q: q.q, o: q.o, a: q.a, _label: "reading" })) };
+}
+function runStory(body) {
+  const u = stepUnit(); todayRec();
+  const t = S.progress.today, holder = h("div", { class: "stack" });
+  body.append(holder);
+  const show = st => {
+    const qhost = h("div");
+    holder.replaceChildren(h("section", { class: "card stack" },
+      h("span", { class: "eyebrow" }, st.ai ? "Czytanka · today's story" : `Czytanka · read again: a text from unit ${unitNo(st.unit)}`),
+      st.ai ? h("h2", { class: "pl" }, st.title) : null,
+      st.ai ? h("div", { class: "stack story pl" }, st.paras.map(p => h("p", null, p))) : readText(st.read),
+      st.ai ? h("div", { class: "row" }, sayBtn(st.paras.join(" ")) || "", h("span", { class: "small muted" }, "Read it once for the gist, then again for the details.")) : null,
+      st.glossary && st.glossary.length ? h("details", { class: "ref" }, h("summary", null, `New words (${st.glossary.length})`),
+        h("div", { class: "vocab-list" }, st.glossary.map(g => h("div", null, h("span", { class: "pl" }, g.pl), h("span", { class: "muted small", style: "text-align:right" }, g.en))))) : null),
+      h("h3", null, "Questions"), qhost);
+    runSet(qhost, st.questions).then(score => { addXP(score * 5 + 10); finishStep("story", body, `${score} of ${st.questions.length} questions right.`); });
+  };
+  if (!session.revisit && t.story && t.story.unit === u.id) return show(t.story);
+  if (!aiOn()) return show(offlineStory(u));
+  const ctl = new AbortController(); session.ctl = ctl;
+  holder.append(h("div", { class: "card stack" }, h("p", { class: "thinking" }, "Writing today's story from the words you know…"), h("button", { class: "btn ghost sm", onclick: () => ctl.abort() }, "Read a text from an earlier unit instead")));
+  sample.json(`Write a short reading text in Polish for a learner.
+${learnerContext(u)}
+Requirements:
+- 120 to 180 words in 3 to 5 short paragraphs, at the learner's level (${levelOf(u)}).
+- A real little story (a beginning, a small problem, an ending) or a short text about everyday life in Poland. Vary the topic from day to day.
+- Use mostly words the learner has studied and the current grammar focus; at most 6 new words, listed in the glossary.
+- Then 3 comprehension questions in English, each with 3 short answer options in English.
+Reply with only JSON: {"title":"Polish title","paragraphs":["..."],"glossary":[{"pl":"word","en":"meaning"}],"questions":[{"q":"question","options":["a","b","c"],"answer":0}]}`, { signal: ctl.signal, cache: false }).then(d => {
+    const st = validStory(d);
+    if (!st) throw { code: "invalid_json" };
+    st.unit = u.id;
+    if (!session.revisit) { t.story = st; persist("progress"); }
+    show(st);
+  }).catch(e => { const msg = aiErrorText(e); const st = offlineStory(u); show(st); if (msg) holder.prepend(h("div", { class: "notice" }, msg, " Here's a text from an earlier unit instead.")); });
+}
+
 /* ---------- Step 6: Daily test ---------- */
 function buildQuiz(u) {
   const items = tagItems(u, 6).concat(vocabItems(u, 4));
@@ -3044,12 +3147,12 @@ function buildQuiz(u) {
 }
 function runQuiz(body, opts = {}) {
   const u = stepUnit();
-  const qkey = rkey(opts.testOut ? "testout" : "quiz", u);
+  const qkey = rkey(opts.testOut ? "testout" : opts.check ? "check" : "quiz", u);
   const R = resumeItems(qkey, () => buildQuiz(u));
   const items = R.items;
   const need = Math.ceil(items.length * 0.8);
   const practice = S.progress.mastered.includes(u.id);
-  body.append(h("p", { class: "muted" }, practice ? `A practice retake of unit ${unitNo(u)}: ${items.length} questions on its grammar and words. Your best score is kept.` : `${items.length} questions covering this unit's grammar and words, plus a review of earlier units. Get ${need} or more right to finish the unit.`));
+  body.append(h("p", { class: "muted" }, opts.check ? `A check-back test on unit ${unitNo(u)}, „${u.pl}”, a few days after you first passed it. Get ${need} or more right to finish the unit.` : practice ? `A practice retake of unit ${unitNo(u)}: ${items.length} questions on its grammar and words. Your best score is kept.` : `${items.length} questions covering this unit's grammar and words, plus a review of earlier units. Get ${need} or more right to finish the unit.`));
   const host = h("div");
   body.append(resumeNote(R) || "", host);
   runSet(host, items, { key: qkey, start: R.start, score: R.score }).then(score => {
@@ -3060,14 +3163,20 @@ function runQuiz(body, opts = {}) {
     P.quizzes.push({ d: localKey(), u: u.id, s: score, t: items.length, at: Date.now() });
     let msg;
     if (pass && !P.mastered.includes(u.id)) {
-      if (opts.testOut) allCards().filter(c => c.unit === u.id && !S.srs.cards[c.id]).forEach(c => { S.srs.cards[c.id] = { b: 2, s: 3, d: 5, r: TODAY(), due: TODAY() + 3, l: 0, n: 1, t: Date.now(), f: Date.now() }; });
-      P.mastered.push(u.id);
-      P.masteredAt = P.masteredAt || {}; P.masteredAt[u.id] = localKey();
+      const pa = P.passed = P.passed || {}, before = pa[u.id];
+      if (opts.testOut) { allCards().filter(c => c.unit === u.id && !S.srs.cards[c.id]).forEach(c => { S.srs.cards[c.id] = { b: 2, s: 3, d: 5, r: TODAY(), due: TODAY() + 3, l: 0, n: 1, t: Date.now(), f: Date.now() }; }); masterUnit(u.id); }
+      else if (!before) pa[u.id] = { first: localKey() };
+      else if (!before.second && checkDue(u.id)) before.second = localKey();
+      settlePassedUnits();
       if (u.id === P.unit) advanceUnit();
       persist("srs");
-      addXP(score * 5 + 50);
-      const nu = curUnit();
-      msg = courseDone() ? `You've finished all ${UNITS.length} units. Keep up the daily reviews and conversations to stay sharp.` : `Unit complete! Next up: Unit ${unitNo(nu)}, „${nu.pl}” (${nu.en}). Your next session starts there.`;
+      addXP(score * 5 + (before ? 30 : 50));
+      const nu = curUnit(), w = unitWords(u.id), st = pa[u.id];
+      const next = u.id !== nu.id && !courseDone() ? `Next up: Unit ${unitNo(nu)}, „${nu.pl}” (${nu.en}). ` : "";
+      msg = P.mastered.includes(u.id) ? (courseDone() ? `You've finished all ${UNITS.length} units. Keep up the daily reviews and conversations to stay sharp.` : `Unit finished! ${next}`)
+        : st && st.second ? `Check-back test passed. The unit is ticked off as soon as you've reviewed ${w.need - w.ok} more of its words in your flashcards (${w.ok} of ${w.need} so far).`
+        : before ? `Passed again. The check-back test that counts becomes available on ${dayLabel(st.first, CHECK_GAP)}.`
+        : `Passed! ${next}On ${dayLabel(st.first, CHECK_GAP)} a short check-back test on this unit will appear in your daily plan: pass it again, and once you've reviewed most of its words (${w.ok} of ${w.need} so far), the unit is finished.`;
     } else {
       addXP(score * 5);
       msg = pass ? "Passed again. Good revision." : practice ? `${score} of ${items.length}. Look at the grammar tables for this unit and try again another day.` : `You need ${need} to pass. Tomorrow's session stays on this unit and focuses on the questions you missed.`;
@@ -3080,8 +3189,8 @@ function runQuiz(body, opts = {}) {
       pass ? h("div", { class: "stack", style: "gap:4px" }, h("span", { class: "eyebrow" }, "Now you can"), h("ul", { class: "cando" }, CAN_DO[u.id].map(t => h("li", null, t)))) : null));
     checkMilestones();
     if (opts.testOut) { const d = todayRec(); d.steps.quiz = true; persist("progress"); body.append(h("div", { class: "card stack" }, h("p", null, msg), h("button", { class: "btn primary", onclick: () => setView("today") }, "Back to today"))); return; }
-    finishStep("quiz", body, msg);
-    if (!session.revisit && pass && !courseDone() && P.unit !== u.id) {
+    finishStep(opts.check ? "check" : "quiz", body, msg);
+    if (!session.revisit && !opts.check && pass && !courseDone() && P.unit !== u.id) {
       const d = todayRec();
       // let the learner start the next unit today if they want
       body.append(h("button", { class: "btn", onclick: () => { ["grammar", "read", "dialogue", "listen", "convo", "writing", "quiz"].forEach(k => delete d.steps[k]); persist("progress"); setView("today"); } }, "Start the next unit today"));
@@ -3210,7 +3319,8 @@ function renderCourse() {
     map.append(h("div", { class: "stop " + st },
       h("div", { class: "dot" }, st === "mastered" ? "✓" : String(i + 1)),
       h("div", { class: "name" },
-        h("div", { class: "pl" }, u.pl, catchUp.has(u.id) ? h("span", { class: "chip gold", style: "margin-left:6px" }, "new") : null),
+        h("div", { class: "pl" }, u.pl, catchUp.has(u.id) ? h("span", { class: "chip gold", style: "margin-left:6px" }, "new") : null,
+          u.id in passedUnits() ? h("span", { class: "chip", style: "margin-left:6px" }, checkDue(u.id) ? "check-back due" : passedUnits()[u.id].second ? "words to review" : "passed once") : null),
         h("div", { class: "small muted" }, u.en, " · ", u.focus.split(" · ")[1] || u.focus, best >= 0 ? ` · best ${best}%` : "")),
       open ? h("button", { class: "btn sm" + (st === "current" ? " primary" : ""), onclick: () => openUnit(u.id), "aria-label": "Open unit " + (i + 1) }, st === "mastered" ? "Revisit" : "Open")
         : h("span", { class: "small muted" }, "locked")));
@@ -3219,7 +3329,7 @@ function renderCourse() {
   const n = COURSE.length, stops = n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "przystanki" : "przystanków";
   app.replaceChildren(h("div", { class: "stack-lg" },
     h("div", { class: "stack" }, h("span", { class: "eyebrow" }, `Linia A1–A2 · ${n} ${stops} (${n} stops)`), h("h1", { class: "pl" }, "Kurs")),
-    h("p", { class: "muted" }, `Each stop is one unit. You move on when you score 80% on the daily test. Units 1–${A1_COUNT} cover A1 and units ${A1_COUNT + 1}–${n} cover A2, following the official Polish standard for adult learners (the state certificate exams). Open any unit you've reached to redo its lesson, flashcards, reading, dialogue, conversation, writing or test.`),
+    h("p", { class: "muted" }, `Each stop is one unit. You move on when you score 80% on the daily test; the unit is finished when you pass a check-back test at least ${CHECK_GAP} days later and have reviewed most of its words. Units 1–${A1_COUNT} cover A1 and units ${A1_COUNT + 1}–${n} cover A2, following the official Polish standard for adult learners (the state certificate exams). Open any unit you've reached to redo its lesson, flashcards, reading, dialogue, conversation, writing or test.`),
     catchUp.size ? h("p", { class: "small muted" }, `Stops marked „new” were added before your current position. They're optional catch-up: your place in the course doesn't change.`) : null,
     h("section", { class: "card stack" }, h("h3", null, "Testy · tests"),
       h("div", { class: "acts" }, [["a2", "Egzamin próbny A2", "A2 mock exam", "Like the state certificate exam: listening, reading and grammar, writing, speaking"],
@@ -3309,7 +3419,8 @@ function renderUnitPage() {
         h("div", { class: "eyebrow" }, `Unit ${unitNo(u)} of ${COURSE.length} · ${levelOf(u)} · ${mastered ? "finished" : catchUpUnits().includes(u) ? "new · catch up" : "in progress"}`),
         h("h1", { class: "pl" }, u.pl),
         h("div", { class: "row small" }, h("span", { class: "muted" }, u.en), h("span", { class: "chip red" }, u.focus)))),
-    h("section", { class: "card stack" }, h("span", { class: "eyebrow" }, mastered ? "You can now" : "After this unit you can"), h("ul", { class: "cando" }, CAN_DO[u.id].map(t => h("li", null, t)))),
+    h("section", { class: "card stack" }, h("span", { class: "eyebrow" }, mastered ? "You can now" : "After this unit you can"), h("ul", { class: "cando" }, CAN_DO[u.id].map(t => h("li", null, t))),
+      mastered ? null : h("p", { class: "small muted" }, unitProgressText(u.id))),
     h("section", { class: "stack" }, h("h3", null, "Practise this unit again"),
       h("p", { class: "small muted" }, "Revisiting earns XP and updates your weak spots, but doesn't change today's plan."),
       h("div", { class: "acts" }, acts.map(([id, pl, en, desc]) => h("button", { class: "act", onclick: () => startStep(id, { unit: u.id }) },
@@ -3729,6 +3840,31 @@ function renderPlacement() {
   }
 }
 
+/* ---------- Study time: counted while a step is open, the page is visible and you're active ---------- */
+let lastActive = Date.now(), timeTicks = 0;
+["pointerdown", "keydown", "touchstart", "scroll"].forEach(ev => document.addEventListener(ev, () => { lastActive = Date.now(); }, { passive: true }));
+setInterval(() => {
+  if (!inSession || document.visibilityState !== "visible" || Date.now() - lastActive > 120000) return;
+  const lv = levelOf(stepUnit()), d = todayRec(), P = S.progress;
+  d.sec = (d.sec || 0) + 15;
+  const mine = P.timeBy[DEVICE] = P.timeBy[DEVICE] || { A1: 0, A2: 0 };
+  mine[lv] = (mine[lv] || 0) + 15;
+  if (++timeTicks % 4 === 0) persist("progress");
+}, 15000);
+function studyTime() {
+  const t = { A1: 0, A2: 0 };
+  Object.values(S.progress.timeBy || {}).forEach(x => { t.A1 += x.A1 || 0; t.A2 += x.A2 || 0; });
+  const week = Object.entries(S.progress.days).filter(([k]) => TODAY() - keyDay(k) < 7).reduce((n, [, d]) => n + (d.sec || 0), 0);
+  return { A1: t.A1, A2: t.A2, total: t.A1 + t.A2, week, today: todayRec().sec || 0 };
+}
+const fmtTime = sec => { const m = Math.round(sec / 60); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min`; };
+function timePanel() {
+  const t = studyTime();
+  return h("section", { class: "card stack" }, h("div", { class: "spread" }, h("h3", null, "Czas nauki · study time"), h("span", { class: "chip" }, `${fmtTime(t.week)} this week`)),
+    h("div", { class: "tiles" }, stat(fmtTime(t.total), "in total", `${fmtTime(t.today)} today`), stat(fmtTime(t.A1), "on A1 units", ""), stat(fmtTime(t.A2), "on A2 units", "")),
+    h("p", { class: "small muted" }, "Counted while a lesson, review or test is open and you're active, on every device you sync. Time before this update wasn't recorded. As a rough guide, each level takes around 100 hours of study, often less for speakers of another Slavic language."));
+}
+
 /* ---------- Tables view ---------- */
 function renderTables() {
   const P = S.progress;
@@ -3964,10 +4100,11 @@ try { if (window.speechSynthesis) speechSynthesis.addEventListener("voiceschange
    SESSION PLAN, minimum day, daily goal
    ================================================================ */
 function planSteps() {
-  const ids = (PLANS[settings().length] || PLANS.standard).steps.filter(id => id !== "listen" || hasAnyAudio());
+  let ids = (PLANS[settings().length] || PLANS.standard).steps.filter(id => id !== "listen" || hasAnyAudio());
+  if (dueChecks().length || todayRec().steps.check) ids = [ids[0], "check", ...ids.slice(1)];   /* a check-back test joins the plan when one is due */
   return ids.map(id => STEPS.find(s => s.id === id)).filter(Boolean);
 }
-function extraSteps() { const inPlan = new Set(planSteps().map(s => s.id)); return STEPS.filter(s => !inPlan.has(s.id) && (s.id !== "listen" || hasAnyAudio())); }
+function extraSteps() { const inPlan = new Set(planSteps().map(s => s.id)); return STEPS.filter(s => !inPlan.has(s.id) && s.id !== "check" && (s.id !== "listen" || hasAnyAudio())); }
 const planMinutes = () => planSteps().reduce((n, s) => n + s.min, 0);
 function goalRing(xp, goal) {
   const r = 26, c = 2 * Math.PI * r, f = Math.min(1, xp / goal);
@@ -4273,6 +4410,7 @@ function renderProgress() {
   app.replaceChildren(h("div", { class: "stack-lg" },
     h("div", { class: "stack" }, h("span", { class: "eyebrow" }, "Your progress"), h("h1", { class: "pl" }, "Postępy")),
     syncPanel(),
+    timePanel(),
     canDoPanel(),
     milestonesPanel(),
     h("div", { class: "tiles" },

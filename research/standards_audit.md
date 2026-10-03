@@ -126,3 +126,10 @@ All covered with vocabulary and at least one unit. Services (hairdresser, laundr
 Items 8–11 fit into the 10 new A2 units planned earlier.
 
 12. **Small additions:** plant names, the photo studio, imię → imienia, czy meaning "or", synonyms, a pictogram instruction text, and A2 writing prompts for opis sytuacji and charakterystyka osoby.
+
+## Status after the fixes (same session)
+All items above are now addressed:
+- **A1:** two new units ("W sklepach, z kolegami": plural cases; "Mam nowego kolegę": adjectives, ten, jeden in every case). Extensions to "Dokąd idziesz?" (direction vs location), the accusative and locative units (verbs with prepositions, o / po), and the genitive unit (the disappearing e, pani). New writing tasks: an informal email (u17) and a holiday postcard (u11). A new reference table: "Where? and where to?".
+- **A2:** ten new units cover który, prefixed verbs of movement, media and reported speech (with a press article), health advice and comparative adverbs (with a medicine leaflet), complaints and services, nature and jeśli / gdyby, telling a story (opis sytuacji), culture and years, school and verbs with fixed cases (with a questionnaire), and character portraits and definiowanie.
+- **Listening:** every unit now starts its listening step with its conversation heard without the text, followed by 3 comprehension questions. Offline dialogues ask comprehension questions too.
+- **Course:** 46 units (27 A1, 19 A2) and 2,155 flashcards.
