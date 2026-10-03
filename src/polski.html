@@ -159,6 +159,11 @@ th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--lin
 th { font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 td.pl { color: var(--accent); }
 
+/* Serbian comparison box */
+.sr-note { border-left: 4px solid var(--warn); background: var(--warn-soft); border-radius: 0 10px 10px 0; padding: 10px 14px; display: flex; flex-direction: column; gap: 4px; }
+.sr-note p { margin: 0; }
+.sr-note p + p { margin-top: 6px; }
+
 /* Reading texts, gap-fill, forms */
 .read-doc { border: 1px solid var(--line); background: var(--surface-2); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .read-title { font-family: var(--display); font-weight: 800; font-size: 1.05rem; overflow-wrap: anywhere; }
@@ -179,6 +184,10 @@ select.gap.wrong { border-color: var(--accent); background: var(--accent-soft); 
 .gap-fix { color: var(--good); }
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
 .form-row { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
+.ctx { display: flex; flex-direction: column; gap: 6px; align-items: center; text-align: center; margin-top: 22px; }
+.ctx-pl { font-size: 1.25rem; line-height: 1.5; overflow-wrap: anywhere; }
+.ctx-word { color: var(--accent); }
 
 /* Dialogue & chat */
 .dlg { display: flex; flex-direction: column; gap: 10px; }
@@ -1577,11 +1586,23 @@ const PLANS = {
 /*@include content/new_units_a1.js*/
 /*@include content/new_units_a2.js*/
 /*@include content/expansion.js*/
+/*@include content/vocab2.js*/
+/*@include content/serbian.js*/
 NEW_UNITS_A1.concat(NEW_UNITS_A2).forEach(u => { UNITS[u.id] = u; });
-for (const [id, words] of Object.entries(EXTRA_VOCAB)) UNITS[id].vocab.push(...words);  /* appended, so existing card ids stay the same */
+/* word lists are only ever appended to, so existing card ids stay the same */
+for (const [id, words] of Object.entries(EXTRA_VOCAB)) UNITS[id].vocab.push(...words);
+for (const [id, words] of Object.entries(EXTRA_VOCAB_2)) UNITS[id].vocab.push(...words);
+/* Serbian-speaker layer: comparisons, drills and false-friend warnings */
+for (const [id, html] of Object.entries(SR_NOTES)) UNITS[id].sr = html;
+for (const [id, items] of Object.entries(SR_QUIZ)) UNITS[id].quiz.push(...items);
+UNITS.forEach(u => u.vocab.forEach(v => { const n = SR_CARD_NOTES[v[0]]; if (n && !String(v[2] || "").includes(n)) v[2] = v[2] ? v[2] + " · " + n : n; }));
 for (const [id, extra] of Object.entries(UNIT_READS)) Object.assign(UNITS[id], extra);
 for (const [id, lines] of Object.entries(NEW_CAN_DO)) CAN_DO[id] = lines;
-REF.push(...NEW_REF);
+REF.push(...NEW_REF, {
+  id: "false-friends", pl: "Fałszywi przyjaciele", en: "False friends for Serbian speakers", units: [0],
+  note: "Polish words that look like Serbian ones but mean something else.",
+  tables: [{ head: ["polski", "means", "srpski", "which in Polish is"], pl: [0], rows: FALSE_FRIENDS }]
+});
 for (const [rid, ids] of Object.entries(REF_EXTRA_UNITS)) { const r = REF.find(x => x.id === rid); if (r) r.units.push(...ids); }
 const COURSE = COURSE_ORDER.map(id => UNITS[id]);   /* units in course order */
 const POS = {};                                      /* unit id -> position in the course */
@@ -2004,14 +2025,43 @@ function newCardsForToday() {
   COURSE.forEach(x => { if (x.id !== u.id && S.progress.mastered.includes(x.id)) rank[x.id] = 1 + POS[x.id]; });
   return allCards().filter(c => c.unit in rank && !S.srs.cards[c.id]).sort((a, b) => rank[a.unit] - rank[b.unit]).slice(0, left);
 }
+/* FSRS-5 with its default parameters: each card has a stability s (days until
+   recall drops to 90%) and a difficulty d (1–10), updated after every review.
+   Cards from the old box system get a stability from their box on first review.
+   b (the "memory box") is kept for display: it is just stability banded by INTERVALS. */
+const FSRS_W = [0.40255, 1.18385, 3.173, 15.69105, 7.1949, 0.5345, 1.4604, 0.0046, 1.54575, 0.1192, 1.01925, 1.9395, 0.11, 0.29605, 2.2698, 0.2315, 2.9898, 0.51655, 0.6621];
+const FSRS_DECAY = -0.5, FSRS_FACTOR = 19 / 81, FSRS_RETAIN = 0.9;
+const fsrsClampD = d => Math.min(10, Math.max(1, d));
+const fsrsInitD = g => fsrsClampD(FSRS_W[4] - Math.exp(FSRS_W[5] * (g - 1)) + 1);
+const fsrsInterval = s => Math.max(1, Math.round(s / FSRS_FACTOR * (Math.pow(FSRS_RETAIN, 1 / FSRS_DECAY) - 1)));
+const boxOf = s => INTERVALS.reduce((b, iv, i) => s >= iv && iv > 0 ? i : b, 0);
+const GRADE_N = { again: 1, hard: 2, good: 3, easy: 4 };
+function fsrsNext(st0, g, today) {
+  const W = FSRS_W, st = Object.assign({}, st0), G = GRADE_N[g];
+  if (!st.s && st.n) { st.s = Math.max(0.5, INTERVALS[st.b] || 0.5); st.d = 5; st.r = st.t ? dayNum(new Date(st.t)) : today; }
+  if (!st.s) { st.s = W[G - 1]; st.d = fsrsInitD(G); }
+  else {
+    const t = Math.max(0, today - (st.r ?? today)), R = Math.pow(1 + FSRS_FACTOR * t / st.s, FSRS_DECAY);
+    if (t === 0) st.s = st.s * Math.exp(W[17] * (G - 3 + W[18]));
+    else if (G === 1) st.s = Math.min(st.s, W[11] * Math.pow(st.d, -W[12]) * (Math.pow(st.s + 1, W[13]) - 1) * Math.exp(W[14] * (1 - R)));
+    else st.s = st.s * (1 + Math.exp(W[8]) * (11 - st.d) * Math.pow(st.s, -W[9]) * (Math.exp(W[10] * (1 - R)) - 1) * (G === 2 ? W[15] : 1) * (G === 4 ? W[16] : 1));
+    const d1 = st.d - W[6] * (G - 3);
+    st.d = fsrsClampD(W[7] * fsrsInitD(4) + (1 - W[7]) * (st.d + (d1 - st.d) * (10 - st.d) / 9));
+  }
+  st.s = Math.max(0.1, +st.s.toFixed(3)); st.d = +st.d.toFixed(3); st.r = today;
+  st.due = G === 1 ? today : today + fsrsInterval(st.s);
+  st.b = G === 1 ? 0 : boxOf(st.s);
+  return st;
+}
+/* days until a card comes back for each grade, shown on the grade buttons */
+const previewDays = (card, g) => { const st = S.srs.cards[card.id] || { b: 0, due: TODAY(), l: 0, n: 0 }; return fsrsNext(st, g, TODAY()).due - TODAY(); };
 function grade(card, g) {
   const t = TODAY();
-  const st = S.srs.cards[card.id] || { b: 0, due: t, l: 0, n: 0 };
+  const prev = S.srs.cards[card.id];
+  /* a brand-new word is only being introduced: see it again tomorrow */
+  const st = !prev || !prev.n ? Object.assign(prev || { l: 0, n: 0 }, { s: 1, d: fsrsInitD(3), r: t, due: t + 1, b: 1 }) : fsrsNext(prev, g, t);
   st.n = (st.n || 0) + 1; st.t = Date.now(); st.f = st.f || st.t;
-  if (g === "again") { st.b = 0; st.l = (st.l || 0) + 1; st.due = t; }
-  else if (g === "hard") { st.b = Math.max(1, st.b); st.due = t + Math.max(1, Math.floor(INTERVALS[st.b] / 2)); }
-  else if (g === "good") { st.b = Math.min(6, st.b + 1); st.due = t + INTERVALS[st.b]; }
-  else { st.b = Math.min(6, st.b + 2); st.due = t + INTERVALS[st.b]; }
+  if (g === "again") st.l = (st.l || 0) + 1;
   S.srs.cards[card.id] = st;
   hit("v" + (card.unit >= 0 ? card.unit : curUnit().id), g !== "again");
   persist("srs");
@@ -2053,7 +2103,7 @@ function knownWords(limit = 140) {
 function learnerContext(u = stepUnit()) {
   const weak = weakList().slice(0, 4).map(([t]) => tagLabel(t)).join("; ") || "none yet";
   const done = S.progress.mastered.map(i => UNITS[i].grammar.title).join("; ") || "none yet";
-  return `Learner: English speaker, beginner (${levelLabel()}). Can read Polish and knows pronunciation, but has a small vocabulary.
+  return `Learner: native Serbian speaker who studies in English, beginner (${levelLabel()}). Can read Polish and knows pronunciation, but has a small vocabulary. Explain in simple English; where it helps, add a short comparison with Serbian (Latin script), e.g. "like Serbian kod, but…". Watch for typical Serbian-speaker mistakes: Vi-style plural for formal "you" instead of pan/pani + 3rd person, kod instead of u/do, accusative instead of genitive after negation, "da" clauses instead of an infinitive / że / żeby, Serbian words or endings mixed in (-u for -ę, -ji comparatives), and false friends (jutro, godzina, słowo, prawo).
 Current unit: "${u.pl}" (${u.en}). Grammar focus: ${u.grammar.title}.
 Grammar already mastered: ${done}.
 Weak spots to reinforce: ${weak}.
@@ -2261,6 +2311,51 @@ function finishStep(id, container, msg) {
   container.lastChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
+/* ---------- Words in context: course sentences that use a card's word ---------- */
+let SENTENCES = null;
+function sentencePool() {
+  if (SENTENCES) return SENTENCES;
+  SENTENCES = [];
+  COURSE.forEach(u => {
+    u.dialogue.forEach(([, pl, en]) => SENTENCES.push({ pl, en }));
+    u.quiz.forEach(q => { if (q.t === "fill" && q.en) SENTENCES.push({ pl: q.q.replace("___", q.a[0]), en: q.en }); });
+  });
+  return SENTENCES;
+}
+/* A course sentence with one form of this (single-word) card in it, or null.
+   A form must be the word's stem plus a regular ending, so look-alikes
+   (znaczyć / znaczki, kanapa / kanapka) don't match. */
+const NOUN_ENDS = new Set(["a", "u", "y", "i", "e", "ę", "ą", "em", "om", "ie", "owi", "ach", "ami", "ów", "ego", "emu", "ej", "ym", "im", "ych", "ich", "ymi", "imi", "mi", "ią", "ię", "ii", "ia", "iu", "iem"]);
+const O_ENDS = new Set(["a", "u", "em", "iem", "om", "ach", "ami"]);   /* -o words: nouns only, so adverbs (długo) don't match adjectives */
+const VERB_ENDS = new Set(["am", "asz", "a", "amy", "acie", "ają", "ę", "esz", "e", "emy", "ecie", "ą", "em", "eją", "isz", "i", "imy", "icie", "ię", "ią", "ysz", "y", "ymy", "ycie",
+  "ał", "ała", "ało", "ałem", "ałam", "ałeś", "ałaś", "ali", "ały", "aliśmy", "ałyśmy", "eł", "ela", "elem", "elam", "eli", "ił", "iła", "iłem", "iłam", "ili", "iły", "ył", "yła", "yłem", "yłam", "yli",
+  "aj", "ajmy", "ajcie", "ij", "ijcie", "my", "cie", "ać", "eć", "ić", "yć", "uję", "ujesz", "uje", "ujemy", "ują"]);
+function contextFor(c) {
+  const raw = String(c.pl).trim(), w = raw.toLocaleLowerCase("pl");
+  if (!/^\p{L}{5,}$/u.test(w)) return null;
+  const upper = raw[0] !== w[0];
+  const verb = /ć$/.test(w);
+  const base = verb ? w.replace(/(ować|ać|eć|ić|yć|ć)$/, "") : w.replace(/[aoeyiąę]$/, "");
+  const ends = verb ? VERB_ENDS : /o$/.test(w) ? O_ENDS : NOUN_ENDS;
+  /* a verb's forms keep its theme vowel (czekać → czeka, mówić → mówi), which also keeps aspect partners apart */
+  const vowels = /ać$/.test(w) ? "a" : /eć$/.test(w) ? "eięą" : /ić$/.test(w) ? "iąę" : "yąę";
+  const hits = [];
+  for (const s of sentencePool()) {
+    const toks = s.pl.match(/\p{L}+/gu) || [];
+    if (toks.length < 3) continue;
+    const tok = toks.find(t => {
+      const lt = t.toLocaleLowerCase("pl");
+      if (upper && t[0] === lt[0]) return false;
+      if (lt === w) return true;
+      if (/ować$/.test(w)) { const st = w.slice(0, -4), mid = lt.slice(st.length, st.length + 2); return lt.startsWith(st) && (mid === "uj" || mid === "ow") && VERB_ENDS.has(lt.slice(st.length + 2)); }
+      const rest = lt.slice(base.length);
+      return lt.startsWith(base) && ends.has(rest) && (!verb || vowels.includes(rest[0]));
+    });
+    if (tok) hits.push(Object.assign({ tok }, s));
+  }
+  return hits.length ? hits[(TODAY() + c.id.length) % hits.length] : null;
+}
+
 /* ---------- Step 1: Flashcard review ---------- */
 function runReview(body, opts = {}) {
   let queue;
@@ -2292,23 +2387,31 @@ function runReview(body, opts = {}) {
     let flip;
     const st = S.srs.cards[c.id];
     const reverse = !isNew && st && st.b >= 2;
+    /* known words are sometimes shown inside a course sentence instead */
+    const ctx = reverse && Math.random() < 0.5 ? contextFor(c) : null;
     let flipped = isNew;
     const card = h("div", { class: "card flash" });
     const grades = h("div", { class: "grades" });
     function draw() {
-      card.replaceChildren(
-        h("span", { class: "tagline" }, isNew ? h("span", { class: "chip green" }, "new word") : reverse ? h("span", { class: "chip" }, "English → Polish") : h("span", { class: "chip" }, "Polish → English")),
+      card.replaceChildren(...[
+        h("span", { class: "tagline" }, isNew ? h("span", { class: "chip green" }, "new word") : reverse ? h("span", { class: "chip" }, ctx ? "Word in a sentence" : "English → Polish") : h("span", { class: "chip" }, "Polish → English")),
         h("span", { class: "count" }, `${Math.min(done + 1, total)} / ${total}`),
-        reverse && !flipped ? h("div", { class: "word" }, c.en) : h("div", { class: "row", style: "justify-content:center" }, h("div", { class: "word" }, c.pl), sayBtn(c.pl)),
-        flipped ? h("div", { class: "answer" }, reverse ? h("span", { class: "pl" }, c.pl) : c.en) : h("p", { class: "muted small" }, reverse ? "Say it in Polish, then flip the card." : "What does it mean? Flip the card to check."),
+        ctx ? h("div", { class: "ctx" },
+          h("div", { class: "pl ctx-pl" }, ctx.pl.split(ctx.tok).flatMap((part, i, a) => i < a.length - 1 ? [part, flipped ? h("b", { class: "ctx-word" }, ctx.tok) : h("span", { class: "blank" }, "____")] : [part]), flipped ? sayBtn(ctx.pl) : null),
+          h("div", { class: "muted small" }, ctx.en),
+          !flipped ? h("div", { class: "small" }, "Missing word: ", h("b", null, c.en)) : null)
+        : reverse && !flipped ? h("div", { class: "word" }, c.en) : h("div", { class: "row", style: "justify-content:center" }, h("div", { class: "word" }, c.pl), sayBtn(c.pl)),
+        flipped ? h("div", { class: "answer" }, reverse ? h("span", { class: "pl" }, c.pl) : c.en) : h("p", { class: "muted small" }, ctx ? "Say the missing word in the right form, then flip the card." : reverse ? "Say it in Polish, then flip the card." : "What does it mean? Flip the card to check."),
         flipped && reverse ? h("div", { class: "muted" }, c.en) : null,
         flipped && c.note ? h("div", { class: "note" }, c.note) : null
-      );
+      ].filter(Boolean));
       grades.replaceChildren();
       if (!flipped) grades.append(h("button", { class: "btn primary", style: "grid-column:1/-1;justify-content:center", onclick: () => flip() }, "Show answer"));
       else if (isNew) grades.append(h("button", { class: "btn primary", style: "grid-column:1/-1;justify-content:center", onclick: () => rate("good") }, "Got it, next →"));
-      else [["again", "Again", "forgot"], ["hard", "Hard", "struggled"], ["good", "Good", "knew it"], ["easy", "Easy", "instant"]].forEach(([g, l, s]) =>
-        grades.append(h("button", { class: "btn g-" + g, onclick: () => rate(g) }, l, h("small", null, s))));
+      else [["again", "Again"], ["hard", "Hard"], ["good", "Good"], ["easy", "Easy"]].forEach(([g, l]) => {
+        const n = previewDays(c, g);
+        grades.append(h("button", { class: "btn g-" + g, onclick: () => rate(g) }, l, h("small", null, n <= 0 ? "now" : n === 1 ? "1 day" : n < 60 ? n + " days" : Math.round(n / 30) + " months")));
+      });
     }
     function rate(g) {
       grade(c, g);
@@ -2317,7 +2420,7 @@ function runReview(body, opts = {}) {
       next();
     }
     if (isNew) speak(c.pl);
-    flip = () => { flipped = true; if (reverse) speak(c.pl); draw(); };
+    flip = () => { flipped = true; if (reverse) speak(ctx ? ctx.pl : c.pl); draw(); };
     keyHandler = (k, typing) => {
       if (typing) return;
       if (!flipped) { if (k === " " || k === "Enter") { flip(); return true; } return; }
@@ -2452,7 +2555,7 @@ function vocabItems(u, n) {
     return { t: "choice", q: `How do you say “${w[1]}” in Polish?`, o: [w[0], ...others.map(o => o[0])], a: 0, _tag: "v" + u.id, _label: "vocabulary", _say: w[0] };
   });
 }
-const tagItems = (u, n) => pick(u.quiz, n).map(q => Object.assign({}, q, { _tag: u.tag, _label: u.focus.split(" · ")[1] || u.focus }));
+const tagItems = (u, n) => pick(u.quiz, n).map(q => Object.assign({}, q, { _tag: u.tag, _label: q.sr ? "Serbian trap" : u.focus.split(" · ")[1] || u.focus }));
 
 /* ---------- Step 2: Grammar ---------- */
 function runGrammar(body) {
@@ -2467,6 +2570,7 @@ function runGrammar(body) {
       h("div", { html: g.html }),
       table,
       g.extra ? h("p", { class: "small muted" }, "Conjugation: ", h("b", { class: "pl" }, g.extra)) : null,
+      u.sr ? h("div", { class: "sr-note" }, h("span", { class: "eyebrow" }, "Compared with Serbian · u poređenju sa srpskim"), h("div", { html: u.sr })) : null,
       refChips(u.id)),
     askTutor(u),
     h("section", { class: "stack" }, h("h3", null, "Practice: 4 quick checks"), resumeNote(R), practice)
@@ -2910,7 +3014,7 @@ function runQuiz(body, opts = {}) {
     P.quizzes.push({ d: localKey(), u: u.id, s: score, t: items.length, at: Date.now() });
     let msg;
     if (pass && !P.mastered.includes(u.id)) {
-      if (opts.testOut) allCards().filter(c => c.unit === u.id && !S.srs.cards[c.id]).forEach(c => { S.srs.cards[c.id] = { b: 2, due: TODAY() + 2, l: 0, n: 0, t: Date.now(), f: Date.now() }; });
+      if (opts.testOut) allCards().filter(c => c.unit === u.id && !S.srs.cards[c.id]).forEach(c => { S.srs.cards[c.id] = { b: 2, s: 3, d: 5, r: TODAY(), due: TODAY() + 3, l: 0, n: 1, t: Date.now(), f: Date.now() }; });
       P.mastered.push(u.id);
       P.masteredAt = P.masteredAt || {}; P.masteredAt[u.id] = localKey();
       if (u.id === P.unit) advanceUnit();
@@ -3027,9 +3131,9 @@ function renderCards() {
         h("div", { class: "row" },
           h("button", { class: "btn primary", disabled: !due.length, onclick: () => { startFree({ noNew: true, freeReview: true }); } }, "Review due cards"),
           h("button", { class: "btn", disabled: !intro.length, onclick: () => startFree({ practiceAll: true }) }, "Practise 20 random"))),
-      h("p", { class: "small muted" }, "Each word sits in a memory box. When you answer 'Good', it moves up a box and comes back later: after 1, 2, 4, 8, 16, then 32 days. When you answer 'Again', it goes back to box 0.")),
+      h("p", { class: "small muted" }, "Cards are scheduled with FSRS, which estimates how well you remember each word and brings it back just before you'd forget it (aiming for 90% recall). Words you find hard come back sooner, easy ones much later. The buttons show when a card will return. Boxes group your words by how long they stay in memory.")),
     h("section", { class: "stack" }, h("h3", null, "Memory boxes"),
-      h("div", { class: "boxes" }, boxes.map((n, i) => h("div", null, h("b", null, String(n)), h("small", null, i === 0 ? "new" : INTERVALS[i] + "d"))))),
+      h("div", { class: "boxes" }, boxes.map((n, i) => h("div", null, h("b", null, String(n)), h("small", null, i === 0 ? "new" : INTERVALS[i] + "d+"))))),
     h("section", { class: "stack" },
       h("div", { class: "spread" }, h("h3", null, `Your words (${intro.length})`), count),
       intro.length ? h("div", { class: "stack" }, q, h("div", { class: "spread" }, h("span", { class: "small muted" }, "Sort"), sortBar), letters, list)
@@ -3117,6 +3221,7 @@ function openRule(u) {
     h("span", { class: "eyebrow" }, `Unit ${unitNo(u)} · ${u.focus}`),
     h("div", { class: "lesson", html: u.grammar.html }),
     tableEl(u.grammar.table),
+    u.sr ? h("div", { class: "sr-note" }, h("span", { class: "eyebrow" }, "Compared with Serbian · u poređenju sa srpskim"), h("div", { html: u.sr })) : null,
     refs.length ? h("div", { class: "stack" }, h("span", { class: "eyebrow" }, "More tables"),
       refs.map(r => h("details", { class: "ref" }, h("summary", null, r.en, h("span", { class: "muted small" }, " · " + r.pl)), refBody(r)))) : null));
 }
@@ -3162,6 +3267,7 @@ function renderUnitPage() {
       h("div", { html: u.grammar.html }),
       tableEl(u.grammar.table),
       u.grammar.extra ? h("p", { class: "small muted" }, "Conjugation: ", h("b", { class: "pl" }, u.grammar.extra)) : null,
+      u.sr ? h("div", { class: "sr-note" }, h("span", { class: "eyebrow" }, "Compared with Serbian · u poređenju sa srpskim"), h("div", { html: u.sr })) : null,
       refChips(u.id)),
     h("section", { class: "card stack" },
       h("span", { class: "eyebrow" }, "Words"),
@@ -3568,7 +3674,7 @@ function runMini(body) {
   const u = stepUnit(), key = rkey("mini", u);
   const R = resumeItems(key, () => shuffle(tagItems(u, 4).concat(vocabItems(u, 2))));
   const host = h("div");
-  body.append(h("p", { class: "muted" }, `A 6-question check on unit ${unitNo(u)}. It doesn't count towards finishing the unit (the daily test does).`), resumeNote(R), host);
+  body.append(h("p", { class: "muted" }, `A 6-question check on unit ${unitNo(u)}. It doesn't count towards finishing the unit (the daily test does).`), resumeNote(R) || "", host);
   runSet(host, R.items, { key, start: R.start, score: R.score }).then(score => {
     addXP(score * 5);
     finishStep("mini", body, `${score} of ${R.items.length} right.`);
@@ -3588,7 +3694,7 @@ function runListen(body) {
   if (pool.length < 3) { body.append(h("div", { class: "card stack" }, h("p", null, "Listening practice needs audio, and none is available on this device right now."))); return finishStep("listen", body); }
   const R = resumeItems(key, () => pick(pool.slice(0, 30), 8).map(x => ({ t: "listen", pl: x.pl, en: x.en })));
   const host = h("div");
-  body.append(h("p", { class: "muted" }, "Listen, then type what you hear. Missing accents count as almost right."), resumeNote(R), host);
+  body.append(h("p", { class: "muted" }, "Listen, then type what you hear. Missing accents count as almost right."), resumeNote(R) || "", host);
   (async () => {
     let score = R.score || 0;
     for (let i = R.start; i < R.items.length; i++) {
@@ -3648,7 +3754,7 @@ function settingsPanel() {
     h("h3", null, "Ustawienia · settings"),
     sel("set-length", "Session length", st.length, lens, v => { setSetting("length", v); }, "Quick: flashcards + a short test. Full adds listening, conversation and writing."),
     sel("set-goal", "Daily goal", st.goal, [[30, "30 XP · light"], [60, "60 XP · regular"], [100, "100 XP · serious"], [150, "150 XP · intense"], [200, "200 XP · maximum"]], v => setSetting("goal", +v), "Fills the ring on the Today page."),
-    sel("set-new", "New words per day", st.newPerDay, [[5, "5"], [10, "10"], [15, "15"], [99, "All from the unit"]], v => setSetting("newPerDay", +v)),
+    sel("set-new", "New words per day", st.newPerDay, [[5, "5"], [10, "10"], [15, "15"], [20, "20"], [99, "No limit"]], v => setSetting("newPerDay", +v), "15–20 suits 30–45 minutes a day. More than that piles up reviews within a few weeks."),
     sel("set-rate", "Speech speed", st.rate, [[0.7, "Slow"], [0.9, "Normal"], [1.05, "Fast"]], v => setSetting("rate", +v)),
     h("p", { class: "small muted" }, plVoice ? `Voice: ${plVoice.name}, this device's Polish voice.` : "This device has no Polish voice, so speaker buttons and listening practice are hidden. Chrome and Edge include one."),
     sel("set-story", "Story mode", st.story ? "on" : "off", [["on", "On: AI dialogues follow the same characters"], ["off", "Off: a new situation each day"]], v => setSetting("story", v === "on")),
