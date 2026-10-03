@@ -159,6 +159,27 @@ th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--lin
 th { font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 td.pl { color: var(--accent); }
 
+/* Reading texts, gap-fill, forms */
+.read-doc { border: 1px solid var(--line); background: var(--surface-2); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.read-title { font-family: var(--display); font-weight: 800; font-size: 1.05rem; overflow-wrap: anywhere; }
+.read-lines p { margin: 0; overflow-wrap: anywhere; }
+.read-lines p + p { margin-top: 4px; }
+.rd-sms .read-lines { background: var(--surface); border: 1px solid var(--line); border-radius: 14px 14px 14px 4px; padding: 10px 12px; align-self: flex-start; max-width: 100%; }
+.rd-sign .read-lines { display: flex; flex-wrap: wrap; gap: 8px; }
+.rd-sign .read-lines p { margin: 0; border: 2px solid var(--ink); border-radius: 6px; padding: 4px 10px; font-weight: 800; letter-spacing: 0.02em; }
+.rd-notice, .rd-ad { border-style: dashed; }
+.read-form { display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); gap: 4px 14px; margin: 0; }
+.read-form dt { color: var(--muted); font-size: 0.85rem; padding-top: 2px; overflow-wrap: anywhere; }
+.read-form dd { margin: 0; overflow-wrap: anywhere; }
+.read-doc td { white-space: normal; }
+.cloze { line-height: 2.4; font-size: 1.05rem; overflow-wrap: anywhere; }
+select.gap { font: inherit; font-weight: 700; padding: 1px 4px; border-radius: 6px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); max-width: 100%; }
+select.gap.right { border-color: var(--good); background: var(--good-soft); }
+select.gap.wrong { border-color: var(--accent); background: var(--accent-soft); }
+.gap-fix { color: var(--good); }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.form-row { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
 /* Dialogue & chat */
 .dlg { display: flex; flex-direction: column; gap: 10px; }
 .line { display: grid; grid-template-columns: 76px 1fr auto; gap: 10px; align-items: start; }
@@ -1522,8 +1543,8 @@ const MILESTONES = [
   { id: "streak30", icon: "30", pl: "Miesiąc", en: "30-day streak", check: P => P.best >= 30 },
   { id: "streak100", icon: "100", pl: "Sto dni", en: "100-day streak", check: P => P.best >= 100 },
   { id: "unit1", icon: "✓", pl: "Pierwsza lekcja", en: "Finished your first unit", check: P => P.mastered.length >= 1 },
-  { id: "a11", icon: "A1.1", pl: "Połowa A1", en: "Finished units 1–6", check: P => [0, 1, 2, 3, 4, 5].every(i => P.mastered.includes(i)) },
-  { id: "a1", icon: "A1", pl: "Poziom A1", en: "Finished all A1 units", check: P => UNITS.slice(0, 12).every(u => P.mastered.includes(u.id)) },
+  { id: "a11", icon: "A1.1", pl: "Połowa A1", en: "Finished units 1–12", check: P => COURSE.slice(0, 12).every(u => P.mastered.includes(u.id)) },
+  { id: "a1", icon: "A1", pl: "Poziom A1", en: "Finished all A1 units", check: P => COURSE.slice(0, A1_COUNT).every(u => P.mastered.includes(u.id)) },
   { id: "a2", icon: "A2", pl: "Poziom A2", en: "Finished the whole course", check: P => UNITS.every(u => P.mastered.includes(u.id)) },
   { id: "words50", icon: "50", pl: "50 słów", en: "50 words learned", check: (P, L) => L.learned >= 50 },
   { id: "words100", icon: "100", pl: "100 słów", en: "100 words learned", check: (P, L) => L.learned >= 100 },
@@ -1543,9 +1564,36 @@ const STORY_PAIRS = [["Ola", "Tomek"], ["Tomek", "Marek"], ["Ola", "Pani Ewa"], 
 /* Session lengths: which steps make up the day */
 const PLANS = {
   quick: { label: "Quick", steps: ["review", "mini"] },
-  standard: { label: "Standard", steps: ["review", "grammar", "dialogue", "quiz"] },
-  full: { label: "Full", steps: ["review", "grammar", "dialogue", "listen", "convo", "writing", "quiz"] }
+  standard: { label: "Standard", steps: ["review", "grammar", "read", "dialogue", "quiz"] },
+  full: { label: "Full", steps: ["review", "grammar", "read", "dialogue", "listen", "convo", "writing", "quiz"] }
 };
+
+/* ================================================================
+   Course expansion to the adult A1/A2 standard (Dz.U. 2025 poz. 217):
+   13 new units, extra words, a reading text and a gap-fill for every unit.
+   Unit ids never change (saved progress and flashcards hang off them);
+   COURSE_ORDER says where each unit sits in the course.
+   ================================================================ */
+/*@include content/new_units_a1.js*/
+/*@include content/new_units_a2.js*/
+/*@include content/expansion.js*/
+NEW_UNITS_A1.concat(NEW_UNITS_A2).forEach(u => { UNITS[u.id] = u; });
+for (const [id, words] of Object.entries(EXTRA_VOCAB)) UNITS[id].vocab.push(...words);  /* appended, so existing card ids stay the same */
+for (const [id, extra] of Object.entries(UNIT_READS)) Object.assign(UNITS[id], extra);
+for (const [id, lines] of Object.entries(NEW_CAN_DO)) CAN_DO[id] = lines;
+REF.push(...NEW_REF);
+for (const [rid, ids] of Object.entries(REF_EXTRA_UNITS)) { const r = REF.find(x => x.id === rid); if (r) r.units.push(...ids); }
+const COURSE = COURSE_ORDER.map(id => UNITS[id]);   /* units in course order */
+const POS = {};                                      /* unit id -> position in the course */
+COURSE.forEach((u, i) => { POS[u.id] = i; });
+const unitNo = u => (POS[typeof u === "object" ? u.id : u] ?? 0) + 1;
+const levelOf = u => POS[typeof u === "object" ? u.id : u] < A1_COUNT ? "A1" : "A2";
+/* The first unfinished unit at or after a position (or any unfinished one before it) */
+function nextUnitFrom(mastered, fromId) {
+  const i = POS[fromId] ?? 0;
+  const u = COURSE.slice(i).find(x => !mastered.includes(x.id)) || COURSE.find(x => !mastered.includes(x.id));
+  return u ? u.id : COURSE[COURSE.length - 1].id;
+}
 
 /* ================================================================
    Utilities
@@ -1661,8 +1709,7 @@ function mergeProgress(local, incoming) {
   m.lastDay = Math.max(a.lastDay || 0, b.lastDay || 0) || null;
   m.streak = computeStreak(m);
   m.best = Math.max(a.best || 0, b.best || 0, m.streak);
-  const next = UNITS.find(u => !m.mastered.includes(u.id));
-  m.unit = next ? next.id : UNITS.length - 1;
+  m.unit = nextUnitFrom(m.mastered, (POS[b.unit] ?? -1) > (POS[a.unit] ?? -1) ? b.unit : a.unit);
   return m;
 }
 function mergeSrs(local, incoming) {
@@ -1777,7 +1824,7 @@ Reply with only JSON:
 {"items":[{"t":"fill","q":"Polish sentence with ___","h":"base form or hint","a":["answer"],"en":"English translation","tag":"tag"},{"t":"choice","q":"sentence with ___","o":["correct","wrong","wrong"],"a":0,"tag":"tag"}]}`;
 }
 async function makePack(onStatus, signal) {
-  const cur = curUnit(), next = UNITS[cur.id + 1];
+  const cur = curUnit(), next = COURSE[POS[cur.id] + 1];
   const jobs = [0, 1, 2, 3].map(i => ({ kind: "dlg", u: cur, i })).concat([{ kind: "drill", u: cur }]);
   if (next && !S.progress.mastered.includes(next.id)) jobs.push({ kind: "dlg", u: next, i: 4 }, { kind: "dlg", u: next, i: 5 });
   const pack = { made: Date.now(), units: {}, drill: null };
@@ -1915,19 +1962,23 @@ function tagLabel(tag) {
 }
 function unitOfTag(tag) { return tag.startsWith("v") ? UNITS[+tag.slice(1)] : UNITS.find(u => u.tag === tag); }
 function weakList() { return Object.entries(S.progress.weak).filter(([, v]) => v >= 1).sort((a, b) => b[1] - a[1]); }
-function curUnit() { return UNITS[Math.min(S.progress.unit, UNITS.length - 1)]; }
+function curUnit() { return UNITS[S.progress.unit] || COURSE[0]; }
 function advanceIfDone() { if (S.progress.mastered.includes(S.progress.unit)) advanceUnit(); }
-/* Move to the first unit that isn't finished yet (also repairs saved progress when new units are added) */
+/* Move on to the next unfinished unit. Units added to the course before the
+   learner's position don't pull them back: they show up as optional catch-up. */
 function advanceUnit() {
   const P = S.progress;
-  const next = UNITS.find(u => !P.mastered.includes(u.id));
-  P.unit = next ? next.id : UNITS.length - 1;
+  P.unit = nextUnitFrom(P.mastered, P.unit);
 }
+/* Unfinished units that sit before the learner's position (added after they passed that point) */
+function catchUpUnits() { const P = S.progress; return COURSE.filter(u => !P.mastered.includes(u.id) && POS[u.id] < POS[P.unit]); }
 const courseDone = () => S.progress.mastered.length >= UNITS.length;
 function levelLabel() {
-  const m = S.progress.mastered.length;
-  if (m >= UNITS.length) return "A2 ✓";
-  return m >= 17 ? "A2.2" : m >= 12 ? "A2.1" : m >= 6 ? "A1.2" : "A1.1";
+  const P = S.progress, done = list => list.filter(u => P.mastered.includes(u.id)).length;
+  const a1 = COURSE.slice(0, A1_COUNT), a2 = COURSE.slice(A1_COUNT), n1 = done(a1), n2 = done(a2);
+  if (n1 + n2 >= COURSE.length) return "A2 ✓";
+  if (n1 < a1.length) return n1 >= a1.length / 2 ? "A1.2" : "A1.1";
+  return n2 >= a2.length / 2 ? "A2.2" : "A2.1";
 }
 
 /* ================================================================
@@ -1936,7 +1987,7 @@ function levelLabel() {
 const INTERVALS = [0, 1, 2, 4, 8, 16, 32];
 function allCards() {
   const out = [];
-  UNITS.forEach(u => u.vocab.forEach((v, i) => out.push({ id: u.id + "-" + i, pl: v[0], en: v[1], note: v[2] || "", unit: u.id })));
+  COURSE.forEach(u => u.vocab.forEach((v, i) => out.push({ id: u.id + "-" + i, pl: v[0], en: v[1], note: v[2] || "", unit: u.id })));
   for (const [id, c] of Object.entries(S.srs.custom || {})) out.push({ id, pl: c.pl, en: c.en, note: c.note || "", unit: c.unit ?? -1, custom: true });
   return out;
 }
@@ -1948,7 +1999,10 @@ function newCardsForToday() {
   const t0 = new Date(); t0.setHours(0, 0, 0, 0);
   const today = Object.values(S.srs.cards).filter(c => c.f >= t0.getTime()).length;
   const left = Math.max(0, (+settings().newPerDay || 10) - today);
-  return allCards().filter(c => c.unit === u.id && !S.srs.cards[c.id]).slice(0, left);
+  /* this unit's words first, then words added to units already finished */
+  const rank = { [u.id]: 0 };
+  COURSE.forEach(x => { if (x.id !== u.id && S.progress.mastered.includes(x.id)) rank[x.id] = 1 + POS[x.id]; });
+  return allCards().filter(c => c.unit in rank && !S.srs.cards[c.id]).sort((a, b) => rank[a.unit] - rank[b.unit]).slice(0, left);
 }
 function grade(card, g) {
   const t = TODAY();
@@ -2059,6 +2113,7 @@ function render() {
 const STEPS = [
   { id: "review", pl: "Powtórka", en: "Flashcard review", min: 6, desc: () => { const d = dueCards().length, n = newCardsForToday().length; return `${d} due · ${n} new words`; } },
   { id: "grammar", pl: "Gramatyka", en: "Grammar lesson", min: 7, desc: () => curUnit().grammar.title },
+  { id: "read", pl: "Czytanie", en: "Reading", min: 5, desc: () => (curUnit().read ? curUnit().read.title + " · " : "") + "a real-life text and a gap-fill" },
   { id: "mini", pl: "Szybki test", en: "Quick test", min: 4, desc: () => "6 questions on this unit" },
   { id: "dialogue", pl: "Dialog", en: "Reading dialogue", min: 5, desc: () => aiOn() ? "Written for you from the words you know" : "Scripted dialogue + questions" },
   { id: "listen", pl: "Słuchanie", en: "Listening", min: 4, desc: () => "Hear a sentence, type what you heard" },
@@ -2113,13 +2168,14 @@ function renderToday() {
     weeklyCard(),
     h("section", { class: "card stack" },
       h("div", { class: "unit-banner" },
-        h("div", { class: "stop-num" }, String(u.id + 1)),
+        h("div", { class: "stop-num" }, String(unitNo(u))),
         h("div", { style: "min-width:0" },
-          h("div", { class: "eyebrow" }, courseDone() ? "Core course complete · free practice" : `Unit ${u.id + 1} of ${UNITS.length}`),
+          h("div", { class: "eyebrow" }, courseDone() ? "Core course complete · free practice" : `Unit ${unitNo(u)} of ${COURSE.length} · ${levelOf(u)}`),
           h("h2", { class: "pl" }, u.pl),
           h("div", { class: "row small" }, h("span", { class: "muted" }, u.en), h("span", { class: "chip red" }, u.focus)))),
       h("div", { class: "meter", role: "progressbar", "aria-valuenow": done, "aria-valuemax": plan.length }, h("span", { style: `width:${(done / plan.length) * 100}%` })),
       h("p", { class: "small muted" }, "After this unit you can: ", CAN_DO[u.id].join("; ").replace(/^./, c => c.toLowerCase()), ".")),
+    catchUpCard(),
     h("section", { class: "card" },
       h("div", { class: "spread", style: "margin-bottom:6px" }, h("h3", null, "Today's plan"), lenSwitch),
       h("div", { class: "plan" }, plan.map((s, i) => row(s, i, true))),
@@ -2138,6 +2194,16 @@ function renderToday() {
   ));
 }
 
+function catchUpCard() {
+  const list = catchUpUnits();
+  if (!list.length || courseDone()) return null;
+  return h("section", { class: "card stack" },
+    h("div", { class: "spread" }, h("h3", null, "Nowe lekcje · new units to catch up on"), h("span", { class: "chip gold" }, String(list.length))),
+    h("p", { class: "small muted" }, "These units were added to the course before your current position, to match the official A1/A2 standard for adults. Your place in the course stays the same. Do them when you like: open one and pass its unit test to tick it off. Their words also join your flashcards once a unit is finished."),
+    h("div", { class: "row" }, list.slice(0, 6).map(x => h("button", { class: "chip-btn", onclick: () => openUnit(x.id) }, `${unitNo(x)} · `, h("span", { class: "pl" }, x.pl)))),
+    list.length > 6 ? h("button", { class: "btn ghost sm", onclick: () => setView("course") }, `See all ${list.length} on the course map`) : null);
+}
+
 /* ================================================================
    Session runner
    ================================================================ */
@@ -2152,18 +2218,18 @@ function startStep(id, opts = {}) {
   const d = todayRec();
   keyHandler = null; stopAudio();
   const plan = planSteps();
-  const dots = session.revisit ? h("span", { class: "chip" }, "Revisiting unit " + (opts.unit + 1)) : plan.some(x => x.id === id) ? h("div", { class: "steps-dots", "aria-hidden": "true" }, plan.map(x => h("i", { class: x.id === id ? "on" : d.steps[x.id] ? "done" : "" }))) : h("span", { class: "chip" }, "Extra practice");
+  const dots = session.revisit ? h("span", { class: "chip" }, "Revisiting unit " + unitNo(opts.unit)) : plan.some(x => x.id === id) ? h("div", { class: "steps-dots", "aria-hidden": "true" }, plan.map(x => h("i", { class: x.id === id ? "on" : d.steps[x.id] ? "done" : "" }))) : h("span", { class: "chip" }, "Extra practice");
   const body = h("div", { class: "stack-lg" });
   app.replaceChildren(h("div", null,
     h("div", { class: "session-head" },
-      session.revisit ? h("button", { class: "btn ghost sm", onclick: () => openUnit(opts.unit) }, "← Unit " + (opts.unit + 1)) : h("button", { class: "btn ghost sm", onclick: () => setView("today") }, "← Today"),
+      session.revisit ? h("button", { class: "btn ghost sm", onclick: () => openUnit(opts.unit) }, "← Unit " + unitNo(opts.unit)) : h("button", { class: "btn ghost sm", onclick: () => setView("today") }, "← Today"),
       dots),
     h("div", { class: "stack", style: "margin-bottom:18px" },
       h("span", { class: "eyebrow" }, session.revisit ? `${s.en} · ${UNITS[opts.unit].pl}` : s.en),
       h("h1", { class: "pl" }, s.pl)),
     body));
   window.scrollTo({ top: 0 });
-  const runners = { review: runReview, grammar: runGrammar, dialogue: runDialogue, convo: runConvo, writing: runWriting, quiz: runQuiz, drill: runDrill, mini: runMini, listen: runListen };
+  const runners = { review: runReview, grammar: runGrammar, dialogue: runDialogue, convo: runConvo, writing: runWriting, quiz: runQuiz, drill: runDrill, mini: runMini, listen: runListen, read: runRead };
   runners[id](body, opts);
 }
 function stepUnit() { return session && session.opts && session.opts.unit != null ? UNITS[session.opts.unit] : curUnit(); }
@@ -2174,7 +2240,7 @@ function finishStep(id, container, msg) {
       h("h2", null, "Gotowe! ", h("span", { class: "muted", style: "font-weight:500" }, "Done.")),
       msg ? h("p", null, msg) : null,
       h("div", { class: "row" },
-        h("button", { class: "btn primary", onclick: () => openUnit(uid) }, "Back to unit " + (uid + 1)),
+        h("button", { class: "btn primary", onclick: () => openUnit(uid) }, "Back to unit " + unitNo(uid)),
         h("button", { class: "btn ghost", onclick: () => startStep(id, { unit: uid }) }, "Do it again"))));
     container.lastChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
     return;
@@ -2396,7 +2462,7 @@ function runGrammar(body) {
   const practice = h("div");
   body.append(...[
     h("section", { class: "card stack lesson" },
-      h("span", { class: "eyebrow" }, `Unit ${u.id + 1} · ${u.focus}`),
+      h("span", { class: "eyebrow" }, `Unit ${unitNo(u)} · ${u.focus}`),
       h("h2", null, g.title),
       h("div", { html: g.html }),
       table,
@@ -2451,7 +2517,7 @@ function runDialogue(body) {
 ${learnerContext()}
 ${storyPrompt(u)}
 Requirements:
-- 8 to 10 lines between two named Polish speakers, natural everyday Polish, at the learner's level (${u.id >= 12 ? "A2" : "A1"}).
+- 8 to 10 lines between two named Polish speakers, natural everyday Polish, at the learner's level (${levelOf(u)}).
 - Mostly use words the learner has studied plus the current grammar focus; bring in the weak spots where natural.
 - Introduce at most 4 new words, and list them in newWords.
 - Then 3 comprehension questions in English, each with 4 answer options in English.
@@ -2679,20 +2745,39 @@ function similarity(a, b) {
 
 /* ---------- Step 5: Writing ---------- */
 function runWriting(body) {
-  const u = stepUnit();
-  const ta = h("textarea", { id: "writing-box", placeholder: "Pisz tutaj… (write here)", "aria-label": "Your writing" });
-  try { const d = localStorage.getItem("pc.draft." + u.id); if (d) ta.value = d; } catch (e) {}
-  ta.addEventListener("input", () => { try { localStorage.setItem("pc.draft." + u.id, ta.value); } catch (e) {} });
+  const u = stepUnit(), form = u.writing.form;
+  const dkey = "pc.draft." + u.id;
+  let draft = ""; try { draft = localStorage.getItem(dkey) || ""; } catch (e) {}
+  let ta = null, inputs = [], lastInput = null, field;
+  if (form) {
+    /* a form to fill in: one labelled box per field, sent on as "Label: value" lines */
+    let saved = []; try { saved = JSON.parse(draft || "[]"); } catch (e) {}
+    const save = () => { try { localStorage.setItem(dkey, JSON.stringify(inputs.map(i => i.value))); } catch (e) {} };
+    field = h("div", { class: "form-grid" }, form.map((label, i) => {
+      const inp = h("input", { type: "text", id: "wf-" + i, autocomplete: "off", spellcheck: "false" });
+      inp.value = typeof saved[i] === "string" ? saved[i] : "";
+      inp.addEventListener("input", save); inp.addEventListener("focus", () => { lastInput = inp; });
+      inputs.push(inp);
+      return h("label", { class: "form-row" }, h("span", { class: "small muted" }, label), inp);
+    }));
+    lastInput = inputs[0];
+  } else {
+    ta = field = h("textarea", { id: "writing-box", placeholder: "Pisz tutaj… (write here)", "aria-label": "Your writing" });
+    ta.value = draft;
+    ta.addEventListener("input", () => { try { localStorage.setItem(dkey, ta.value); } catch (e) {} });
+  }
+  const getText = () => form ? inputs.map((inp, i) => inp.value.trim() ? `${form[i]}: ${inp.value.trim()}` : "").filter(Boolean).join("\n") : ta.value.trim();
+  const modelEl = () => form ? h("dl", { class: "read-form" }, u.writing.model.split(" · ").map(l => { const i = l.indexOf(":"); return [h("dt", null, l.slice(0, i)), h("dd", { class: "pl" }, l.slice(i + 1).trim())]; }).flat()) : h("p", { class: "pl" }, u.writing.model);
   const out = h("div", { class: "stack" });
   const btn = h("button", { class: "btn primary", onclick: check }, aiOn() ? "Check my writing" : "Compare with a model answer");
   body.append(h("section", { class: "card stack" },
-    h("span", { class: "eyebrow" }, "Task"),
+    h("span", { class: "eyebrow" }, form ? "Task · fill in the form" : "Task"),
     h("p", { style: "font-size:1.1rem;font-weight:700" }, u.writing.prompt),
-    h("p", { class: "small muted" }, "Use words from this unit and earlier ones. Keep it simple: short correct sentences are better than long ones."),
-    ta, keypad(ta), h("div", { class: "row" }, btn)), out);
+    h("p", { class: "small muted" }, form ? "Write the details in Polish, the way you would on a real form: dates as 12.05.1995, citizenship as an adjective (polskie, serbskie)." : "Use words from this unit and earlier ones. Keep it simple: short correct sentences are better than long ones."),
+    field, keypad(form ? () => lastInput : ta), h("div", { class: "row" }, btn)), out);
   async function check() {
-    const text = ta.value.trim();
-    if (!text) { ta.focus(); return; }
+    const text = getText();
+    if (!text) { (ta || inputs[0]).focus(); return; }
     if (!aiOn()) {
       const queue = IS_APP || !!sample;
       if (queue) {
@@ -2700,7 +2785,7 @@ function runWriting(body) {
         if (!W.some(w => w.u === u.id && w.text === text)) W.push({ id: rid(), u: u.id, text, at: Date.now(), d: localKey() });
         persist("progress");
       }
-      out.replaceChildren(h("div", { class: "card stack" }, h("h3", null, "Model answer"), h("p", { class: "pl" }, u.writing.model),
+      out.replaceChildren(h("div", { class: "card stack" }, h("h3", null, "Model answer"), modelEl(),
         h("p", { class: "small muted" }, "Compare it with yours. Do your endings match the patterns from the grammar lesson?"),
         queue ? h("p", { class: "small" }, "✓ Your text is saved. " + (IS_APP ? "Sync with claude.ai and it will be marked there, and the feedback comes back to this app." : "It will be marked when you're back online (see the Today page).")) : null));
       addXP(15); finishStep("writing", body); return;
@@ -2716,18 +2801,92 @@ function runWriting(body) {
       finishStep("writing", body);
     } catch (e) {
       out.replaceChildren(h("div", { class: "notice" }, aiErrorText(e) || "Stopped."));
-      if (!sample) { out.append(h("div", { class: "card stack" }, h("h3", null, "Model answer"), h("p", { class: "pl" }, u.writing.model))); addXP(15); finishStep("writing", body); }
+      if (!sample) { out.append(h("div", { class: "card stack" }, h("h3", null, "Model answer"), modelEl())); addXP(15); finishStep("writing", body); }
     }
     btn.disabled = false;
+  }
+}
+
+/* ---------- Reading: a real-life text, questions, then a gap-fill ---------- */
+const READ_KIND = { form: "Formularz · a form", sms: "Wiadomość · a message", email: "E-mail", notice: "Ogłoszenie · a notice", ad: "Ogłoszenie · an advert", timetable: "Rozkład · a timetable", menu: "Cennik · a price list", sign: "Napisy · signs" };
+function readText(r) {
+  let inner;
+  if (r.kind === "timetable" || r.kind === "menu") {
+    const rows = r.body.map(l => l.split(" | "));
+    const head = r.kind === "timetable" ? rows.shift() : null;
+    inner = h("div", { class: "tbl-wrap" }, h("table", null,
+      head ? h("thead", null, h("tr", null, head.map(c => h("th", null, c)))) : null,
+      h("tbody", null, rows.map(cells => h("tr", null, cells.map(c => h("td", { class: "pl" }, c)))))));
+  } else if (r.kind === "form") {
+    inner = h("dl", { class: "read-form" }, r.body.map(l => { const i = l.indexOf(":"); return i > 0 ? [h("dt", null, l.slice(0, i)), h("dd", { class: "pl" }, l.slice(i + 1).trim())] : [h("dd", { class: "pl" }, l)]; }).flat());
+  } else inner = h("div", { class: "read-lines pl" }, r.body.map(l => h("p", null, l)));
+  return h("div", { class: "read-doc rd-" + r.kind }, h("div", { class: "read-title pl" }, r.title), inner);
+}
+function clozeParts(text) {
+  const out = [], re = /\{\{([^}]+)\}\}/g; let last = 0, m;
+  while ((m = re.exec(text))) { out.push(text.slice(last, m.index), { o: m[1].split("|") }); last = re.lastIndex; }
+  out.push(text.slice(last));
+  return out;
+}
+function runRead(body) {
+  const u = stepUnit(), r = u.read;
+  if (!r) { finishStep("read", body); return; }
+  const qhost = h("div"), clozeHost = h("div");
+  body.append(
+    h("p", { class: "muted" }, "A text like the ones you'll meet in Poland. You don't need every word: look for the information the questions ask about."),
+    h("section", { class: "card stack" }, h("span", { class: "eyebrow" }, READ_KIND[r.kind] || "Tekst"), readText(r)),
+    h("h3", null, `Questions (${r.q.length})`), qhost, clozeHost);
+  const items = r.q.map(q => ({ t: "choice", q: q.q, o: q.o, a: q.a, _label: "reading" }));
+  runSet(qhost, items).then(score => {
+    addXP(score * 5);
+    qhost.append(h("p", { class: "small muted" }, `${score} of ${items.length} questions right.`));
+    if (u.cloze) runCloze(body, clozeHost, u, `Reading: ${score} of ${items.length}.`);
+    else finishStep("read", body, `Reading: ${score} of ${items.length}.`);
+  });
+}
+function runCloze(body, host, u, before) {
+  const gaps = [];
+  const para = h("p", { class: "cloze pl" }, clozeParts(u.cloze).map(p => {
+    if (typeof p === "string") return p;
+    const sel = h("select", { class: "gap", "aria-label": "Gap " + (gaps.length + 1) }, h("option", { value: "" }, "…"), shuffle(p.o).map(o => h("option", { value: o }, o)));
+    gaps.push({ sel, a: p.o[0] });
+    return sel;
+  }));
+  const fb = h("div");
+  const btn = h("button", { class: "btn primary", onclick: check }, "Check");
+  host.append(h("section", { class: "card stack" },
+    h("span", { class: "eyebrow" }, "Uzupełnij tekst · gap-fill"),
+    h("p", { class: "small muted" }, "Choose the right form for each gap, like the grammar part of the exam."),
+    para, h("div", { class: "row" }, btn), fb));
+  setTimeout(() => { gaps[0] && gaps[0].sel.scrollIntoView({ behavior: "smooth", block: "center" }); }, 50);
+  function check() {
+    if (gaps.some(g => !g.sel.value)) { fb.replaceChildren(h("p", { class: "small muted" }, "Choose a word for every gap first.")); return; }
+    btn.disabled = true;
+    let ok = 0;
+    gaps.forEach(g => {
+      const right = g.sel.value === g.a;
+      g.sel.disabled = true; g.sel.classList.add(right ? "right" : "wrong");
+      if (right) ok++; else g.sel.after(h("b", { class: "gap-fix" }, " → " + g.a));
+      hit(u.tag, right);
+    });
+    addXP(ok * 4);
+    const all = ok === gaps.length;
+    const full = clozeParts(u.cloze).map(p => typeof p === "string" ? p : p.o[0]).join("");
+    fb.replaceChildren(h("div", { class: "feedback " + (all ? "ok" : ok * 2 >= gaps.length ? "almost" : "no") },
+      h("strong", null, `${ok} / ${gaps.length} gaps right.`),
+      all ? null : h("div", { class: "small" }, "The right forms are shown next to your answers."),
+      h("div", { class: "row", style: "margin-top:6px" }, sayBtn(full), all ? null : h("button", { class: "btn ghost sm", onclick: () => openRule(u) }, "▦ Show the rule"))));
+    finishStep("read", body, `${before} Gap-fill: ${ok} of ${gaps.length}.`);
   }
 }
 
 /* ---------- Step 6: Daily test ---------- */
 function buildQuiz(u) {
   const items = tagItems(u, 6).concat(vocabItems(u, 4));
-  const earlier = UNITS.filter(x => x.id < u.id);
+  const learned = x => POS[x.id] < POS[u.id] && S.progress.mastered.includes(x.id);
+  const earlier = COURSE.filter(learned);
   if (earlier.length) {
-    const weakEarlier = weakList().map(([t]) => unitOfTag(t)).filter(x => x && x.id < u.id && !String(x.tag).startsWith("v"));
+    const weakEarlier = weakList().map(([t]) => unitOfTag(t)).filter(x => x && learned(x) && !String(x.tag).startsWith("v"));
     const srcs = weakEarlier.length ? weakEarlier : earlier;
     for (let i = 0; i < 2; i++) { const src = srcs[Math.floor(Math.random() * srcs.length)]; items.push(Object.assign(tagItems(src, 1)[0], { _label: "review · " + src.focus.split(" · ")[1] })); }
   } else items.push(...vocabItems(u, 2));
@@ -2740,7 +2899,7 @@ function runQuiz(body, opts = {}) {
   const items = R.items;
   const need = Math.ceil(items.length * 0.8);
   const practice = S.progress.mastered.includes(u.id);
-  body.append(h("p", { class: "muted" }, practice ? `A practice retake of unit ${u.id + 1}: ${items.length} questions on its grammar and words. Your best score is kept.` : `${items.length} questions covering this unit's grammar and words, plus a review of earlier units. Get ${need} or more right to finish the unit.`));
+  body.append(h("p", { class: "muted" }, practice ? `A practice retake of unit ${unitNo(u)}: ${items.length} questions on its grammar and words. Your best score is kept.` : `${items.length} questions covering this unit's grammar and words, plus a review of earlier units. Get ${need} or more right to finish the unit.`));
   const host = h("div");
   body.append(resumeNote(R) || "", host);
   runSet(host, items, { key: qkey, start: R.start, score: R.score }).then(score => {
@@ -2751,14 +2910,14 @@ function runQuiz(body, opts = {}) {
     P.quizzes.push({ d: localKey(), u: u.id, s: score, t: items.length, at: Date.now() });
     let msg;
     if (pass && !P.mastered.includes(u.id)) {
-      if (opts.testOut) newCardsForToday().forEach(c => { S.srs.cards[c.id] = { b: 2, due: TODAY() + 2, l: 0, n: 0, t: Date.now(), f: Date.now() }; });
+      if (opts.testOut) allCards().filter(c => c.unit === u.id && !S.srs.cards[c.id]).forEach(c => { S.srs.cards[c.id] = { b: 2, due: TODAY() + 2, l: 0, n: 0, t: Date.now(), f: Date.now() }; });
       P.mastered.push(u.id);
       P.masteredAt = P.masteredAt || {}; P.masteredAt[u.id] = localKey();
       if (u.id === P.unit) advanceUnit();
       persist("srs");
       addXP(score * 5 + 50);
       const nu = curUnit();
-      msg = courseDone() ? `You've finished all ${UNITS.length} units. Keep up the daily reviews and conversations to stay sharp.` : `Unit complete! Next up: Unit ${nu.id + 1}, „${nu.pl}” (${nu.en}). Your next session starts there.`;
+      msg = courseDone() ? `You've finished all ${UNITS.length} units. Keep up the daily reviews and conversations to stay sharp.` : `Unit complete! Next up: Unit ${unitNo(nu)}, „${nu.pl}” (${nu.en}). Your next session starts there.`;
     } else {
       addXP(score * 5);
       msg = pass ? "Passed again. Good revision." : practice ? `${score} of ${items.length}. Look at the grammar tables for this unit and try again another day.` : `You need ${need} to pass. Tomorrow's session stays on this unit and focuses on the questions you missed.`;
@@ -2775,7 +2934,7 @@ function runQuiz(body, opts = {}) {
     if (!session.revisit && pass && !courseDone() && P.unit !== u.id) {
       const d = todayRec();
       // let the learner start the next unit today if they want
-      body.append(h("button", { class: "btn", onclick: () => { ["grammar", "dialogue", "convo", "writing", "quiz"].forEach(k => delete d.steps[k]); persist("progress"); setView("today"); } }, "Start the next unit today"));
+      body.append(h("button", { class: "btn", onclick: () => { ["grammar", "read", "dialogue", "listen", "convo", "writing", "quiz"].forEach(k => delete d.steps[k]); persist("progress"); setView("today"); } }, "Start the next unit today"));
     }
   });
 }
@@ -2829,7 +2988,7 @@ function renderCards() {
   const count = h("span", { class: "small muted" });
   const letters = h("div", { class: "row letter-bar", role: "group", "aria-label": "Filter by first letter" });
   const sortBar = h("div", { class: "seg", role: "group", "aria-label": "Sort words" });
-  const unitRank = c => c.unit >= 0 ? c.unit : UNITS.length;
+  const unitRank = c => c.unit >= 0 && c.unit in POS ? POS[c.unit] : COURSE.length;
   const drawList = () => {
     const s = strip(norm(q.value));
     let rows = intro.filter(c => !s || strip(norm(c.pl)).includes(s) || norm(c.en).includes(s));
@@ -2848,7 +3007,7 @@ function renderCards() {
       groupOf = c => firstLetter(c.pl);
     } else {
       rows.sort((a, b) => unitRank(a) - unitRank(b));  /* stable: keeps lesson order, added words after */
-      groupOf = c => c.unit >= 0 && UNITS[c.unit] ? `Unit ${c.unit + 1} · ${UNITS[c.unit].pl}` : "Other words you added";
+      groupOf = c => c.unit >= 0 && UNITS[c.unit] ? `Unit ${unitNo(c.unit)} · ${UNITS[c.unit].pl}` : "Other words you added";
     }
     count.textContent = rows.length === intro.length ? "" : `Showing ${rows.length} of ${intro.length}`;
     const out = []; let last = null;
@@ -2893,26 +3052,29 @@ function startFree(opts) {
 function renderCourse() {
   const P = S.progress;
   const map = h("div", { class: "line-map" });
-  UNITS.forEach(u => {
+  const catchUp = new Set(catchUpUnits().map(u => u.id));
+  COURSE.forEach((u, i) => {
     const st = P.mastered.includes(u.id) ? "mastered" : u.id === P.unit ? "current" : "";
     const open = reached(u.id);
     const best = bestScore(u.id);
     map.append(h("div", { class: "stop " + st },
-      h("div", { class: "dot" }, st === "mastered" ? "✓" : String(u.id + 1)),
+      h("div", { class: "dot" }, st === "mastered" ? "✓" : String(i + 1)),
       h("div", { class: "name" },
-        h("div", { class: "pl" }, u.pl),
+        h("div", { class: "pl" }, u.pl, catchUp.has(u.id) ? h("span", { class: "chip gold", style: "margin-left:6px" }, "new") : null),
         h("div", { class: "small muted" }, u.en, " · ", u.focus.split(" · ")[1] || u.focus, best >= 0 ? ` · best ${best}%` : "")),
-      open ? h("button", { class: "btn sm" + (st === "current" ? " primary" : ""), onclick: () => openUnit(u.id), "aria-label": "Open unit " + (u.id + 1) }, st === "mastered" ? "Revisit" : "Open")
+      open ? h("button", { class: "btn sm" + (st === "current" ? " primary" : ""), onclick: () => openUnit(u.id), "aria-label": "Open unit " + (i + 1) }, st === "mastered" ? "Revisit" : "Open")
         : h("span", { class: "small muted" }, "locked")));
-    if (u.id === 11) map.append(h("div", { class: "stage-mark" }, h("span", { class: "chip green" }, "A1 complete"), h("span", { class: "small muted" }, "Next: A2")));
+    if (i === A1_COUNT - 1) map.append(h("div", { class: "stage-mark" }, h("span", { class: "chip green" }, "A1 complete"), h("span", { class: "small muted" }, "Next: A2")));
   });
+  const n = COURSE.length, stops = n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "przystanki" : "przystanków";
   app.replaceChildren(h("div", { class: "stack-lg" },
-    h("div", { class: "stack" }, h("span", { class: "eyebrow" }, `Linia A1–A2 · ${UNITS.length} przystanków (${UNITS.length} stops)`), h("h1", { class: "pl" }, "Kurs")),
-    h("p", { class: "muted" }, "Each stop is one unit. You move on when you score 80% on the daily test. Units 1–12 cover CEFR A1, and units 13–21 take you through the core grammar of A2. Open any unit you've reached to redo its lesson, flashcards, dialogue, conversation, writing or test."),
+    h("div", { class: "stack" }, h("span", { class: "eyebrow" }, `Linia A1–A2 · ${n} ${stops} (${n} stops)`), h("h1", { class: "pl" }, "Kurs")),
+    h("p", { class: "muted" }, `Each stop is one unit. You move on when you score 80% on the daily test. Units 1–${A1_COUNT} cover A1 and units ${A1_COUNT + 1}–${n} cover A2, following the official Polish standard for adult learners (the state certificate exams). Open any unit you've reached to redo its lesson, flashcards, reading, dialogue, conversation, writing or test.`),
+    catchUp.size ? h("p", { class: "small muted" }, `Stops marked „new” were added before your current position. They're optional catch-up: your place in the course doesn't change.`) : null,
     h("section", { class: "card" }, map)
   ));
 }
-function reached(id) { const P = S.progress; return P.mastered.includes(id) || id <= P.unit; }
+function reached(id) { const P = S.progress; return P.mastered.includes(id) || POS[id] <= POS[P.unit]; }
 function bestScore(id) { return S.progress.quizzes.filter(q => q.u === id).reduce((m, q) => Math.max(m, Math.round(q.s / q.t * 100)), -1); }
 
 /* ---------- Tables: shared rendering ---------- */
@@ -2952,7 +3114,7 @@ function openSheet(title, content) {
 function openRule(u) {
   const refs = relatedRefs(u.id);
   openSheet(u.grammar.title, h("div", { class: "stack" },
-    h("span", { class: "eyebrow" }, `Unit ${u.id + 1} · ${u.focus}`),
+    h("span", { class: "eyebrow" }, `Unit ${unitNo(u)} · ${u.focus}`),
     h("div", { class: "lesson", html: u.grammar.html }),
     tableEl(u.grammar.table),
     refs.length ? h("div", { class: "stack" }, h("span", { class: "eyebrow" }, "More tables"),
@@ -2963,7 +3125,8 @@ function openRule(u) {
 let unitPage = 0;
 function openUnit(uid) { unitPage = uid; setView("unit"); }
 function renderUnitPage() {
-  const u = UNITS[unitPage], P = S.progress;
+  const u = UNITS[unitPage] || curUnit(), P = S.progress;
+  const prevU = COURSE[POS[u.id] - 1], nextU = COURSE[POS[u.id] + 1];
   const mastered = P.mastered.includes(u.id);
   const best = bestScore(u.id);
   const cards = allCards().filter(c => c.unit === u.id);
@@ -2971,6 +3134,7 @@ function renderUnitPage() {
   const acts = [
     ["grammar", "Gramatyka", "Lesson & practice", u.grammar.title],
     ["review", "Fiszki", "Flashcards", `${cards.length} words · ${learned} in your deck`],
+    ["read", "Czytanie", "Reading", u.read ? `${u.read.title} + a gap-fill` : "A text and a gap-fill"],
     ["dialogue", "Dialog", "Reading dialogue", aiOn() ? "A new dialogue for this topic" : "The unit's scripted dialogue"],
     ["convo", "Rozmowa", "Conversation", aiOn() ? `Roleplay with ${u.partner}` : "Recall the dialogue"],
     ["writing", "Pisanie", "Writing", u.writing.prompt],
@@ -2979,12 +3143,12 @@ function renderUnitPage() {
   app.replaceChildren(h("div", { class: "stack-lg" },
     h("div", { class: "session-head" }, h("button", { class: "btn ghost sm", onclick: () => setView("course") }, "← Course"),
       h("div", { class: "row" },
-        unitPage > 0 && reached(unitPage - 1) ? h("button", { class: "btn ghost sm", onclick: () => openUnit(unitPage - 1), "aria-label": "Previous unit" }, "‹") : null,
-        unitPage < UNITS.length - 1 && reached(unitPage + 1) ? h("button", { class: "btn ghost sm", onclick: () => openUnit(unitPage + 1), "aria-label": "Next unit" }, "›") : null)),
+        prevU && reached(prevU.id) ? h("button", { class: "btn ghost sm", onclick: () => openUnit(prevU.id), "aria-label": "Previous unit" }, "‹") : null,
+        nextU && reached(nextU.id) ? h("button", { class: "btn ghost sm", onclick: () => openUnit(nextU.id), "aria-label": "Next unit" }, "›") : null)),
     h("section", { class: "unit-banner" },
-      h("div", { class: "stop-num" + (mastered ? " done" : "") }, mastered ? "✓" : String(u.id + 1)),
+      h("div", { class: "stop-num" + (mastered ? " done" : "") }, mastered ? "✓" : String(unitNo(u))),
       h("div", { style: "min-width:0" },
-        h("div", { class: "eyebrow" }, `Unit ${u.id + 1} of ${UNITS.length} · ${mastered ? "finished" : "in progress"}`),
+        h("div", { class: "eyebrow" }, `Unit ${unitNo(u)} of ${COURSE.length} · ${levelOf(u)} · ${mastered ? "finished" : catchUpUnits().includes(u) ? "new · catch up" : "in progress"}`),
         h("h1", { class: "pl" }, u.pl),
         h("div", { class: "row small" }, h("span", { class: "muted" }, u.en), h("span", { class: "chip red" }, u.focus)))),
     h("section", { class: "card stack" }, h("span", { class: "eyebrow" }, mastered ? "You can now" : "After this unit you can"), h("ul", { class: "cando" }, CAN_DO[u.id].map(t => h("li", null, t)))),
@@ -3020,12 +3184,12 @@ function renderTables() {
     const shown = REF.filter((r, i) => !s || secText[i].includes(s));
     index.replaceChildren(...shown.map(r => h("button", { class: "chip-btn", onclick: () => { const el = document.getElementById("ref-" + r.id); el && el.scrollIntoView({ behavior: "smooth", block: "start" }); } }, r.en)));
     list.replaceChildren(...(shown.length ? shown.map(r => {
-      const first = Math.min(...r.units);
+      const first = Math.min(...r.units.map(unitNo));
       const known = r.units.some(reached);
       return h("section", { class: "card stack", id: "ref-" + r.id },
         h("div", { class: "spread" },
           h("div", { style: "min-width:0" }, h("h2", { class: "pl" }, r.pl), h("div", { class: "muted small" }, r.en)),
-          h("span", { class: "chip " + (known ? "green" : "") }, known ? `from unit ${first + 1}` : `coming in unit ${first + 1}`)),
+          h("span", { class: "chip " + (known ? "green" : "") }, known ? `from unit ${first}` : `coming in unit ${first}`)),
         refBody(r));
     }) : [h("p", { class: "muted" }, "Nothing matches that search. Try a Polish form like idę, or a word like genitive.")]));
   }
@@ -3091,7 +3255,7 @@ function syncPanel() {
       h("p", { class: "small muted" }, "This app works fully offline. When you're online, sync to send your progress to claude.ai, get feedback on writing you did offline, and bring back a new offline pack."),
       h("div", { class: "tiles" },
         stat(ago(info.sent), "last sent", "to claude.ai"), stat(ago(info.got), "last received", "from claude.ai"),
-        stat(String(packLeft(u.id)), "pack dialogues", p ? `for unit ${u.id + 1} · made ${ago(p.made)}` : "no pack yet"),
+        stat(String(packLeft(u.id)), "pack dialogues", p ? `for unit ${unitNo(u)} · made ${ago(p.made)}` : "no pack yet"),
         stat(String(waiting), "texts to mark", waiting ? "sync to get feedback" : "all marked")),
       h("div", { class: "row" }, go), out, importBox(() => render()));
   } else {
@@ -3135,13 +3299,13 @@ function syncPanel() {
 
 /* ---------- writing: shared grading + offline queue ---------- */
 async function gradeWriting(u, text) {
-  const tags = UNITS.slice(0, Math.max(S.progress.unit, u.id) + 1).map(x => `${x.tag} = ${x.tagLabel}`).join("; ");
+  const tags = COURSE.filter(x => reached(x.id) || x.id === u.id).map(x => `${x.tag} = ${x.tagLabel}`).join("; ");
   const r = await sample.json(`You are a kind but precise Polish teacher marking a short piece of writing.
 ${learnerContext(u)}
 Task: ${u.writing.prompt}
 Learner's text:
 """${String(text).slice(0, 2000)}"""
-Mark it for a ${u.id >= 12 ? "A2" : "A1"} learner. Reply with only JSON:
+Mark it for a ${levelOf(u)} learner. Reply with only JSON:
 {"score": integer 0-10, "corrected": "the full text with mistakes fixed (keep their meaning)", "praise": "one encouraging English sentence about what they did well", "mistakes": [{"wrong":"...","right":"...","why":"short English explanation"}], "tags": ["grammar tags the mistakes belong to, choose only from: ${tags}"], "tip": "one short English tip for next time"}`, { modelTier: "default", cache: false });
   return {
     score: Math.max(0, Math.min(10, parseInt(r && r.score, 10) || 0)),
@@ -3189,7 +3353,7 @@ function writingsCard() {
     }
     freshNow.forEach(w => {
       const u = UNITS[w.u] || curUnit();
-      box.append(h("details", { class: "ref" }, h("summary", null, `Unit ${u.id + 1} · ${w.d} · ${w.fb.score}/10`),
+      box.append(h("details", { class: "ref" }, h("summary", null, `Unit ${unitNo(u)} · ${w.d} · ${w.fb.score}/10`),
         feedbackCard(u, w.fb, w.text),
         h("button", { class: "btn ghost sm", style: "margin-block:10px", onclick: () => { w.seen = true; persist("progress"); draw(); } }, "Got it, hide this")));
     });
@@ -3331,7 +3495,7 @@ function weeklyCard() {
       h("button", { class: "btn ghost sm", onclick: () => { P.weekSeen = wk; persist("progress"); render(); } }, "Got it")),
     h("div", { class: "tiles" }, stat(`${active} / 7`, "days studied", active >= 5 ? "Świetnie!" : active >= 3 ? "Dobrze!" : "Every day counts"),
       stat(String(xp), "XP earned", ""), stat(String(words), "new words", ""), stat(best >= 0 ? best + "%" : "–", "best test", tests.length ? `${tests.length} test${tests.length === 1 ? "" : "s"}` : "no tests")),
-    units.length ? h("p", { class: "small" }, "Finished: ", units.map(u => `unit ${u.id + 1} (${u.en})`).join(", "), ".") : null,
+    units.length ? h("p", { class: "small" }, "Finished: ", units.map(u => `unit ${unitNo(u)} (${u.en})`).join(", "), ".") : null,
     earned.length ? h("p", { class: "small" }, "New milestones: ", earned.map(m => m.en).join(", "), ".") : null);
 }
 
@@ -3339,8 +3503,8 @@ function weeklyCard() {
    WORD OF THE DAY & CULTURE NOTE
    ================================================================ */
 function wordOfDay() {
-  const P = S.progress, max = Math.min(UNITS.length - 1, P.unit + 1);
-  const pool = allCards().filter(c => c.unit >= 0 && c.unit <= max && !/…/.test(c.pl));
+  const P = S.progress, max = POS[P.unit] + 1;
+  const pool = allCards().filter(c => c.unit >= 0 && POS[c.unit] <= max && !/…/.test(c.pl));
   return pool.length ? pool[(TODAY() * 7919) % pool.length] : null;
 }
 function dailyCards() {
@@ -3351,7 +3515,7 @@ function dailyCards() {
     w ? h("section", { class: "card stack" }, h("span", { class: "eyebrow" }, "Słowo dnia · word of the day"),
       h("div", { class: "row", style: "flex-wrap:nowrap" }, h("div", { class: "pl", style: "font-size:1.5rem;min-width:0;overflow-wrap:anywhere" }, w.pl), sayBtn(w.pl)),
       h("div", null, w.en, w.note ? h("span", { class: "muted small" }, " · " + w.note) : null),
-      h("div", { class: "row small muted" }, `Unit ${w.unit + 1}`, known ? h("span", { class: "chip green" }, "in your flashcards") : add)) : null,
+      h("div", { class: "row small muted" }, `Unit ${unitNo(w.unit)}`, known ? h("span", { class: "chip green" }, "in your flashcards") : add)) : null,
     h("section", { class: "card stack" }, h("span", { class: "eyebrow" }, "Ciekawostka · culture note"),
       h("h3", null, note.t),
       h("p", { class: "small" }, note.text),
@@ -3404,7 +3568,7 @@ function runMini(body) {
   const u = stepUnit(), key = rkey("mini", u);
   const R = resumeItems(key, () => shuffle(tagItems(u, 4).concat(vocabItems(u, 2))));
   const host = h("div");
-  body.append(h("p", { class: "muted" }, `A 6-question check on unit ${u.id + 1}. It doesn't count towards finishing the unit (the daily test does).`), resumeNote(R), host);
+  body.append(h("p", { class: "muted" }, `A 6-question check on unit ${unitNo(u)}. It doesn't count towards finishing the unit (the daily test does).`), resumeNote(R), host);
   runSet(host, R.items, { key, start: R.start, score: R.score }).then(score => {
     addXP(score * 5);
     finishStep("mini", body, `${score} of ${R.items.length} right.`);
@@ -3415,7 +3579,7 @@ function listenPool(u) {
   const add = (pl, en) => { if (pl && pl.split(" ").length >= 2 && pl.length <= 70 && canSpeak(pl)) pool.push({ pl, en }); };
   u.dialogue.forEach(([, pl, en]) => add(pl, en));
   u.quiz.forEach(q => { const s = fullSentence(q); if (s && (q.t !== "choice" || /___/.test(q.q))) add(s, q.en || ""); });
-  UNITS.filter(x => x.id < u.id && reached(x.id)).forEach(x => x.dialogue.forEach(([, pl, en]) => add(pl, en)));
+  COURSE.filter(x => POS[x.id] < POS[u.id] && S.progress.mastered.includes(x.id)).forEach(x => x.dialogue.forEach(([, pl, en]) => add(pl, en)));
   return pool;
 }
 function runListen(body) {
@@ -3496,7 +3660,7 @@ function canDoPanel() {
   return h("section", { class: "card stack" },
     h("div", { class: "spread" }, h("h3", null, "Co już umiesz · what you can do now"), h("span", { class: "chip green" }, `${done.length} / ${UNITS.length} units`)),
     done.length ? h("ul", { class: "cando" }, done.flatMap(u => CAN_DO[u.id].map(t => h("li", null, t)))) : h("p", { class: "small muted" }, "Finish your first unit and the things you can now do in Polish will be listed here."),
-    !courseDone() ? h("p", { class: "small muted" }, `Next, in unit ${curUnit().id + 1}: `, CAN_DO[curUnit().id].join("; "), ".") : null);
+    !courseDone() ? h("p", { class: "small muted" }, `Next, in unit ${unitNo(curUnit())}: `, CAN_DO[curUnit().id].join("; "), ".") : null);
 }
 function milestonesPanel() {
   const P = S.progress, got = P.milestones || {};
@@ -3520,7 +3684,7 @@ function renderProgress() {
   const qs = P.quizzes.slice(-14);
   const bars = h("div", { class: "bars", role: "img", "aria-label": "Daily test scores" });
   bars.append(h("div", { class: "pass-line", style: "bottom:80%" }));
-  qs.forEach(q => { const pct = Math.round(q.s / q.t * 100); bars.append(h("div", { class: "b" + (pct >= 80 ? " pass" : ""), style: `height:${Math.max(pct, 3)}%`, title: `${q.d} · Unit ${q.u + 1} · ${q.s}/${q.t}` }, h("span", null, pct + ""))); });
+  qs.forEach(q => { const pct = Math.round(q.s / q.t * 100); bars.append(h("div", { class: "b" + (pct >= 80 ? " pass" : ""), style: `height:${Math.max(pct, 3)}%`, title: `${q.d} · Unit ${unitNo(q.u)} · ${q.s}/${q.t}` }, h("span", null, pct + ""))); });
   const heat = h("div", { class: "heat", role: "img", "aria-label": "Study days in the last 4 weeks" });
   const now = new Date();
   const start = new Date(now); start.setDate(now.getDate() - 27);

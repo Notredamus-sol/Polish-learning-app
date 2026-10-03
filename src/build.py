@@ -3,10 +3,13 @@
    - docs/              -> the installable offline app, served by GitHub Pages
    Run from the repository root:  python3 src/build.py
 """
-import sys, hashlib, json, os
+import sys, hashlib, json, os, re
 APP_URL = "https://notredamus-sol.github.io/Polish-learning-app/"
 app_url = sys.argv[1] if len(sys.argv) > 1 else APP_URL
-src = open("src/polski.html", encoding="utf-8").read().replace("__APP_URL__", app_url)
+src = open("src/polski.html", encoding="utf-8").read()
+# /*@include content/x.js*/ pulls a content file into the page (both versions are single files)
+src = re.sub(r"/\*@include ([\w./-]+)\*/", lambda m: open(os.path.join("src", m.group(1)), encoding="utf-8").read().strip(), src)
+src = src.replace("__APP_URL__", app_url)
 os.makedirs("dist", exist_ok=True); os.makedirs("docs", exist_ok=True)
 open("dist/artifact.html", "w", encoding="utf-8").write(src)
 

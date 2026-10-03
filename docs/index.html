@@ -173,6 +173,27 @@ th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--lin
 th { font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 td.pl { color: var(--accent); }
 
+/* Reading texts, gap-fill, forms */
+.read-doc { border: 1px solid var(--line); background: var(--surface-2); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.read-title { font-family: var(--display); font-weight: 800; font-size: 1.05rem; overflow-wrap: anywhere; }
+.read-lines p { margin: 0; overflow-wrap: anywhere; }
+.read-lines p + p { margin-top: 4px; }
+.rd-sms .read-lines { background: var(--surface); border: 1px solid var(--line); border-radius: 14px 14px 14px 4px; padding: 10px 12px; align-self: flex-start; max-width: 100%; }
+.rd-sign .read-lines { display: flex; flex-wrap: wrap; gap: 8px; }
+.rd-sign .read-lines p { margin: 0; border: 2px solid var(--ink); border-radius: 6px; padding: 4px 10px; font-weight: 800; letter-spacing: 0.02em; }
+.rd-notice, .rd-ad { border-style: dashed; }
+.read-form { display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); gap: 4px 14px; margin: 0; }
+.read-form dt { color: var(--muted); font-size: 0.85rem; padding-top: 2px; overflow-wrap: anywhere; }
+.read-form dd { margin: 0; overflow-wrap: anywhere; }
+.read-doc td { white-space: normal; }
+.cloze { line-height: 2.4; font-size: 1.05rem; overflow-wrap: anywhere; }
+select.gap { font: inherit; font-weight: 700; padding: 1px 4px; border-radius: 6px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); max-width: 100%; }
+select.gap.right { border-color: var(--good); background: var(--good-soft); }
+select.gap.wrong { border-color: var(--accent); background: var(--accent-soft); }
+.gap-fix { color: var(--good); }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.form-row { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
 /* Dialogue & chat */
 .dlg { display: flex; flex-direction: column; gap: 10px; }
 .line { display: grid; grid-template-columns: 76px 1fr auto; gap: 10px; align-items: start; }
@@ -1536,8 +1557,8 @@ const MILESTONES = [
   { id: "streak30", icon: "30", pl: "Miesiąc", en: "30-day streak", check: P => P.best >= 30 },
   { id: "streak100", icon: "100", pl: "Sto dni", en: "100-day streak", check: P => P.best >= 100 },
   { id: "unit1", icon: "✓", pl: "Pierwsza lekcja", en: "Finished your first unit", check: P => P.mastered.length >= 1 },
-  { id: "a11", icon: "A1.1", pl: "Połowa A1", en: "Finished units 1–6", check: P => [0, 1, 2, 3, 4, 5].every(i => P.mastered.includes(i)) },
-  { id: "a1", icon: "A1", pl: "Poziom A1", en: "Finished all A1 units", check: P => UNITS.slice(0, 12).every(u => P.mastered.includes(u.id)) },
+  { id: "a11", icon: "A1.1", pl: "Połowa A1", en: "Finished units 1–12", check: P => COURSE.slice(0, 12).every(u => P.mastered.includes(u.id)) },
+  { id: "a1", icon: "A1", pl: "Poziom A1", en: "Finished all A1 units", check: P => COURSE.slice(0, A1_COUNT).every(u => P.mastered.includes(u.id)) },
   { id: "a2", icon: "A2", pl: "Poziom A2", en: "Finished the whole course", check: P => UNITS.every(u => P.mastered.includes(u.id)) },
   { id: "words50", icon: "50", pl: "50 słów", en: "50 words learned", check: (P, L) => L.learned >= 50 },
   { id: "words100", icon: "100", pl: "100 słów", en: "100 words learned", check: (P, L) => L.learned >= 100 },
@@ -1557,9 +1578,959 @@ const STORY_PAIRS = [["Ola", "Tomek"], ["Tomek", "Marek"], ["Ola", "Pani Ewa"], 
 /* Session lengths: which steps make up the day */
 const PLANS = {
   quick: { label: "Quick", steps: ["review", "mini"] },
-  standard: { label: "Standard", steps: ["review", "grammar", "dialogue", "quiz"] },
-  full: { label: "Full", steps: ["review", "grammar", "dialogue", "listen", "convo", "writing", "quiz"] }
+  standard: { label: "Standard", steps: ["review", "grammar", "read", "dialogue", "quiz"] },
+  full: { label: "Full", steps: ["review", "grammar", "read", "dialogue", "listen", "convo", "writing", "quiz"] }
 };
+
+/* ================================================================
+   Course expansion to the adult A1/A2 standard (Dz.U. 2025 poz. 217):
+   13 new units, extra words, a reading text and a gap-fill for every unit.
+   Unit ids never change (saved progress and flashcards hang off them);
+   COURSE_ORDER says where each unit sits in the course.
+   ================================================================ */
+/* New A1 units (ids 21–28), added to match the adult A1 standard in
+   Dz.U. 2025 poz. 217, załącznik nr 1, część II C. */
+const NEW_UNITS_A1 = [
+{
+  id: 21, pl: "Skąd jesteś?", en: "Where are you from?", tag: "origin", tagLabel: "Countries, nationalities & personal details",
+  focus: "narodowość · where you're from",
+  vocab: [
+    ["Skąd jesteś?", "Where are you from?"], ["Jestem z Polski.", "I'm from Poland.", "z + genitive: z Anglii, z Niemiec"], ["kraj", "country"],
+    ["Anglia", "England"], ["Niemcy", "Germany", "plural only: z Niemiec, w Niemczech"], ["Francja", "France"],
+    ["Hiszpania", "Spain"], ["Włochy", "Italy", "plural only: z Włoch"], ["Stany Zjednoczone", "the United States", "ze Stanów Zjednoczonych"],
+    ["Ukraina", "Ukraine"], ["Serbia", "Serbia"], ["Chorwacja", "Croatia"], ["Polak / Polka", "Pole (m / f)"],
+    ["Anglik / Angielka", "Englishman / Englishwoman"], ["Niemiec / Niemka", "German (m / f)"], ["Serb / Serbka", "Serb (m / f)"],
+    ["Ukrainiec / Ukrainka", "Ukrainian (m / f)"], ["Amerykanin / Amerykanka", "American (m / f)"], ["narodowość", "nationality"],
+    ["obywatelstwo", "citizenship", "on forms: obywatelstwo polskie, serbskie…"], ["język", "language"], ["Jakie znasz języki?", "What languages do you know?"],
+    ["imię", "first name", "neuter: to imię"], ["nazwisko", "surname"], ["adres", "address"], ["ulica", "street", "ul. on addresses"],
+    ["numer telefonu", "phone number"], ["data urodzenia", "date of birth"], ["miejsce urodzenia", "place of birth"], ["płeć", "sex (on forms)"],
+    ["podpis", "signature"], ["formularz", "form"], ["Proszę przeliterować.", "Please spell it."]
+  ],
+  grammar: {
+    title: "Where from? z + genitive, nationalities and languages",
+    html: `<p>To say where you're from, use <b>z</b> + the genitive: <b>Jestem z Polski</b>, <b>z Anglii</b>, <b>z Serbii</b>, <b>z Ukrainy</b>. Countries that are plural in Polish end in nothing: <b>z Niemiec</b>, <b>z Włoch</b>. Before some consonant clusters <b>z</b> becomes <b>ze</b>: <b>ze Stanów Zjednoczonych</b>.</p>
+<p>Nationality nouns have a male and a female form and are written with a <b>capital letter</b>: <b>Polak / Polka</b>, <b>Serb / Serbka</b>. Learn <b>Jestem Polakiem / Polką</b> as a phrase for now; the ending is the instrumental case, which comes in a later unit.</p>
+<p>Languages are written with a <b>small letter</b>: <b>polski, angielski, serbski</b>. You <b>speak</b> <b>po polsku</b>, but you <b>know</b> or <b>learn</b> a language: <b>Znam angielski</b>, <b>Uczę się polskiego</b>.</p>
+<p>On forms, citizenship is an adjective agreeing with <i>obywatelstwo</i> (neuter): <b>obywatelstwo polskie / serbskie / niemieckie</b>.</p>`,
+    table: { head: ["kraj", "z…", "on", "ona"], rows: [
+      ["Polska", "z Polski", "Polak", "Polka"], ["Anglia", "z Anglii", "Anglik", "Angielka"], ["Niemcy", "z Niemiec", "Niemiec", "Niemka"],
+      ["Serbia", "z Serbii", "Serb", "Serbka"], ["Ukraina", "z Ukrainy", "Ukrainiec", "Ukrainka"], ["Stany Zjednoczone", "ze Stanów Zjednoczonych", "Amerykanin", "Amerykanka"]
+    ] }
+  },
+  quiz: [
+    { t: "fill", q: "Jestem z ___.", h: "Polska", a: ["Polski"], en: "I'm from Poland." },
+    { t: "fill", q: "On jest z ___.", h: "Anglia", a: ["Anglii"], en: "He's from England." },
+    { t: "fill", q: "Ona jest z ___.", h: "Niemcy", a: ["Niemiec"], en: "She's from Germany." },
+    { t: "fill", q: "Jesteśmy z ___.", h: "Ukraina", a: ["Ukrainy"], en: "We're from Ukraine." },
+    { t: "fill", q: "Proszę podać ___ i nazwisko.", h: "first name", a: ["imię"], en: "Please give your first name and surname." },
+    { t: "choice", q: "Anna jest z Polski. Ona jest ___.", o: ["Polką", "Polak", "Polską"], a: 0 },
+    { t: "choice", q: "Which word is written with a capital letter?", o: ["Polak (a Pole)", "polski (the language)", "angielski (the language)"], a: 0 },
+    { t: "choice", q: "Mówię ___ angielsku.", o: ["po", "w", "z"], a: 0 },
+    { t: "order", a: "Skąd pan jest", en: "Where are you from, sir?" },
+    { t: "order", a: "Mówię po polsku i po angielsku", en: "I speak Polish and English." }
+  ],
+  dialogue: [
+    ["Recepcjonistka", "Dzień dobry. Pana nazwisko?", "Hello. Your surname, sir?"],
+    ["Gość", "Dzień dobry. Nazywam się Novak. Mam rezerwację.", "Hello. My name is Novak. I have a reservation."],
+    ["Recepcjonistka", "Proszę przeliterować.", "Please spell it."],
+    ["Gość", "N, O, V, A, K.", "N, O, V, A, K."],
+    ["Recepcjonistka", "Dziękuję. Skąd pan jest?", "Thank you. Where are you from?"],
+    ["Gość", "Jestem z Serbii, ale mieszkam w Niemczech.", "I'm from Serbia, but I live in Germany."],
+    ["Recepcjonistka", "Proszę wypełnić formularz: adres, data urodzenia i podpis.", "Please fill in the form: address, date of birth and signature."]
+  ],
+  partner: "Recepcjonistka",
+  scenario: "You're checking in at a hotel in Kraków. The receptionist (recepcjonistka) asks for your personal details: name, nationality, address, date of birth and languages.",
+  writing: {
+    prompt: "Fill in this hotel registration form in Polish. You can invent the details.",
+    form: ["Imię", "Nazwisko", "Obywatelstwo", "Data urodzenia", "Miejsce urodzenia", "Adres", "Numer telefonu", "Znajomość języków"],
+    model: "Imię: Marko · Nazwisko: Novak · Obywatelstwo: serbskie · Data urodzenia: 12.05.1995 · Miejsce urodzenia: Belgrad · Adres: ul. Długa 5, Kraków · Numer telefonu: 600 123 456 · Znajomość języków: serbski, angielski, trochę polski"
+  },
+  read: { kind: "form", title: "KARTA MELDUNKOWA · Hotel „Wawel”", body: ["Imię i nazwisko: Anna Kowalska", "Obywatelstwo: polskie", "Data urodzenia: 03.04.1990", "Adres: ul. Krótka 7/2, 00-950 Warszawa", "Telefon: 501 234 567", "Przyjazd: 10.10 · Wyjazd: 12.10", "Podpis: A. Kowalska"],
+    q: [{ q: "What is the guest's surname?", o: ["Kowalska", "Krótka", "Wawel"], a: 0 }, { q: "Where does she live?", o: ["in Warsaw", "in Kraków", "in the hotel"], a: 0 }, { q: "How many nights is she staying?", o: ["2", "10", "12"], a: 0 }] },
+  cloze: "Dzień dobry! Mam na imię Ivan. Jestem {{z|w|na}} Ukrainy, ale teraz mieszkam {{w|z|do}} Polsce. Mówię po ukraińsku, po angielsku i trochę {{po|w|z}} polsku. Moja żona jest {{Polką|Polska|Polskę}}."
+},
+{
+  id: 22, pl: "Jak wygląda? Jaki jest?", en: "What do they look like?", tag: "looks", tagLabel: "Appearance, character & clothes",
+  focus: "wygląd · describing people",
+  vocab: [
+    ["wysoki", "tall"], ["niski", "short (person)"], ["szczupły", "slim"], ["gruby", "fat", "can sound rude about people"], ["młody", "young"],
+    ["włosy", "hair", "always plural: włosy są…"], ["oczy", "eyes", "singular: oko"], ["krótkie / długie włosy", "short / long hair"],
+    ["blondyn / blondynka", "blond man / woman"], ["brunet / brunetka", "dark-haired man / woman"], ["broda", "beard"], ["okulary", "glasses", "plural only"],
+    ["miły", "nice, kind"], ["sympatyczny", "likeable"], ["wesoły", "cheerful"], ["smutny", "sad"], ["spokojny", "calm"], ["nerwowy", "nervous"],
+    ["mądry", "wise, clever"], ["leniwy", "lazy"], ["pracowity", "hard-working"], ["ubranie", "clothes, an outfit"], ["spodnie", "trousers", "plural only"],
+    ["koszula", "shirt"], ["sukienka", "dress"], ["sweter", "jumper, sweater"], ["buty", "shoes"], ["czapka", "cap, woolly hat"], ["płaszcz", "coat"],
+    ["dżinsy", "jeans"], ["nosić", "to wear (usually)", "noszę, nosisz"], ["mieć na sobie", "to be wearing (now)"], ["Jak on wygląda?", "What does he look like?"]
+  ],
+  grammar: {
+    title: "Describing people: jak wygląda? jaki jest?",
+    html: `<p><b>Jak wygląda?</b> asks about looks; <b>Jaki jest? / Jaka jest?</b> asks about character. Adjectives after <b>jest</b> agree with the person: <b>On jest wysoki</b>, <b>Ona jest wysoka</b>.</p>
+<p>After <b>ma</b> (has) and <b>nosi / ma na sobie</b> (wears), the clothes or features are the object, so the adjective goes into the <b>accusative</b>:</p>
+<ul><li>feminine: <b>-ą</b> — <b>czerwoną sukienkę</b>, <b>białą koszulę</b></li><li>masculine things and neuter: no change — <b>czarny płaszcz</b>, <b>nowe ubranie</b></li><li>plural (not men): <b>-e</b> — <b>długie włosy</b>, <b>niebieskie oczy</b>, <b>czarne buty</b></li></ul>
+<p>Useful opposites: <b>wysoki – niski</b>, <b>szczupły – gruby</b>, <b>młody – stary</b>, <b>wesoły – smutny</b>, <b>pracowity – leniwy</b>.</p>`,
+    table: { head: ["noun", "Ona ma / nosi…", "rule"], rows: [
+      ["sukienka (f)", "czerwoną sukienkę", "-a → -ą / -ę"], ["koszula (f)", "białą koszulę", "-a → -ą / -ę"], ["płaszcz (m)", "czarny płaszcz", "no change"],
+      ["spodnie (pl)", "niebieskie spodnie", "-e"], ["włosy (pl)", "długie włosy", "-e"], ["oczy (pl)", "zielone oczy", "-e"]
+    ] }
+  },
+  quiz: [
+    { t: "fill", q: "Ona ma ___ włosy.", h: "długi", a: ["długie"], en: "She has long hair." },
+    { t: "fill", q: "Moja siostra jest ___ i szczupła.", h: "wysoki", a: ["wysoka"], en: "My sister is tall and slim." },
+    { t: "fill", q: "On nosi ___ okulary.", h: "czarny", a: ["czarne"], en: "He wears black glasses." },
+    { t: "fill", q: "Ona ma na sobie ___ sukienkę.", h: "czerwony", a: ["czerwoną"], en: "She's wearing a red dress." },
+    { t: "fill", q: "Mój syn ma ___ oczy.", h: "niebieski", a: ["niebieskie"], en: "My son has blue eyes." },
+    { t: "choice", q: "The opposite of „wysoki”:", o: ["niski", "młody", "miły"], a: 0 },
+    { t: "choice", q: "The opposite of „wesoły”:", o: ["smutny", "spokojny", "sympatyczny"], a: 0 },
+    { t: "choice", q: "„Spodnie” is…", o: ["plural only", "feminine singular", "neuter singular"], a: 0 },
+    { t: "order", a: "Jak wygląda twój brat", en: "What does your brother look like?" },
+    { t: "order", a: "Ona jest miła i bardzo pracowita", en: "She is nice and very hard-working." }
+  ],
+  dialogue: [
+    ["Ewa", "Jutro na dworcu czeka na ciebie mój brat, Paweł.", "Tomorrow my brother Paweł will be waiting for you at the station."],
+    ["Tom", "Jak on wygląda?", "What does he look like?"],
+    ["Ewa", "Jest wysoki i szczupły. Ma krótkie, ciemne włosy i brodę.", "He's tall and slim. He has short dark hair and a beard."],
+    ["Tom", "Nosi okulary?", "Does he wear glasses?"],
+    ["Ewa", "Tak. I zwykle nosi zielony płaszcz.", "Yes. And he usually wears a green coat."],
+    ["Tom", "A jaki jest?", "And what's he like?"],
+    ["Ewa", "Bardzo miły i wesoły. Na pewno go polubisz!", "Very nice and cheerful. You'll definitely like him!"]
+  ],
+  partner: "Ewa",
+  scenario: "Ewa asks you to describe your best friend or someone in your family: what they look like, what they usually wear and what they're like.",
+  writing: { prompt: "Describe a person you know: appearance, clothes and character (4–5 sentences).", model: "Moja przyjaciółka ma na imię Ola. Jest niska i szczupła. Ma długie, jasne włosy i zielone oczy. Zwykle nosi dżinsy i sweter. Jest bardzo miła i wesoła." },
+  read: { kind: "sms", title: "SMS od Oli", body: ["Cześć! Czekam w kawiarni przy oknie.", "Mam na sobie czerwony sweter i czarne spodnie.", "Mam krótkie włosy i okulary. :)", "Do zobaczenia! Ola"],
+    q: [{ q: "Where is Ola waiting?", o: ["in a café by the window", "at the station", "at home"], a: 0 }, { q: "What is she wearing?", o: ["a red jumper and black trousers", "a black dress", "a green coat"], a: 0 }, { q: "Which is true?", o: ["She has short hair and glasses", "She has long hair", "She has a beard"], a: 0 }] },
+  cloze: "Mój kolega Marek jest {{wysoki|wysoka|wysokie}} i ma {{krótkie|krótki|krótką}} włosy. Dzisiaj ma na sobie {{niebieską|niebieski|niebieskie}} koszulę i czarne spodnie. Jest bardzo {{miły|miła|miłe}}."
+},
+{
+  id: 23, pl: "Nie ma…", en: "There isn't any…", tag: "gen", tagLabel: "The genitive (dopełniacz)",
+  focus: "dopełniacz · of, without, there isn't",
+  vocab: [
+    ["Nie ma…", "There isn't / there's no…"], ["nie było…", "there wasn't…"], ["potrzebować", "to need (+ genitive)", "potrzebuję"], ["szukać", "to look for (+ genitive)"],
+    ["u", "at someone's place (+ genitive)", "u mamy, u lekarza"], ["bez", "without (+ genitive)"], ["dla", "for (+ genitive)"], ["od", "from someone, since (+ genitive)"],
+    ["obok", "next to (+ genitive)"], ["koło", "near (+ genitive)"], ["ani", "nor, (not) … or", "Nie ma chleba ani masła."], ["pasta do zębów", "toothpaste"],
+    ["szczoteczka do zębów", "toothbrush"], ["mydło", "soap"], ["szampon", "shampoo"], ["krem", "cream"], ["papier toaletowy", "toilet paper"],
+    ["ręcznik", "towel"], ["sól", "salt", "feminine: tej soli"], ["cukier", "sugar", "genitive: cukru"], ["ryż", "rice"], ["masło", "butter"], ["ser", "cheese"],
+    ["jajko", "egg"], ["kawałek", "a piece"], ["opakowanie", "a packet"], ["puszka", "a can, a tin"], ["słoik", "a jar"], ["drogeria", "chemist's, drugstore"],
+    ["lista zakupów", "shopping list"], ["brakuje…", "… is missing / we're short of…", "Brakuje cukru."]
+  ],
+  grammar: {
+    title: "The genitive (dopełniacz)",
+    html: `<p>The genitive answers <b>kogo? czego?</b> (of whom? of what?). It's the most used case after the nominative. You need it:</p>
+<ul><li>for <b>"of"</b> and possession: <b>brat Ewy</b> (Ewa's brother), <b>kilogram ryżu</b>, <b>butelka wody</b>, <b>kawałek sera</b></li>
+<li>after <b>nie ma / nie było</b>: <b>Nie ma mleka.</b> <b>Siostry nie ma w domu.</b> <b>Koleżanki nie było w pracy.</b></li>
+<li>after some verbs: <b>szukać, potrzebować, słuchać, uczyć się</b> — <b>Szukam pasty do zębów.</b></li>
+<li>after <b>do, z</b> (from), <b>bez, u, dla, od, obok, koło</b>: <b>u mamy</b>, <b>bez cukru</b>, <b>dla ciebie</b>, <b>obok sklepu</b></li></ul>
+<p>Singular endings: masculine <b>-a</b> (people, animals and many things: <b>brata, psa, sera, chleba</b>) or <b>-u</b> (many things: <b>ryżu, cukru, soku</b>); feminine <b>-y / -i</b> (<b>wody, kawy, soli</b>); neuter <b>-a</b> (<b>mleka, masła, mydła</b>).</p>`,
+    table: { head: ["noun", "genitive", "example"], rows: [
+      ["brat", "brata", "samochód brata"], ["ser", "sera", "kawałek sera"], ["ryż", "ryżu", "kilogram ryżu"], ["woda", "wody", "butelka wody"],
+      ["sól", "soli", "bez soli"], ["mleko", "mleka", "Nie ma mleka."], ["mama", "mamy", "Jestem u mamy."]
+    ] }
+  },
+  quiz: [
+    { t: "fill", q: "Nie ma ___.", h: "mleko", a: ["mleka"], en: "There's no milk." },
+    { t: "fill", q: "To jest samochód ___.", h: "brat", a: ["brata"], en: "This is my brother's car." },
+    { t: "fill", q: "Poproszę kilogram ___.", h: "ryż", a: ["ryżu"], en: "A kilo of rice, please." },
+    { t: "fill", q: "Szukam ___ do zębów.", h: "pasta", a: ["pasty"], en: "I'm looking for toothpaste." },
+    { t: "fill", q: "Potrzebuję ___.", h: "szampon", a: ["szamponu"], en: "I need shampoo." },
+    { t: "fill", q: "Jestem teraz u ___.", h: "mama", a: ["mamy"], en: "I'm at mum's now." },
+    { t: "choice", q: "Siostry ___ w domu.", o: ["nie ma", "nie jest", "nie mam"], a: 0 },
+    { t: "choice", q: "To prezent ___ ciebie.", o: ["dla", "do", "u"], a: 0 },
+    { t: "order", a: "W domu nie ma chleba", en: "There's no bread at home." },
+    { t: "order", a: "Poproszę butelkę wody i kawałek sera", en: "A bottle of water and a piece of cheese, please." }
+  ],
+  dialogue: [
+    ["Marek", "Co kupujemy?", "What are we buying?"],
+    ["Ania", "Nie ma chleba ani mleka. Potrzebuję też masła.", "There's no bread or milk. I also need butter."],
+    ["Marek", "A w łazience?", "And in the bathroom?"],
+    ["Ania", "Nie ma pasty do zębów ani mydła.", "There's no toothpaste or soap."],
+    ["Marek", "Dobrze. Idę do drogerii i do sklepu.", "OK. I'm going to the chemist's and the shop."],
+    ["Ania", "Weź listę zakupów!", "Take the shopping list!"]
+  ],
+  partner: "Sprzedawczyni",
+  scenario: "You're in a small shop and some things you need have run out. Ask the shop assistant (sprzedawczyni) for things; sometimes she says there aren't any.",
+  writing: { prompt: "Write a note for your flatmate: what's missing at home and what you need from the shop.", model: "Nie ma chleba, masła i sera. Potrzebuję też szamponu i pasty do zębów. Kup proszę kilogram ryżu i butelkę wody!" },
+  read: { kind: "notice", title: "Sklep spożywczy „U Basi”", body: ["Czynne: pon.–pt. 7:00–20:00", "sob. 8:00–14:00", "niedziela: nieczynne", "Dzisiaj brak chleba razowego!", "Promocja: 2 kg cukru – 7 zł"],
+    q: [{ q: "When is the shop closed?", o: ["on Sunday", "on Saturday", "every evening"], a: 0 }, { q: "What's missing today?", o: ["wholemeal bread", "sugar", "milk"], a: 0 }, { q: "How much do 2 kg of sugar cost?", o: ["7 zł", "2 zł", "14 zł"], a: 0 }] },
+  cloze: "W lodówce nie ma {{mleka|mleko|mlekiem}} ani {{masła|masło|masłem}}. Idę do {{sklepu|sklep|sklepie}}. Kupię kilogram {{cukru|cukier|cukrem}} i butelkę {{wody|woda|wodę}}."
+},
+{
+  id: 24, pl: "Pory roku i święta", en: "Seasons and holidays", tag: "dates", tagLabel: "Months, dates & holidays",
+  focus: "daty · months, dates, weather",
+  vocab: [
+    ["styczeń", "January"], ["luty", "February"], ["marzec", "March"], ["kwiecień", "April"], ["maj", "May"], ["czerwiec", "June"],
+    ["lipiec", "July"], ["sierpień", "August"], ["wrzesień", "September"], ["październik", "October"], ["listopad", "November"], ["grudzień", "December"],
+    ["wiosna", "spring"], ["lato", "summer"], ["jesień", "autumn"], ["zima", "winter"], ["Jaka jest pogoda?", "What's the weather like?"],
+    ["słońce", "sun"], ["deszcz", "rain"], ["śnieg", "snow"], ["wiatr", "wind"], ["Pada deszcz.", "It's raining."], ["Jest ciepło / zimno.", "It's warm / cold."],
+    ["stopień", "degree", "Jest dwadzieścia stopni."], ["imieniny", "name day", "plural only"], ["święto", "holiday, festival"], ["Boże Narodzenie", "Christmas"],
+    ["Wielkanoc", "Easter"], ["Nowy Rok", "New Year's Day"], ["sylwester", "New Year's Eve"], ["Wszystkiego najlepszego!", "All the best! (wishes)"],
+    ["Wesołych Świąt!", "Merry Christmas! / Happy Easter!"], ["Kiedy masz urodziny?", "When is your birthday?"], ["pierwszy, drugi, trzeci", "first, second, third"]
+  ],
+  grammar: {
+    title: "Months, dates and ordinal numbers",
+    html: `<p>Dates use <b>ordinal numbers</b> (first, second…), which behave like adjectives: <b>pierwszy, drugi, trzeci, czwarty, piąty</b>… <b>dwudziesty</b>, <b>dwudziesty pierwszy</b>, <b>trzydziesty</b>.</p>
+<ul><li><b>What's the date?</b> The day is in the nominative, the month in the genitive: <b>Dzisiaj jest trzeci maja.</b></li>
+<li><b>On a date:</b> both go into the genitive: <b>trzeciego maja</b> (on 3 May), <b>jedenastego listopada</b>.</li>
+<li><b>In a month:</b> <b>w</b> + locative: <b>w maju, w lipcu, we wrześniu, w grudniu</b>.</li>
+<li><b>In a season:</b> <b>wiosną, latem, jesienią, zimą</b>.</li></ul>
+<p>Weather: <b>Jest ciepło / zimno / słonecznie.</b> <b>Pada deszcz / śnieg.</b> <b>Świeci słońce.</b> <b>Wieje wiatr.</b> <b>Jest dwadzieścia stopni.</b></p>
+<p>Public holidays you should know: <b>3 Maja</b> (Constitution Day) and <b>11 Listopada</b> (Independence Day).</p>`,
+    table: { head: ["month", "on the … of", "in …"], rows: [
+      ["styczeń", "stycznia", "w styczniu"], ["luty", "lutego", "w lutym"], ["marzec", "marca", "w marcu"], ["maj", "maja", "w maju"],
+      ["wrzesień", "września", "we wrześniu"], ["listopad", "listopada", "w listopadzie"], ["grudzień", "grudnia", "w grudniu"]
+    ] }
+  },
+  quiz: [
+    { t: "fill", q: "Mam urodziny w ___.", h: "maj", a: ["maju"], en: "My birthday is in May." },
+    { t: "fill", q: "Dzisiaj jest pierwszy ___.", h: "listopad", a: ["listopada"], en: "Today is the first of November." },
+    { t: "fill", q: "Wigilia jest dwudziestego czwartego ___.", h: "grudzień", a: ["grudnia"], en: "Christmas Eve is on 24 December." },
+    { t: "fill", q: "Święto Niepodległości jest ___ listopada.", h: "11th, on", a: ["jedenastego"], en: "Independence Day is on 11 November." },
+    { t: "fill", q: "___ jest bardzo gorąco.", h: "lato, in summer", a: ["latem"], en: "In summer it's very hot." },
+    { t: "choice", q: "Zimą często pada ___.", o: ["śnieg", "słońce", "wiatr"], a: 0 },
+    { t: "choice", q: "Which month comes after „kwiecień”?", o: ["maj", "marzec", "czerwiec"], a: 0 },
+    { t: "choice", q: "Name day or birthday wishes:", o: ["Wszystkiego najlepszego!", "Smacznego!", "Na zdrowie!"], a: 0 },
+    { t: "order", a: "Kiedy masz urodziny", en: "When is your birthday?" },
+    { t: "order", a: "Dzisiaj jest zimno i pada deszcz", en: "Today it's cold and raining." }
+  ],
+  dialogue: [
+    ["Kasia", "Kiedy masz urodziny?", "When is your birthday?"],
+    ["Ben", "Piętnastego marca. A ty?", "On the fifteenth of March. And you?"],
+    ["Kasia", "W sierpniu, ale w Polsce ważne są też imieniny. Moje są dwudziestego piątego listopada.", "In August, but in Poland name days matter too. Mine is on the twenty-fifth of November."],
+    ["Ben", "Jaka jest wtedy pogoda?", "What's the weather like then?"],
+    ["Kasia", "Zwykle jest zimno i często pada deszcz. Ale w domu jest ciepło i jest tort!", "It's usually cold and it often rains. But it's warm at home and there's cake!"]
+  ],
+  partner: "Kasia",
+  scenario: "Talk with Kasia about your favourite season, the weather where you live, and when you celebrate birthdays, name days and holidays.",
+  writing: { prompt: "Write a short message with name day or birthday wishes for a friend, and say what the weather is like today.", model: "Droga Kasiu! Wszystkiego najlepszego z okazji imienin! Dużo zdrowia i szczęścia. U nas dzisiaj jest zimno i pada deszcz. Ściskam, Ben" },
+  read: { kind: "notice", title: "Prognoza pogody na weekend", body: ["Sobota, 14 października: słonecznie, 15°C", "Niedziela, 15 października: pada deszcz, wieje wiatr, 9°C", "W górach w nocy możliwy śnieg."],
+    q: [{ q: "What will Saturday be like?", o: ["sunny, 15°C", "rainy, 9°C", "snowy"], a: 0 }, { q: "When will it be windy?", o: ["on Sunday", "on Saturday", "both days"], a: 0 }, { q: "Where might it snow?", o: ["in the mountains at night", "in the city", "nowhere"], a: 0 }] },
+  cloze: "Moje urodziny są {{dwunastego|dwunasty|dwunastym}} maja. {{W maju|W maj|Maja}} jest zwykle ciepło i świeci {{słońce|słońca|słońcem}}. Zimą lubię, kiedy pada {{śnieg|śniegu|śniegiem}}."
+},
+{
+  id: 25, pl: "Mój dom", en: "My home", tag: "home", tagLabel: "Rooms, furniture & where things are",
+  focus: "przyimki · where things are",
+  vocab: [
+    ["łazienka", "bathroom"], ["sypialnia", "bedroom"], ["salon", "living room"], ["przedpokój", "hall"], ["balkon", "balcony"],
+    ["piętro", "floor, storey", "na pierwszym piętrze"], ["parter", "ground floor"], ["winda", "lift"], ["schody", "stairs", "plural only"],
+    ["stół", "table"], ["łóżko", "bed"], ["szafa", "wardrobe"], ["półka", "shelf"], ["biurko", "desk"], ["fotel", "armchair"], ["kanapa", "sofa"],
+    ["lampa", "lamp"], ["dywan", "rug"], ["obraz", "picture, painting"], ["lodówka", "fridge"], ["kuchenka", "cooker"], ["pralka", "washing machine"],
+    ["telewizor", "TV set"], ["komputer", "computer"], ["klucze", "keys"], ["na", "on (+ locative)"], ["pod", "under (+ instrumental)"],
+    ["nad", "above (+ instrumental)"], ["za", "behind (+ instrumental)"], ["przed", "in front of (+ instrumental)"], ["między", "between (+ instrumental)"],
+    ["w rogu", "in the corner"], ["na ścianie", "on the wall"]
+  ],
+  grammar: {
+    title: "Where is it? Location words",
+    html: `<p>To say where something is, the preposition decides the case:</p>
+<ul><li><b>w</b> (in) and <b>na</b> (on) + <b>locative</b>: <b>w szafie</b>, <b>na stole</b>, <b>na półce</b></li>
+<li><b>pod</b> (under), <b>nad</b> (above), <b>za</b> (behind), <b>przed</b> (in front of), <b>między</b> (between) + <b>instrumental</b>: <b>pod łóżkiem</b>, <b>nad biurkiem</b>, <b>za drzwiami</b>, <b>przed domem</b>, <b>między oknem a szafą</b></li>
+<li><b>obok</b> (next to) and <b>koło</b> (near) + <b>genitive</b>: <b>obok okna</b></li></ul>
+<p>Instrumental reminder: masculine and neuter <b>-em</b> (<b>stołem, łóżkiem</b>), feminine <b>-ą</b> (<b>szafą, lampą</b>), plural <b>-ami</b> (<b>drzwiami</b>).</p>
+<p>Furniture usually <b>stoi</b> (stands), pictures and lamps <b>wiszą</b> (hang), and things <b>leżą</b> (lie): <b>Klucze leżą na stole.</b></p>`,
+    table: { head: ["preposition", "case", "example"], rows: [
+      ["na", "locative", "Książka jest na stole."], ["w", "locative", "Ubrania są w szafie."], ["pod", "instrumental", "Kot śpi pod łóżkiem."],
+      ["nad", "instrumental", "Lampa wisi nad biurkiem."], ["za", "instrumental", "Rower stoi za drzwiami."], ["przed", "instrumental", "Samochód stoi przed domem."],
+      ["między", "instrumental", "Fotel stoi między oknem a szafą."]
+    ] }
+  },
+  quiz: [
+    { t: "fill", q: "Kot śpi pod ___.", h: "łóżko", a: ["łóżkiem"], en: "The cat sleeps under the bed." },
+    { t: "fill", q: "Lampa wisi nad ___.", h: "biurko", a: ["biurkiem"], en: "The lamp hangs above the desk." },
+    { t: "fill", q: "Książki są na ___.", h: "półka", a: ["półce"], en: "The books are on the shelf." },
+    { t: "fill", q: "Samochód stoi przed ___.", h: "dom", a: ["domem"], en: "The car is in front of the house." },
+    { t: "fill", q: "Ubrania są w ___.", h: "szafa", a: ["szafie"], en: "The clothes are in the wardrobe." },
+    { t: "choice", q: "Fotel stoi między oknem a ___.", o: ["szafą", "szafie", "szafa"], a: 0 },
+    { t: "choice", q: "„pod” takes the…", o: ["instrumental", "locative", "genitive"], a: 0 },
+    { t: "choice", q: "You wash clothes in the…", o: ["pralka", "lodówka", "kuchenka"], a: 0 },
+    { t: "order", a: "W mieszkaniu są dwa pokoje i łazienka", en: "There are two rooms and a bathroom in the flat." },
+    { t: "order", a: "Klucze leżą na stole w kuchni", en: "The keys are on the table in the kitchen." }
+  ],
+  dialogue: [
+    ["Ania", "Gdzie są moje klucze?", "Where are my keys?"],
+    ["Tomek", "Nie wiem. Może na stole w kuchni?", "I don't know. Maybe on the table in the kitchen?"],
+    ["Ania", "Nie, tam ich nie ma.", "No, they're not there."],
+    ["Tomek", "A pod kanapą w salonie? Albo w płaszczu?", "Under the sofa in the living room, then? Or in your coat?"],
+    ["Ania", "Mam! Były na półce nad biurkiem.", "Got them! They were on the shelf above the desk."]
+  ],
+  partner: "Tomek",
+  scenario: "Tomek is helping you furnish a new flat. Discuss what furniture you need and where to put each thing.",
+  writing: { prompt: "Describe your home: the rooms and where the main furniture is.", model: "Mieszkam w małym mieszkaniu na drugim piętrze. Mam salon, sypialnię, kuchnię i łazienkę. W salonie kanapa stoi pod oknem, a telewizor wisi na ścianie. W sypialni jest duże łóżko i szafa." },
+  read: { kind: "ad", title: "SPRZEDAM", body: ["Kanapa (szara) – 400 zł", "Biurko + krzesło – 250 zł", "Lodówka, 2 lata – 600 zł", "Odbiór: Kraków, ul. Długa 12, III piętro (bez windy)", "tel. 600 123 456 (po 17:00)"],
+    q: [{ q: "How much are the desk and chair?", o: ["250 zł", "400 zł", "600 zł"], a: 0 }, { q: "Which is true?", o: ["There's no lift in the building", "The fridge is new", "The sofa is green"], a: 0 }, { q: "When should you phone?", o: ["after 5 p.m.", "before 5 p.m.", "only on Sundays"], a: 0 }] },
+  cloze: "Moja sypialnia jest mała. Łóżko stoi pod {{oknem|okno|oknie}}, a szafa obok {{drzwi|drzwiami|drzwiach}}. Nad {{biurkiem|biurko|biurku}} wisi lampa. Na {{ścianie|ściana|ścianą}} jest obraz."
+},
+{
+  id: 26, pl: "Na dworcu i na lotnisku", en: "At the station and the airport", tag: "travel", tagLabel: "Stations, tickets & timetables",
+  focus: "podróż · getting around",
+  vocab: [
+    ["dworzec kolejowy", "train station"], ["dworzec autobusowy", "bus station"], ["lotnisko", "airport"], ["peron", "platform"], ["tor", "track"],
+    ["kasa biletowa", "ticket office"], ["bilet", "ticket"], ["bilet w jedną stronę", "one-way ticket"], ["bilet powrotny", "return ticket"],
+    ["normalny / ulgowy", "full fare / reduced fare"], ["miejscówka", "seat reservation"], ["odjazd", "departure (train, bus)"], ["przyjazd", "arrival (train, bus)"],
+    ["odlot / przylot", "departure / arrival (plane)"], ["samolot", "plane"], ["lot", "flight"], ["opóźnienie", "delay"], ["odwołany", "cancelled"],
+    ["rozkład jazdy", "timetable"], ["bagaż", "luggage"], ["walizka", "suitcase"], ["plecak", "rucksack"], ["paszport", "passport"],
+    ["przesiadka", "change, connection"], ["wagon", "carriage"], ["odjeżdżać", "to depart", "odjeżdża"], ["przyjeżdżać", "to arrive", "przyjeżdża"],
+    ["Z którego peronu odjeżdża…?", "Which platform does … leave from?"], ["Ile kosztuje bilet do…?", "How much is a ticket to…?"],
+    ["Pociąg jest opóźniony.", "The train is delayed."], ["Kiedy jest następny autobus?", "When's the next bus?"]
+  ],
+  grammar: {
+    title: "Travel questions: do, z, o and times",
+    html: `<p>Where to and where from both take the <b>genitive</b>: <b>pociąg do Gdańska</b>, <b>autobus z Warszawy</b>, <b>z peronu drugiego</b>.</p>
+<p>Times on timetables use the 24-hour clock with <b>o</b> + locative of the ordinal: <b>o siódmej czterdzieści</b> (7:40), <b>o czternastej dwadzieścia</b> (14:20), <b>o dziesiątej piętnaście</b> (10:15).</p>
+<p>Two key verbs: <b>odjeżdżać</b> (to depart) and <b>przyjeżdżać</b> (to arrive): <b>Pociąg odjeżdża o 8:05 i przyjeżdża o 11:30.</b> For planes: <b>odlot / przylot</b>.</p>
+<p>At the ticket office: <b>Poproszę bilet do Krakowa, normalny, w jedną stronę.</b></p>`,
+    table: { head: ["question", "answer"], rows: [
+      ["Skąd odjeżdża pociąg?", "Z peronu drugiego."], ["Dokąd jedzie ten autobus?", "Do centrum."], ["O której odjeżdża?", "O siódmej czterdzieści."],
+      ["O której przyjeżdża?", "O dziesiątej dwadzieścia."], ["Ile kosztuje bilet?", "Czterdzieści dwa złote."]
+    ], pl: [0, 1] }
+  },
+  quiz: [
+    { t: "fill", q: "Poproszę bilet do ___.", h: "Kraków", a: ["Krakowa"], en: "A ticket to Kraków, please." },
+    { t: "fill", q: "Pociąg z ___ jest opóźniony.", h: "Warszawa", a: ["Warszawy"], en: "The train from Warsaw is delayed." },
+    { t: "fill", q: "Autobus ___ o ósmej.", h: "odjeżdżać", a: ["odjeżdża"], en: "The bus leaves at eight." },
+    { t: "fill", q: "Odjazd jest ___ siódmej trzydzieści.", h: "at", a: ["o"], en: "The departure is at 7:30." },
+    { t: "choice", q: "A return ticket:", o: ["bilet powrotny", "bilet w jedną stronę", "miejscówka"], a: 0 },
+    { t: "choice", q: "„Opóźnienie” means…", o: ["delay", "departure", "platform"], a: 0 },
+    { t: "choice", q: "Z którego ___ odjeżdża pociąg?", o: ["peronu", "peron", "peronie"], a: 0 },
+    { t: "choice", q: "For a plane, departure is…", o: ["odlot", "odjazd", "przyjazd"], a: 0 },
+    { t: "order", a: "Ile kosztuje bilet do Gdańska", en: "How much is a ticket to Gdańsk?" },
+    { t: "order", a: "Pociąg odjeżdża z peronu trzeciego", en: "The train leaves from platform three." }
+  ],
+  dialogue: [
+    ["Kasjerka", "Dzień dobry, słucham?", "Hello, can I help you?"],
+    ["Podróżny", "Poproszę bilet do Gdańska na pociąg o dziesiątej piętnaście.", "A ticket to Gdańsk for the 10:15 train, please."],
+    ["Kasjerka", "W jedną stronę czy powrotny?", "One-way or return?"],
+    ["Podróżny", "Powrotny, normalny. Z którego peronu odjeżdża?", "Return, full fare. Which platform does it leave from?"],
+    ["Kasjerka", "Z peronu drugiego. Ale uwaga, pociąg ma dziesięć minut opóźnienia.", "Platform two. But note, the train is ten minutes late."],
+    ["Podróżny", "O której przyjeżdża do Gdańska?", "What time does it arrive in Gdańsk?"],
+    ["Kasjerka", "O czternastej dwadzieścia.", "At 14:20."]
+  ],
+  partner: "Kasjerka",
+  scenario: "You're at the ticket office at Kraków Główny station. Buy a train ticket, then ask about the platform, departure and arrival times and any delay.",
+  writing: { prompt: "Send a text message to a friend: which train or bus you're taking, when it leaves and when you arrive.", model: "Cześć! Jadę pociągiem do Gdańska. Odjazd o 10:15 z peronu drugiego, przyjazd o 14:20. Pociąg ma 10 minut opóźnienia. Do zobaczenia na dworcu!" },
+  read: { kind: "timetable", title: "ODJAZDY · Kraków Główny", body: ["Godz. | Do | Peron | Uwagi", "08:05 | Warszawa Centralna | 3 | —", "08:40 | Gdańsk Główny | 2 | opóźnienie 15 min", "09:15 | Zakopane | 1 | —", "10:00 | Wrocław Główny | 4 | odwołany"],
+    q: [{ q: "Which train is late?", o: ["the 08:40 to Gdańsk", "the 08:05 to Warsaw", "the 09:15 to Zakopane"], a: 0 }, { q: "Which platform for Zakopane?", o: ["1", "2", "4"], a: 0 }, { q: "What does „odwołany” mean for the Wrocław train?", o: ["cancelled", "15 minutes late", "on time"], a: 0 }] },
+  cloze: "Jutro jadę {{do|z|na}} Wrocławia. Pociąg odjeżdża {{o|w|na}} ósmej z peronu {{trzeciego|trzeci|trzecim}}. Mam bilet {{powrotny|powrotna|powrotnym}}, bo w niedzielę wracam."
+},
+{
+  id: 27, pl: "U lekarza i w aptece", en: "At the doctor's and the pharmacy", tag: "health", tagLabel: "Body, health & the doctor",
+  focus: "zdrowie · at the doctor's",
+  vocab: [
+    ["głowa", "head"], ["gardło", "throat"], ["brzuch", "stomach, belly"], ["plecy", "back", "plural only"], ["ręka", "hand, arm", "plural: ręce"],
+    ["noga", "leg, foot"], ["oko", "eye", "plural: oczy"], ["ucho", "ear", "plural: uszy"], ["ząb", "tooth"], ["serce", "heart"],
+    ["Boli mnie…", "My … hurts"], ["Bolą mnie…", "My … hurt (plural)"], ["Jak się czujesz?", "How do you feel?"], ["Czuję się źle.", "I feel unwell."],
+    ["chory / chora", "ill (m / f)"], ["zdrowy", "healthy"], ["gorączka", "fever, temperature"], ["kaszel", "cough"], ["katar", "runny nose"],
+    ["przeziębienie", "a cold"], ["grypa", "flu"], ["przychodnia", "clinic, health centre"], ["wizyta", "appointment, visit"], ["recepta", "prescription"],
+    ["apteka", "pharmacy"], ["lek / lekarstwo", "medicine"], ["tabletka", "tablet, pill"], ["syrop", "syrup"], ["Co panu / pani dolega?", "What's the matter? (doctor)"],
+    ["leżeć w łóżku", "to stay in bed"], ["Wracaj do zdrowia!", "Get well soon!"]
+  ],
+  grammar: {
+    title: "Boli mnie… — saying what hurts",
+    html: `<p>In Polish the <b>body part</b> is the subject and <b>you</b> are the object: <b>Boli mnie głowa</b> (literally "the head hurts me"). The person is in the accusative: <b>mnie, cię, go, ją, nas</b>.</p>
+<p>With a plural body part the verb is plural: <b>Bolą mnie plecy.</b> <b>Bolą ją nogi.</b></p>
+<p>Symptoms you <b>have</b> go into the accusative: <b>Mam gorączkę / kaszel / katar.</b> How you feel uses <b>czuć się</b>: <b>Czuję się dobrze / źle / lepiej.</b></p>
+<p>Medicine "for" something takes <b>od</b> + genitive: <b>tabletki od bólu głowy</b>, <b>syrop od kaszlu</b>.</p>`,
+    table: { head: ["person", "boli…", "example"], rows: [
+      ["ja", "mnie", "Boli mnie głowa."], ["ty", "cię", "Co cię boli?"], ["on", "go", "Boli go ząb."], ["ona", "ją", "Bolą ją plecy."], ["my", "nas", "Bolą nas nogi."]
+    ] }
+  },
+  quiz: [
+    { t: "fill", q: "Boli ___ głowa.", h: "ja", a: ["mnie"], en: "I have a headache." },
+    { t: "fill", q: "Co ___ boli?", h: "ty", a: ["cię"], en: "What hurts?" },
+    { t: "fill", q: "___ mnie plecy.", h: "boleć, plural", a: ["bolą"], en: "My back hurts." },
+    { t: "fill", q: "Mam ___ i katar.", h: "gorączka", a: ["gorączkę"], en: "I have a temperature and a runny nose." },
+    { t: "fill", q: "Poproszę tabletki od bólu ___.", h: "gardło", a: ["gardła"], en: "Some sore-throat tablets, please." },
+    { t: "choice", q: "I feel unwell:", o: ["Czuję się źle.", "Jestem źle.", "Mam źle."], a: 0 },
+    { t: "choice", q: "Where do you buy medicine?", o: ["w aptece", "w przychodni", "na poczcie"], a: 0 },
+    { t: "choice", q: "The doctor gives you a…", o: ["recepta", "rachunek", "bilet"], a: 0 },
+    { t: "order", a: "Muszę iść do lekarza", en: "I have to go to the doctor." },
+    { t: "order", a: "Od wczoraj boli mnie gardło", en: "My throat has been sore since yesterday." }
+  ],
+  dialogue: [
+    ["Lekarka", "Dzień dobry. Co panu dolega?", "Hello. What's the matter?"],
+    ["Pacjent", "Od wczoraj boli mnie gardło. Mam też katar.", "My throat has been sore since yesterday. I also have a runny nose."],
+    ["Lekarka", "Ma pan gorączkę?", "Do you have a temperature?"],
+    ["Pacjent", "Tak, trzydzieści osiem stopni.", "Yes, thirty-eight degrees."],
+    ["Lekarka", "To przeziębienie. Proszę leżeć w łóżku i pić dużo herbaty. Tu jest recepta.", "It's a cold. Stay in bed and drink lots of tea. Here's a prescription."],
+    ["Pacjent", "Dziękuję. Gdzie jest najbliższa apteka?", "Thank you. Where's the nearest pharmacy?"]
+  ],
+  partner: "Lekarka",
+  scenario: "You're at a clinic (przychodnia). The doctor (lekarka) asks what's wrong. Describe your symptoms, ask what you should do and where the pharmacy is.",
+  writing: { prompt: "Text your boss or teacher: you're ill and can't come today. Say what hurts.", model: "Dzień dobry, niestety jestem chory. Boli mnie gardło i mam gorączkę. Dzisiaj nie mogę przyjść do pracy. Jutro idę do lekarza. Przepraszam, Marko" },
+  read: { kind: "notice", title: "Przychodnia „Zdrowie” · godziny przyjęć", body: ["Lekarz rodzinny: pon.–pt. 8:00–18:00", "Pediatra: wt., czw. 10:00–14:00", "Rejestracja telefoniczna: 12 345 67 89", "Apteka na parterze czynna codziennie 8:00–22:00", "W sobotę i w niedzielę przychodnia nieczynna."],
+    q: [{ q: "When can you see the family doctor?", o: ["Monday to Friday, 8:00–18:00", "only on Tuesday", "every day"], a: 0 }, { q: "Where is the pharmacy?", o: ["on the ground floor", "next to the station", "there isn't one"], a: 0 }, { q: "Which is true?", o: ["The clinic is closed at the weekend", "The pharmacy closes at 18:00", "The paediatrician works on Mondays"], a: 0 }] },
+  cloze: "Od rana boli {{mnie|ja|mi}} gardło. Mam {{gorączkę|gorączka|gorączki}}. Muszę iść do {{lekarza|lekarz|lekarzem}}, a potem do {{apteki|apteka|aptece}}."
+},
+{
+  id: 28, pl: "Dlaczego? Bo…", en: "Why? Because…", tag: "link", tagLabel: "Linking sentences",
+  focus: "spójniki · and, but, so, because",
+  vocab: [
+    ["i", "and"], ["a", "and, while (contrast)"], ["lub", "or"], ["więc", "so"], ["bo", "because"], ["dlatego że", "because (more formal)"],
+    ["że", "that", "Wiem, że…"], ["kiedy", "when"], ["dlaczego?", "why?"], ["później", "later"], ["w południe", "at noon"], ["po południu", "in the afternoon"],
+    ["w nocy", "at night"], ["zawsze", "always"], ["czasami", "sometimes"], ["nigdy", "never", "Nigdy nie…"], ["zaczynać / kończyć", "to start / to finish"],
+    ["przerwa", "a break"], ["zmęczony", "tired"], ["wolny czas", "free time"], ["spotkanie", "meeting"], ["zakupy", "shopping"], ["odpoczywać", "to rest"],
+    ["sprzątać", "to clean, tidy up"], ["wiadomość", "message"], ["list", "letter"], ["Pozdrawiam", "Best wishes (end of a message)"],
+    ["Do usłyszenia!", "Talk soon! (on the phone)"], ["Ściskam", "Hugs (informal sign-off)"]
+  ],
+  grammar: {
+    title: "Joining sentences",
+    html: `<p>Linking words turn short sentences into real ones. At A1 you need:</p>
+<ul><li><b>i</b> (and), <b>a</b> (and / while, for contrast), <b>ale</b> (but), <b>lub</b> (or), <b>więc</b> (so)</li>
+<li><b>że</b> (that), <b>bo / dlatego że</b> (because), <b>kiedy</b> (when)</li></ul>
+<p><b>Commas:</b> Polish puts a comma <b>before a, ale, więc, bo, że, kiedy, dlatego że</b>: <b>Jestem zmęczony, ale szczęśliwy.</b> There's normally <b>no comma before i or lub</b>: <b>Pracuję i uczę się polskiego.</b></p>
+<p><b>a</b> vs <b>i</b>: use <b>a</b> when you compare or contrast two people or things: <b>Ja piję kawę, a ona herbatę.</b></p>`,
+    table: { head: ["word", "meaning", "example"], rows: [
+      ["i", "and", "Pracuję i uczę się polskiego."], ["a", "and / while", "Ja piję kawę, a ona herbatę."], ["ale", "but", "Jestem zmęczony, ale szczęśliwy."],
+      ["lub", "or", "W weekend czytam lub oglądam filmy."], ["więc", "so", "Pada deszcz, więc zostaję w domu."], ["bo", "because", "Nie przyszedłem, bo byłem chory."],
+      ["że", "that", "Myślę, że to dobry pomysł."], ["kiedy", "when", "Kiedy mam czas, czytam książki."]
+    ], pl: [0, 2] }
+  },
+  quiz: [
+    { t: "choice", q: "Pada deszcz, ___ zostaję w domu.", o: ["więc", "bo", "że"], a: 0 },
+    { t: "choice", q: "Nie idę do pracy, ___ jestem chory.", o: ["bo", "więc", "a"], a: 0 },
+    { t: "choice", q: "Ja piję kawę, ___ ona herbatę.", o: ["a", "i", "lub"], a: 0 },
+    { t: "choice", q: "Myślę, ___ to dobry pomysł.", o: ["że", "bo", "kiedy"], a: 0 },
+    { t: "choice", q: "Which sentence is punctuated correctly?", o: ["Jestem zmęczony, ale szczęśliwy.", "Pracuję, i uczę się.", "Myślę że to dobry pomysł."], a: 0 },
+    { t: "fill", q: "___ mam czas, czytam książki.", h: "when", a: ["kiedy"], en: "When I have time, I read books." },
+    { t: "fill", q: "Uczę się polskiego, dlatego ___ mieszkam w Krakowie.", h: "dlatego …", a: ["że"], en: "I'm learning Polish because I live in Kraków." },
+    { t: "fill", q: "Nigdy ___ piję kawy wieczorem.", h: "not", a: ["nie"], en: "I never drink coffee in the evening." },
+    { t: "order", a: "Wstaję o siódmej i najpierw piję kawę", en: "I get up at seven and first drink coffee." },
+    { t: "order", a: "Wieczorem jestem zmęczony więc odpoczywam", en: "In the evening I'm tired, so I rest." }
+  ],
+  dialogue: [
+    ["Ola", "Dlaczego nie byłeś wczoraj na spotkaniu?", "Why weren't you at the meeting yesterday?"],
+    ["Marek", "Bo byłem chory. Bolała mnie głowa, więc zostałem w domu.", "Because I was ill. I had a headache, so I stayed at home."],
+    ["Ola", "Szkoda! A dzisiaj jak się czujesz?", "Pity! And how do you feel today?"],
+    ["Marek", "Lepiej, ale jestem trochę zmęczony.", "Better, but I'm a bit tired."],
+    ["Ola", "To odpoczywaj! Kiedy będziesz zdrowy, pójdziemy do kina.", "Then rest! When you're well, we'll go to the cinema."]
+  ],
+  partner: "Ola",
+  scenario: "Ola asks about your typical day and why you do things the way you do. Answer in full sentences with i, a, ale, więc, bo, że and kiedy.",
+  writing: { prompt: "Write a short essay „Mój dzień” (My day): 5–6 sentences with linking words (i, ale, więc, bo, kiedy). Mind the commas.", model: "Zwykle wstaję o siódmej, bo zaczynam pracę o dziewiątej. Najpierw piję kawę i jem śniadanie. Pracuję do piątej, a potem robię zakupy. Kiedy mam czas, czytam albo oglądam film. Wieczorem jestem zmęczony, więc idę spać o jedenastej." },
+  read: { kind: "email", title: "Od: Marta · Temat: Sobota", body: ["Cześć Kasiu!", "W sobotę nie mogę iść do kina, bo jadę do mamy. Ona ma imieniny, więc cała rodzina będzie u niej.", "Może w niedzielę? Kiedy wracam, mam czas po południu.", "Pozdrawiam,", "Marta"],
+    q: [{ q: "Why can't Marta go to the cinema on Saturday?", o: ["She's going to her mum's", "She's ill", "She has to work"], a: 0 }, { q: "What's happening at her mum's?", o: ["a name day", "a wedding", "a birthday"], a: 0 }, { q: "What does Marta suggest?", o: ["Sunday afternoon", "Saturday evening", "next week"], a: 0 }] },
+  cloze: "Lubię poniedziałki, {{bo|więc|ale}} w poniedziałek mam wolne popołudnie. Rano pracuję, {{a|i|lub}} po południu chodzę na basen. Wieczorem jestem zmęczony, {{więc|bo|że}} wcześnie idę spać. Myślę, {{że|bo|kiedy}} to dobry plan."
+}
+];
+/* New A2 units (ids 29–33), added to match the adult A2 standard in
+   Dz.U. 2025 poz. 217, załącznik nr 1, część II D. */
+const NEW_UNITS_A2 = [
+{
+  id: 29, pl: "Chciałbym…", en: "I'd like…", tag: "cond", tagLabel: "The conditional (tryb przypuszczający)",
+  focus: "tryb przypuszczający · would",
+  vocab: [
+    ["chciałbym / chciałabym", "I'd like (m / f)"], ["mógłbym / mogłabym", "I could (m / f)"], ["wolałbym / wolałabym", "I'd prefer (m / f)"],
+    ["Czy mógłby pan…?", "Could you… (to a man)?"], ["Czy mogłaby pani…?", "Could you… (to a woman)?"], ["Co by pani poleciła?", "What would you recommend? (to a woman)"],
+    ["karta", "menu"], ["przystawka", "starter"], ["zupa", "soup"], ["danie główne", "main course"], ["deser", "dessert"], ["napój", "drink"],
+    ["talerz", "plate"], ["widelec", "fork"], ["nóż", "knife"], ["łyżka", "spoon"], ["łyżeczka", "teaspoon"], ["szklanka", "glass (for water)"],
+    ["kieliszek", "wine glass"], ["serwetka", "napkin"], ["kelner / kelnerka", "waiter / waitress"], ["stolik", "table (in a restaurant)"],
+    ["zarezerwować", "to book, reserve"], ["zamówić", "to order"], ["napiwek", "tip"], ["smaczny", "tasty"], ["słony", "salty"], ["ostry", "spicy"],
+    ["wegetariański", "vegetarian"], ["mieć nadzieję", "to hope", "Mam nadzieję, że…"], ["Smacznego!", "Enjoy your meal!"]
+  ],
+  grammar: {
+    title: "The conditional: would",
+    html: `<p>The conditional is built from the <b>past tense</b> (the he / she form) + <b>-by-</b> + a personal ending:</p>
+<ul><li><b>chciał</b> → <b>chciałbym</b> (I'd like, man), <b>chciała</b> → <b>chciałabym</b> (I'd like, woman)</li>
+<li><b>mógł</b> → <b>mógłbym</b>, <b>mogła</b> → <b>mogłabym</b> (I could)</li></ul>
+<p>Use it to be <b>polite</b>: <b>Chciałbym zamówić…</b>, <b>Czy mógłby pan podać sól?</b>; for <b>wishes</b>: <b>Chciałabym pojechać do Paryża</b>; and for <b>suggestions</b>: <b>Moglibyśmy pójść do kina.</b></p>
+<p>In the plural, <b>-li-</b> is for groups with at least one man and <b>-ły-</b> for other groups: <b>chcielibyśmy</b> / <b>chciałybyśmy</b>.</p>`,
+    table: { head: ["", "man / mixed", "woman / other"], rows: [
+      ["ja", "chciałbym", "chciałabym"], ["ty", "chciałbyś", "chciałabyś"], ["on / ona", "chciałby", "chciałaby"],
+      ["my", "chcielibyśmy", "chciałybyśmy"], ["wy", "chcielibyście", "chciałybyście"], ["oni / one", "chcieliby", "chciałyby"]
+    ] }
+  },
+  quiz: [
+    { t: "fill", q: "___ zarezerwować stolik na dwie osoby.", h: "chcieć · ja, man", a: ["chciałbym"], en: "I'd like to book a table for two." },
+    { t: "fill", q: "___ zamówić zupę pomidorową.", h: "chcieć · ja, woman", a: ["chciałabym"], en: "I'd like to order tomato soup." },
+    { t: "fill", q: "Czy ___ pan podać sól?", h: "móc", a: ["mógłby"], en: "Could you pass the salt?" },
+    { t: "fill", q: "My ___ usiąść przy oknie.", h: "chcieć · my, mixed group", a: ["chcielibyśmy"], en: "We'd like to sit by the window." },
+    { t: "fill", q: "Co ___ zjeść?", h: "chcieć · ty, woman", a: ["chciałabyś"], en: "What would you like to eat?" },
+    { t: "choice", q: "A polite request to a waitress:", o: ["Czy mogłaby pani przynieść rachunek?", "Daj rachunek!", "Chcę rachunek."], a: 0 },
+    { t: "choice", q: "You eat soup with a…", o: ["łyżka", "widelec", "nóż"], a: 0 },
+    { t: "choice", q: "Ona ___ pojechać do Paryża.", o: ["chciałaby", "chciałby", "chciałabym"], a: 0 },
+    { t: "order", a: "Chciałbym zamówić danie wegetariańskie", en: "I'd like to order a vegetarian dish." },
+    { t: "order", a: "Czy mógłby pan przynieść kartę", en: "Could you bring the menu, please?" }
+  ],
+  dialogue: [
+    ["Kelnerka", "Dobry wieczór. Czy mają państwo rezerwację?", "Good evening. Do you have a reservation?"],
+    ["Gość", "Tak, na nazwisko Novak. Chcielibyśmy stolik przy oknie.", "Yes, in the name of Novak. We'd like a table by the window."],
+    ["Kelnerka", "Proszę bardzo. Oto karta. Co podać do picia?", "Of course. Here's the menu. What can I get you to drink?"],
+    ["Gość", "Ja poproszę wodę, a żona chciałaby kieliszek białego wina.", "Water for me, and my wife would like a glass of white wine."],
+    ["Kelnerka", "A na danie główne?", "And for the main course?"],
+    ["Gość", "Wolałbym coś wegetariańskiego. Co by pani poleciła?", "I'd prefer something vegetarian. What would you recommend?"],
+    ["Kelnerka", "Pierogi ruskie są bardzo smaczne.", "The pierogi ruskie are very good."]
+  ],
+  partner: "Kelnerka",
+  scenario: "You're at a restaurant in Kraków. Ask for a table, then politely order a starter, main course, drink and dessert with chciałbym / czy mogłaby pani, and ask for the bill.",
+  writing: { prompt: "Write what you would like to do next year and where you'd like to travel (4–5 sentences with the conditional).", model: "W przyszłym roku chciałbym pojechać do Polski na dwa tygodnie. Chciałbym zobaczyć Kraków i Gdańsk. Mógłbym też pojechać w góry. Moja żona wolałaby odpocząć nad morzem. Bardzo chcielibyśmy zjeść prawdziwe pierogi!" },
+  read: { kind: "menu", title: "Restauracja „Pod Lipą” · KARTA DAŃ", body: ["ZUPY | żurek | 18 zł", "ZUPY | pomidorowa z ryżem | 14 zł", "DANIA GŁÓWNE | pierogi ruskie (wegetariańskie) | 29 zł", "DANIA GŁÓWNE | kotlet schabowy z ziemniakami | 39 zł", "DESERY | sernik | 16 zł", "NAPOJE | kompot | 8 zł", "Obiad dnia (pon.–pt., 12:00–16:00): zupa + danie główne – 35 zł"],
+    q: [{ q: "Which main course is vegetarian?", o: ["pierogi ruskie", "kotlet schabowy", "żurek"], a: 0 }, { q: "How much is the lunch of the day?", o: ["35 zł", "39 zł", "29 zł"], a: 0 }, { q: "When can you order the lunch of the day?", o: ["weekdays, 12:00–16:00", "every evening", "only at weekends"], a: 0 }] },
+  cloze: "Dzień dobry, {{chciałbym|chciałabyś|chcieliby}} zarezerwować stolik na sobotę. Czy {{mógłby|mógłbym|mogliby}} pan powiedzieć, o której jest wolny stolik? Moja żona {{chciałaby|chciałby|chciałbym}} usiąść przy oknie. My {{chcielibyśmy|chcielibyście|chciałbym}} też zamówić tort."
+},
+{
+  id: 30, pl: "Panowie i panie", en: "Ladies and gentlemen", tag: "mpers", tagLabel: "Men's plurals & the vocative",
+  focus: "męskoosobowe · groups of men, calling people",
+  vocab: [
+    ["panowie", "gentlemen"], ["panie", "ladies"], ["państwo", "ladies and gentlemen; Mr and Mrs", "państwo Kowalscy"], ["Proszę państwa!", "Ladies and gentlemen!"],
+    ["koledzy", "colleagues (men or mixed)"], ["koleżanki", "colleagues (women)"], ["studenci", "students (men or mixed)"], ["Polacy", "Poles (men or mixed)"],
+    ["lekarze", "doctors (men or mixed)"], ["nauczyciele", "teachers (men or mixed)"], ["sąsiad / sąsiedzi", "neighbour / neighbours"],
+    ["dwaj / trzej / czterej", "two / three / four (men)", "+ nominative: dwaj studenci"], ["dwóch / trzech / czterech", "two / three / four (men)", "+ genitive: dwóch studentów"],
+    ["pięciu", "five (men)", "+ genitive: pięciu panów"], ["wszyscy", "everyone, all (men or mixed)"], ["wszystkie", "all (women, things)"],
+    ["dyrektor", "director, manager"], ["profesor", "professor"], ["zespół", "team"], ["pracownik / pracownica", "employee (m / f)"],
+    ["Drogi… / Droga…", "Dear… (informal letter, m / f)"], ["Szanowny Panie / Szanowna Pani", "Dear Sir / Dear Madam"], ["Szanowni Państwo", "Dear Sir or Madam (to a group)"],
+    ["Z poważaniem", "Yours sincerely"], ["Panie Marku!", "Marek! (polite, to a man)"], ["Pani Ewo!", "Ewa! (polite, to a woman)"],
+    ["swój / swoja / swoje", "one's own"], ["mili", "nice (men or mixed)"], ["zdolni", "talented (men or mixed)"], ["charakter", "character, personality"]
+  ],
+  grammar: {
+    title: "Groups of men, and calling people by name",
+    html: `<p><b>Men and mixed groups</b> have their own plural forms (rodzaj męskoosobowy). The noun, adjective and past-tense verb all change:</p>
+<ul><li>nouns: <b>student → studenci</b>, <b>Polak → Polacy</b>, <b>kolega → koledzy</b>, <b>pan → panowie</b>, <b>sąsiad → sąsiedzi</b></li>
+<li>adjectives: <b>mili, dobrzy, zdolni, nowi</b> (other groups: <b>miłe, dobre, zdolne, nowe</b>)</li>
+<li>past tense: <b>byli, mieli</b> (other groups: <b>były, miały</b>)</li></ul>
+<p><b>Counting men:</b> <b>dwaj / trzej / czterej</b> + nominative (<b>dwaj studenci</b>), or <b>dwóch / trzech / czterech / pięciu</b> + genitive (<b>dwóch studentów, pięciu panów</b>). Other groups: <b>dwie studentki, cztery stoły</b>.</p>
+<p><b>Calling someone</b> uses the vocative: <b>Panie Marku!</b>, <b>Pani Ewo!</b>, <b>Aniu!</b>, <b>Panie profesorze!</b> Letters start with it too: <b>Drogi Marku!</b>, <b>Szanowna Pani!</b></p>
+<p><b>swój</b> means "my / your / his own" when it refers back to the subject: <b>Mam swój pokój.</b> <b>Oni przedstawią swoje projekty.</b></p>`,
+    table: { head: ["men / mixed", "women / things"], rows: [
+      ["Oni są mili.", "One są miłe."], ["dwaj studenci / dwóch studentów", "dwie studentki"], ["Koledzy byli w pracy.", "Koleżanki były w pracy."],
+      ["Wszyscy przyszli.", "Wszystkie przyszły."], ["nowi nauczyciele", "nowe nauczycielki"]
+    ], pl: [0, 1] }
+  },
+  quiz: [
+    { t: "fill", q: "To są moi ___.", h: "kolega", a: ["koledzy"], en: "These are my colleagues." },
+    { t: "fill", q: "W pokoju są dwaj ___.", h: "student", a: ["studenci"], en: "There are two students in the room." },
+    { t: "fill", q: "Na spotkaniu było pięciu ___.", h: "pan", a: ["panów"], en: "There were five men at the meeting." },
+    { t: "fill", q: "Nasi sąsiedzi są bardzo ___.", h: "miły", a: ["mili"], en: "Our neighbours are very nice." },
+    { t: "fill", q: "Dzień dobry, panie ___!", h: "Marek, calling him", a: ["Marku"], en: "Good morning, Marek!" },
+    { t: "choice", q: "Women only: Koleżanki ___ w pracy.", o: ["były", "byli", "był"], a: 0 },
+    { t: "choice", q: "Starting a formal email to a woman:", o: ["Szanowna Pani,", "Cześć Ewa,", "Drogi Panie,"], a: 0 },
+    { t: "choice", q: "Proszę ___! (speaking to an audience)", o: ["państwa", "panów", "panie"], a: 0 },
+    { t: "order", a: "Wszyscy studenci są dzisiaj na zajęciach", en: "All the students are in class today." },
+    { t: "order", a: "Droga Ewo dziękuję za list", en: "Dear Ewa, thank you for the letter." }
+  ],
+  dialogue: [
+    ["Dyrektor", "Proszę państwa, to jest nasz nowy kolega, pan Tom.", "Ladies and gentlemen, this is our new colleague, Tom."],
+    ["Ewa", "Witamy! Jestem Ewa, a to są Marek i Piotr. Oni są programistami.", "Welcome! I'm Ewa, and this is Marek and Piotr. They're programmers."],
+    ["Tom", "Miło mi. Czy wszyscy pracują w tym biurze?", "Nice to meet you. Does everyone work in this office?"],
+    ["Ewa", "Prawie. Dwaj koledzy pracują z domu, a trzy koleżanki są dzisiaj na urlopie.", "Almost. Two colleagues work from home, and three of our female colleagues are on leave today."],
+    ["Tom", "Panie Marku, gdzie jest moje biurko?", "Marek, where's my desk?"],
+    ["Marek", "Obok mojego. Ale najpierw kawa – mamy tu swój ekspres!", "Next to mine. But coffee first – we have our own coffee machine here!"]
+  ],
+  partner: "Ewa",
+  scenario: "It's your first day in a new office. Ewa introduces the team; ask about your new colleagues and address people politely (Panie…, Pani…).",
+  writing: { prompt: "Write a short letter or email to a friend about the people at your work or course: describe two or three of them.", model: "Drogi Marku! W pracy mam bardzo miłych kolegów. Piotr i Adam są programistami. Są zdolni i zawsze pomagają. Moja szefowa, pani Ewa, jest spokojna i bardzo pracowita. Pozdrawiam, Tom" },
+  read: { kind: "email", title: "Od: Dział kadr · Temat: Spotkanie zespołu", body: ["Szanowni Państwo,", "w piątek o 10:00 w sali 12 odbędzie się spotkanie zespołu. Wszyscy pracownicy proszeni są o obecność.", "Nowi koledzy, pan Tom Novak i pan Luka Horvat, przedstawią swoje projekty.", "Z poważaniem,", "Anna Wiśniewska"],
+    q: [{ q: "When is the meeting?", o: ["Friday at 10:00", "Monday at 12:00", "Friday at 12:00"], a: 0 }, { q: "Who should come?", o: ["all employees", "only the new colleagues", "only managers"], a: 0 }, { q: "What will Tom and Luka do?", o: ["present their projects", "organise the meeting", "work from home"], a: 0 }] },
+  cloze: "Moi koledzy z pracy są bardzo {{mili|miłe|miły}}. {{Dwaj|Dwie|Dwa}} z nich mieszkają w Krakowie. Wczoraj wszyscy {{byli|były|był}} na kolacji. Panie {{Piotrze|Piotr|Piotra}}, dziękuję za zaproszenie!"
+},
+{
+  id: 31, pl: "Halo? Zapraszam!", en: "Hello? You're invited!", tag: "invite", tagLabel: "Phone calls, invitations & żeby",
+  focus: "telefon i zaproszenia · calls and invitations",
+  vocab: [
+    ["Halo?", "Hello? (answering the phone)"], ["Słucham.", "Hello. (lit. I'm listening)"], ["Mówi…", "… speaking"], ["Czy mogę rozmawiać z…?", "Can I speak to…?"],
+    ["Proszę chwilę poczekać.", "Please hold on a moment."], ["Oddzwonię.", "I'll call back."], ["dzwonić", "to call, phone"], ["komórka", "mobile phone"],
+    ["zapraszać / zaprosić", "to invite"], ["zaproszenie", "invitation"], ["impreza", "party"], ["Masz ochotę…?", "Do you feel like…?"], ["Chętnie!", "I'd love to!"],
+    ["Z przyjemnością.", "With pleasure."], ["Niestety nie dam rady.", "Sorry, I can't make it."], ["Może innym razem.", "Maybe another time."],
+    ["Pasuje ci…?", "Does … suit you?"], ["chyba", "probably, I think"], ["możliwe / niemożliwe", "possible / impossible"], ["raczej nie", "probably not"],
+    ["żeby", "in order to, so that"], ["gdy", "when (= kiedy)"], ["albo", "or"], ["dlatego", "that's why"], ["a także", "and also"],
+    ["Internet", "the internet"], ["strona internetowa", "website"], ["mejl", "email (informal)"], ["telewizja", "television"], ["gazeta", "newspaper"],
+    ["radio", "radio"], ["serial", "TV series"], ["wiadomości", "the news"]
+  ],
+  grammar: {
+    title: "Phone calls, invitations and żeby",
+    html: `<p><b>żeby</b> + infinitive means <b>in order to</b>: <b>Dzwonię, żeby zaprosić cię na imprezę.</b> <b>Uczę się polskiego, żeby rozmawiać z rodziną.</b></p>
+<p>More A2 linking words: <b>gdy</b> (= kiedy, when), <b>albo</b> (or), <b>dlatego</b> (that's why), <b>a także</b> (and also): <b>Jestem chory, dlatego nie przyjdę.</b></p>
+<p><b>Inviting:</b> <b>Zapraszam cię na kolację</b> (na + accusative), <b>Masz ochotę pójść do kina?</b> <b>Accepting:</b> <b>Chętnie! Z przyjemnością!</b> <b>Declining:</b> <b>Niestety nie mogę, bo…</b>, <b>Może innym razem.</b></p>
+<p><b>How sure are you?</b> <b>na pewno</b> (definitely), <b>chyba</b> (probably), <b>może</b> (maybe), <b>raczej nie</b> (probably not).</p>
+<p><b>On the phone:</b> answer with <b>Halo?</b> or <b>Słucham.</b>; say who's calling with <b>Mówi Tom.</b>; finish with <b>Do usłyszenia!</b></p>`,
+    table: { head: ["word", "meaning", "example"], rows: [
+      ["żeby", "in order to", "Dzwonię, żeby cię zaprosić."], ["gdy", "when", "Gdy mam czas, oglądam seriale."], ["albo", "or", "Spotkajmy się w piątek albo w sobotę."],
+      ["dlatego", "that's why", "Jestem chory, dlatego nie przyjdę."], ["a także", "and also", "Czytam gazety, a także słucham radia."], ["chyba", "probably", "Chyba będzie padać."]
+    ], pl: [0, 2] }
+  },
+  quiz: [
+    { t: "choice", q: "Dzwonię, ___ zaprosić cię na imprezę.", o: ["żeby", "że", "bo"], a: 0 },
+    { t: "choice", q: "Jestem chory, ___ nie przyjdę.", o: ["dlatego", "bo", "żeby"], a: 0 },
+    { t: "choice", q: "Accepting an invitation:", o: ["Chętnie!", "Niestety nie dam rady.", "Może innym razem."], a: 0 },
+    { t: "choice", q: "On the phone, to say who's calling:", o: ["Mówi Tom.", "Słucha Tom.", "To jest telefon Tom."], a: 0 },
+    { t: "fill", q: "Zapraszam cię ___ kolację.", h: "to (an event)", a: ["na"], en: "I'm inviting you to dinner." },
+    { t: "fill", q: "Spotkajmy się w piątek ___ w sobotę.", h: "or", a: ["albo", "lub"], en: "Let's meet on Friday or Saturday." },
+    { t: "fill", q: "Uczę się polskiego, ___ rozmawiać z sąsiadami.", h: "in order to", a: ["żeby"], en: "I'm learning Polish so I can talk to my neighbours." },
+    { t: "fill", q: "___ mam czas, oglądam seriale.", h: "when (A2 word, not kiedy)", a: ["gdy"], en: "When I have time, I watch series." },
+    { t: "order", a: "Czy mogę rozmawiać z panią Ewą", en: "Can I speak to Ewa, please?" },
+    { t: "order", a: "Niestety w sobotę nie mogę bo pracuję", en: "Unfortunately I can't on Saturday because I'm working." }
+  ],
+  dialogue: [
+    ["Kasia", "Halo?", "Hello?"],
+    ["Tom", "Cześć Kasiu, mówi Tom. Dzwonię, żeby zaprosić cię na imprezę w sobotę.", "Hi Kasia, it's Tom. I'm calling to invite you to a party on Saturday."],
+    ["Kasia", "Dzięki! O której?", "Thanks! What time?"],
+    ["Tom", "O ósmej wieczorem, u mnie. Będą też Ola i Marek.", "At eight in the evening, at my place. Ola and Marek are coming too."],
+    ["Kasia", "Chętnie przyjdę, ale chyba trochę później, bo do siódmej pracuję.", "I'd love to come, but probably a bit later, because I work until seven."],
+    ["Tom", "Nie ma problemu. Do zobaczenia w sobotę!", "No problem. See you on Saturday!"]
+  ],
+  partner: "Tomek",
+  scenario: "Tomek phones you. Answer the phone; he invites you to two things. Accept one, decline the other politely with a reason, and suggest another time.",
+  writing: { prompt: "Write two text messages: one inviting a friend to something, and one politely declining an invitation with a reason.", model: "Cześć Ola! Zapraszam cię na moje urodziny w sobotę o 19:00. Będzie tort! Daj znać, czy przyjdziesz. — Cześć Marek, dziękuję za zaproszenie, ale niestety nie mogę, bo jadę do rodziców. Może innym razem?" },
+  read: { kind: "ad", title: "Kino „Nowe Horyzonty” zaprasza!", body: ["Wieczór Filmu Polskiego", "Piątek, 20 października, godz. 19:00", "Program: dwa filmy z angielskimi napisami", "Bilety: 25 zł, studenci 18 zł", "Rezerwacja: tel. 12 345 00 00 albo na naszej stronie internetowej."],
+    q: [{ q: "What is the event?", o: ["an evening of Polish films", "a concert", "a party"], a: 0 }, { q: "How much do students pay?", o: ["18 zł", "25 zł", "nothing"], a: 0 }, { q: "How can you book?", o: ["by phone or on the website", "only at the cinema", "only by email"], a: 0 }] },
+  cloze: "Halo? {{Mówi|Słucha|Dzwoni}} Marek. Dzwonię, {{żeby|że|bo}} zapytać, czy masz czas w sobotę. Idziemy do kina {{albo|ale|więc}} do teatru. Daj znać, {{czy|że|żeby}} przyjdziesz!"
+},
+{
+  id: 32, pl: "Załatwiam sprawy", en: "Running errands", tag: "errands", tagLabel: "Bank, post office & renting a flat",
+  focus: "urzędy i usługi · running errands",
+  vocab: [
+    ["bank", "bank"], ["konto", "bank account"], ["karta płatnicza", "bank card"], ["wypłacić / wpłacić pieniądze", "to withdraw / deposit money"],
+    ["bankomat", "cash machine, ATM"], ["przelew", "bank transfer"], ["list polecony", "registered letter"], ["znaczek", "stamp"], ["koperta", "envelope"],
+    ["nadać", "to send (at the post office)", "nadać paczkę"], ["urząd", "(government) office"], ["wniosek", "application form"], ["dowód osobisty", "ID card"],
+    ["okienko", "counter, window"], ["numerek", "queue ticket"], ["kolejka", "queue"], ["pralnia", "laundry, dry cleaner's"], ["fryzjer", "hairdresser"],
+    ["stacja benzynowa", "petrol station"], ["wynająć / wynajmować", "to rent"], ["mieszkanie do wynajęcia", "flat for rent"], ["właściciel / właścicielka", "owner, landlord / landlady"],
+    ["najemca", "tenant"], ["czynsz", "rent"], ["kaucja", "deposit"], ["umowa", "contract"], ["opłaty", "bills, charges"], ["umeblowany", "furnished"],
+    ["wprowadzić się", "to move in"], ["Od kiedy?", "Since when? / From when?"], ["Na jak długo?", "For how long?"], ["Ile wynosi…?", "How much is… (an amount)?"]
+  ],
+  grammar: {
+    title: "Official situations: from when, for how long, how much",
+    html: `<p>Running errands means a lot of <b>time</b> questions:</p>
+<ul><li><b>Od kiedy?</b> (from / since when?) + genitive: <b>od pierwszego listopada</b>, <b>od poniedziałku</b>, <b>od roku</b></li>
+<li><b>Do kiedy?</b> (until when?) + genitive: <b>do końca miesiąca</b>, <b>do piątku</b></li>
+<li><b>Na jak długo?</b> (for how long — planned) + accusative: <b>na rok</b>, <b>na dwa tygodnie</b></li>
+<li><b>Jak długo?</b> (how long — it lasted) + accusative without a preposition: <b>Mieszkałem tam rok.</b> <b>Czekałam godzinę.</b></li></ul>
+<p>Amounts: <b>Ile wynosi czynsz?</b> — <b>Czynsz wynosi dwa tysiące złotych.</b> (<b>tysiąc, dwa tysiące, pięć tysięcy</b>)</p>
+<p>In offices, use the polite conditional from the previous units: <b>Chciałbym otworzyć konto.</b> <b>Czy mogłaby pani mi pomóc wypełnić wniosek?</b></p>`,
+    table: { head: ["question", "answer"], rows: [
+      ["Od kiedy?", "Od pierwszego listopada. / Od roku."], ["Do kiedy?", "Do końca miesiąca."], ["Na jak długo?", "Na rok. / Na dwa tygodnie."],
+      ["Jak długo?", "Dwa lata. / Tydzień."], ["Ile wynosi czynsz?", "Dwa tysiące złotych miesięcznie."]
+    ], pl: [0, 1] }
+  },
+  quiz: [
+    { t: "choice", q: "Chciałbym ___ konto.", o: ["otworzyć", "otwieram", "otworzyłem"], a: 0 },
+    { t: "fill", q: "Mieszkanie jest wolne od ___ listopada.", h: "pierwszy", a: ["pierwszego"], en: "The flat is available from 1 November." },
+    { t: "fill", q: "Chcę wynająć mieszkanie na dwa ___.", h: "rok", a: ["lata"], en: "I want to rent a flat for two years." },
+    { t: "fill", q: "Poproszę trzy ___ na list do Serbii.", h: "znaczek", a: ["znaczki"], en: "Three stamps for a letter to Serbia, please." },
+    { t: "fill", q: "Muszę wypłacić pieniądze z ___.", h: "bankomat", a: ["bankomatu"], en: "I need to take money out of the cash machine." },
+    { t: "choice", q: "The money you pay every month for a flat:", o: ["czynsz", "kaucja", "przelew"], a: 0 },
+    { t: "choice", q: "Jak długo mieszkałeś w Krakowie? – ___", o: ["Dwa lata.", "Od dwóch lat.", "Za dwa lata."], a: 0 },
+    { t: "choice", q: "To send a registered letter, you go…", o: ["na pocztę", "do pralni", "do fryzjera"], a: 0 },
+    { t: "order", a: "Od kiedy mieszkanie jest wolne", en: "When is the flat available from?" },
+    { t: "order", a: "Proszę wypełnić wniosek i podpisać umowę", en: "Please fill in the application and sign the contract." }
+  ],
+  dialogue: [
+    ["Tom", "Dzień dobry, dzwonię w sprawie mieszkania do wynajęcia.", "Hello, I'm calling about the flat for rent."],
+    ["Właścicielka", "Dzień dobry. Tak, jest jeszcze wolne.", "Hello. Yes, it's still available."],
+    ["Tom", "Od kiedy można się wprowadzić i ile wynosi czynsz?", "From when can I move in, and how much is the rent?"],
+    ["Właścicielka", "Od pierwszego listopada. Czynsz to dwa tysiące złotych plus opłaty, a kaucja – jeden czynsz.", "From the first of November. The rent is 2,000 złoty plus bills, and the deposit is one month's rent."],
+    ["Tom", "Czy mieszkanie jest umeblowane?", "Is the flat furnished?"],
+    ["Właścicielka", "Tak, jest kuchnia, pralka i meble. Umowa na rok. Kiedy chciałby pan je obejrzeć?", "Yes, there's a kitchen, a washing machine and furniture. The contract is for a year. When would you like to see it?"]
+  ],
+  partner: "Właścicielka",
+  scenario: "You're phoning a landlady (właścicielka) about a flat for rent. Ask about the rent, deposit, bills, furniture, when it's free and how long the contract is, then arrange a viewing.",
+  writing: {
+    prompt: "Fill in this application to open a bank account. You can invent the details.",
+    form: ["Imię i nazwisko", "Data urodzenia", "Obywatelstwo", "Numer dokumentu (paszport / dowód)", "Adres zamieszkania", "Telefon / e-mail", "Rodzaj konta (osobiste / firmowe)", "Podpis"],
+    model: "Imię i nazwisko: Tom Novak · Data urodzenia: 12.05.1995 · Obywatelstwo: serbskie · Numer dokumentu: paszport 123456789 · Adres zamieszkania: ul. Długa 5/3, 31-147 Kraków · Telefon / e-mail: 600 123 456, tom.novak@mail.com · Rodzaj konta: osobiste · Podpis: T. Novak"
+  },
+  read: { kind: "ad", title: "WYNAJMĘ", body: ["Mieszkanie 2-pokojowe, 48 m², Kraków-Podgórze", "III piętro, winda, balkon, umeblowane", "Czynsz: 2400 zł + opłaty (ok. 500 zł)", "Kaucja: 2400 zł · umowa na min. 12 miesięcy", "Wolne od 1 listopada. Bez zwierząt.", "Kontakt: 601 234 567 (po 16:00)"],
+    q: [{ q: "How much is the rent without bills?", o: ["2400 zł", "500 zł", "2900 zł"], a: 0 }, { q: "Which is true?", o: ["Pets aren't allowed", "It's on the ground floor", "It's unfurnished"], a: 0 }, { q: "What's the minimum contract?", o: ["12 months", "1 month", "6 months"], a: 0 }] },
+  cloze: "Chciałbym {{wynająć|wynajmę|wynajął}} mieszkanie w centrum. Szukam {{mieszkania|mieszkanie|mieszkaniem}} na rok, od {{pierwszego|pierwszy|pierwszym}} grudnia. Czynsz nie może być wyższy niż dwa {{tysiące|tysiąc|tysięcy}} złotych."
+},
+{
+  id: 33, pl: "Podróże i zabytki", en: "Trips and sights", tag: "trip", tagLabel: "Travel stories & time expressions",
+  focus: "podróże · telling what happened",
+  vocab: [
+    ["zabytek", "historic site, monument"], ["zamek", "castle"], ["kościół", "church"], ["rynek", "market square"], ["Stare Miasto", "Old Town"],
+    ["muzeum", "museum", "doesn't change in the singular: w muzeum"], ["galeria sztuki", "art gallery"], ["pomnik", "monument, statue"], ["wycieczka", "trip, excursion"],
+    ["przewodnik", "guide, guidebook"], ["biuro podróży", "travel agency"], ["nocleg", "place to stay, overnight stay"], ["las", "forest"], ["jezioro", "lake"],
+    ["rzeka", "river"], ["góra / góry", "mountain / mountains"], ["plaża", "beach"], ["pole", "field"], ["kwiat", "flower"], ["drzewo", "tree"],
+    ["zwierzęta domowe", "pets"], ["krajobraz", "landscape"], ["Jak długo?", "How long?"], ["przez tydzień", "for a week"],
+    ["dwa dni temu", "two days ago"], ["ostatnio", "recently"], ["w zeszłym roku", "last year"], ["nigdy nie…", "never…", "Nigdy nie byłem w Gdańsku."],
+    ["kiedyś", "once, at some point; some day"], ["zwiedzić", "to visit, see (sights) — perfective", "zwiedziłem"]
+  ],
+  grammar: {
+    title: "Telling what happened: since, for, ago, never",
+    html: `<p>To tell the story of a trip, you need time expressions:</p>
+<ul><li><b>od</b> + genitive — since: <b>Mieszkam w Polsce od roku / od września.</b></li>
+<li><b>przez</b> + accusative, or the accusative alone — for (duration): <b>Byłem tam przez tydzień.</b> <b>Byłem tam tydzień.</b></li>
+<li><b>temu</b> — ago: <b>dwa dni temu</b>, <b>rok temu</b></li>
+<li><b>nigdy nie</b> + verb — never: <b>Nigdy nie byłem w Gdańsku.</b> (a negated object goes into the genitive: <b>Nigdy nie widziałem morza.</b>)</li>
+<li><b>już / jeszcze nie</b> — already / not yet: <b>Widziałeś już Wawel? – Jeszcze nie.</b></li></ul>
+<p>Use <b>perfective</b> verbs for what you did and finished (<b>zwiedziliśmy, zobaczyłem, pojechaliśmy</b>) and <b>imperfective</b> for background and how long (<b>padał deszcz, spacerowaliśmy cały dzień</b>).</p>`,
+    table: { head: ["question", "answer"], rows: [
+      ["Od kiedy uczysz się polskiego?", "Od roku. / Od września."], ["Jak długo byłeś w Zakopanem?", "Tydzień. / Przez tydzień."], ["Kiedy tam byłeś?", "Dwa lata temu. / W zeszłym roku."],
+      ["Byłeś kiedyś w Gdańsku?", "Nie, nigdy nie byłem w Gdańsku."], ["Widziałeś już Wawel?", "Tak, już widziałem. / Jeszcze nie."]
+    ], pl: [0, 1] }
+  },
+  quiz: [
+    { t: "fill", q: "Uczę się polskiego od ___.", h: "rok", a: ["roku"], en: "I've been learning Polish for a year." },
+    { t: "fill", q: "Byłem w Krakowie dwa lata ___.", h: "ago", a: ["temu"], en: "I was in Kraków two years ago." },
+    { t: "fill", q: "Nigdy nie ___ w Gdańsku.", h: "być · ja, man", a: ["byłem"], en: "I've never been to Gdańsk." },
+    { t: "fill", q: "Zwiedzaliśmy ___ Miasto przez cały dzień.", h: "stary", a: ["Stare"], en: "We explored the Old Town all day." },
+    { t: "fill", q: "Mieszkam w Polsce od ___.", h: "wrzesień", a: ["września"], en: "I've lived in Poland since September." },
+    { t: "choice", q: "Jak długo byłaś nad morzem? – ___", o: ["Tydzień.", "Od tygodnia.", "Tydzień temu."], a: 0 },
+    { t: "choice", q: "A castle:", o: ["zamek", "kościół", "rynek"], a: 0 },
+    { t: "choice", q: "Which words describe nature?", o: ["jezioro, las, rzeka", "rynek, pomnik, zamek", "bilet, peron, lot"], a: 0 },
+    { t: "order", a: "W zeszłym roku zwiedziliśmy Kraków i Zakopane", en: "Last year we visited Kraków and Zakopane." },
+    { t: "order", a: "Od kiedy mieszkasz w Polsce", en: "How long have you lived in Poland?" }
+  ],
+  dialogue: [
+    ["Ola", "Jak było na wakacjach?", "How was your holiday?"],
+    ["Ben", "Super! Byliśmy tydzień w Krakowie. Zwiedziliśmy Wawel, Stare Miasto i kopalnię soli w Wieliczce.", "Great! We spent a week in Kraków. We saw Wawel, the Old Town and the salt mine in Wieliczka."],
+    ["Ola", "Byliście też w górach?", "Did you go to the mountains too?"],
+    ["Ben", "Tak, przez dwa dni w Zakopanem. Krajobraz był piękny, ale ciągle padał deszcz.", "Yes, two days in Zakopane. The landscape was beautiful, but it rained the whole time."],
+    ["Ola", "A nad morzem?", "And the seaside?"],
+    ["Ben", "Nigdy nie byłem nad Bałtykiem. Może w przyszłym roku!", "I've never been to the Baltic. Maybe next year!"]
+  ],
+  partner: "Ola",
+  scenario: "Tell Ola about a trip you took: where you went, how long you stayed, what you saw and what the weather was like. Then ask about her travels.",
+  writing: { prompt: "Write a postcard or email from a trip: where you are, since when, what you've seen and the weather.", model: "Cześć Marta! Pozdrawiam z Gdańska! Jestem tu od poniedziałku. Wczoraj zwiedziłem Stare Miasto i muzeum. Dzisiaj idę na plażę, bo jest ciepło i świeci słońce. Wracam w sobotę. Ściskam, Ben" },
+  read: { kind: "ad", title: "Biuro Podróży „Wakacje”", body: ["Wycieczka: Kraków i Wieliczka · 3 dni", "Termin: 10–12 maja", "Cena: 890 zł/os. (nocleg w hotelu ***, śniadania, przewodnik)", "Program: Wawel, Stare Miasto, Kazimierz, Kopalnia Soli „Wieliczka”", "Bilety wstępu do muzeów nie są wliczone w cenę.", "Zapisy do 30 kwietnia."],
+    q: [{ q: "How long is the trip?", o: ["3 days", "10 days", "a week"], a: 0 }, { q: "What is NOT included in the price?", o: ["museum tickets", "the hotel", "breakfast"], a: 0 }, { q: "When must you sign up by?", o: ["30 April", "10 May", "12 May"], a: 0 }] },
+  cloze: "W zeszłym {{roku|rok|rokiem}} byłem w Polsce przez dwa {{tygodnie|tydzień|tygodni}}. Najpierw zwiedziłem Kraków, a potem pojechałem nad {{morze|morzu|morza}}. Nigdy wcześniej nie {{byłem|był|byłam}} w tak pięknym miejscu!"
+}
+];
+/* Extra vocabulary, reading texts and gap-fills for the original 21 units,
+   so every unit has a real-life text (signs, menus, timetables, ads, forms,
+   emails) and a gap-fill text, as tested in the exam. */
+const EXTRA_VOCAB = {
+  0: [["Na razie!", "See you! (casual)"], ["Do zobaczenia!", "See you later!"], ["Dobranoc!", "Good night!"], ["Witam!", "Hello! (semi-formal)"],
+      ["Jak się pan ma?", "How are you? (to a man)"], ["Jak się pani ma?", "How are you? (to a woman)"], ["Świetnie!", "Great!"], ["Nieźle.", "Not bad."],
+      ["Tak sobie.", "So-so."], ["źle", "badly, bad"], ["pan / pani", "Mr, sir / Mrs, madam"], ["Nie rozumiem.", "I don't understand."],
+      ["Proszę powtórzyć.", "Please repeat."], ["Proszę mówić wolniej.", "Please speak more slowly."], ["Jak to się mówi po polsku?", "How do you say that in Polish?"],
+      ["Co to znaczy?", "What does that mean?"], ["Nie wiem.", "I don't know."]],
+  1: [["rodzice", "parents"], ["dziadek", "grandfather"], ["babcia", "grandmother"], ["wnuk / wnuczka", "grandson / granddaughter"], ["wujek", "uncle"],
+      ["ciocia", "aunt"], ["kuzyn / kuzynka", "cousin (m / f)"], ["chłopak", "boy; boyfriend"], ["dziewczyna", "girl; girlfriend"], ["narzeczony / narzeczona", "fiancé / fiancée"],
+      ["rodzeństwo", "siblings"], ["jedynak / jedynaczka", "only child (m / f)"], ["żonaty", "married (of a man)"], ["zamężna", "married (of a woman)"],
+      ["rozwiedziony", "divorced"], ["nasz / nasza / nasze", "our (m / f / n)"], ["jego / jej", "his / her"]],
+  2: [["trzynaście", "13"], ["czternaście", "14"], ["szesnaście", "16"], ["siedemnaście", "17"], ["osiemnaście", "18"], ["dziewiętnaście", "19"],
+      ["rok", "year"], ["lata / lat", "years (2–4 / 5+)"], ["numer", "number"], ["Jaki masz numer telefonu?", "What's your phone number?"], ["rower", "bicycle"],
+      ["pół", "half"], ["około", "about, approximately"], ["więcej / mniej", "more / less"], ["dorosły", "adult, grown-up"]],
+  3: [["lody", "ice cream", "plural"], ["sernik", "cheesecake"], ["szarlotka", "apple pie"], ["tort", "gateau, birthday cake"], ["jajecznica", "scrambled eggs"],
+      ["bułka", "bread roll"], ["dżem", "jam"], ["na miejscu", "to eat in"], ["na wynos", "to take away"], ["Dla mnie…", "For me…"], ["gorący", "hot"],
+      ["zimny", "cold"], ["z lodem", "with ice"], ["z cytryną", "with lemon"], ["Czy to miejsce jest wolne?", "Is this seat free?"], ["Gdzie jest toaleta?", "Where's the toilet?"]],
+  4: [["pisać", "to write", "piszę, piszesz"], ["oglądać", "to watch"], ["uczyć", "to teach"], ["studiować", "to study (at university)"], ["grać", "to play"],
+      ["śpiewać", "to sing"], ["tańczyć", "to dance"], ["pływać", "to swim"], ["biegać", "to run, jog"], ["jeździć na rowerze", "to cycle"], ["czekać", "to wait"],
+      ["pamiętać", "to remember"], ["myśleć", "to think", "myślę"], ["wiedzieć", "to know (a fact)", "wiem, wiesz, wiedzą"], ["otwierać / zamykać", "to open / to close"]],
+  5: [["centrum", "city centre"], ["plac", "square"], ["most", "bridge"], ["teatr", "theatre"], ["uniwersytet", "university"], ["szpital", "hospital"],
+      ["hotel", "hotel"], ["basen", "swimming pool"], ["siłownia", "gym"], ["stadion", "stadium"], ["kawiarnia", "café"], ["ogród", "garden"],
+      ["na wsi", "in the countryside"], ["parking", "car park"], ["biblioteka", "library"]],
+  6: [["owoce", "fruit"], ["warzywa", "vegetables"], ["banan", "banana"], ["pomarańcza", "orange"], ["truskawki", "strawberries"], ["ziemniaki", "potatoes"],
+      ["kurczak", "chicken"], ["makaron", "pasta"], ["sałatka", "salad"], ["pizza", "pizza"], ["piłka nożna", "football"], ["koszykówka", "basketball"],
+      ["gotowanie", "cooking"], ["podróże", "travelling"], ["gry komputerowe", "video games"], ["nienawidzić", "to hate", "+ genitive"]],
+  7: [["przed południem", "in the morning (before noon)"], ["minuta", "minute"], ["godzina", "hour"], ["kwadrans", "a quarter of an hour"],
+      ["wpół do…", "half past… (wpół do ósmej = 7:30)"], ["za pięć ósma", "five to eight"], ["pięć po ósmej", "five past eight"], ["dzień", "day"],
+      ["miesiąc", "month"], ["przedwczoraj", "the day before yesterday"], ["spóźnić się", "to be late"], ["punktualnie", "on time"], ["zegarek", "watch"],
+      ["kalendarz", "calendar"], ["Ile czasu?", "How much time?"], ["o północy", "at midnight"]],
+  8: [["żółty", "yellow"], ["brązowy", "brown"], ["szary", "grey"], ["różowy", "pink"], ["pomarańczowy", "orange (colour)"], ["fioletowy", "purple"],
+      ["kolorowy", "colourful"], ["jasny / ciemny", "light / dark"], ["nudny", "boring"], ["ciężki / lekki", "heavy / light"], ["szeroki / wąski", "wide / narrow"],
+      ["długi / krótki", "long / short"], ["piękny", "beautiful"], ["brzydki", "ugly"], ["wygodny", "comfortable"], ["modny", "fashionable"]],
+  9: [["metro", "underground, metro"], ["taksówka", "taxi"], ["statek", "ship"], ["wsiadać / wysiadać", "to get on / to get off"], ["skrzyżowanie", "crossroads"],
+      ["światła", "traffic lights"], ["na rogu", "on the corner"], ["naprzeciwko", "opposite (+ genitive)"], ["przejście dla pieszych", "pedestrian crossing"],
+      ["rondo", "roundabout"], ["mapa", "map"], ["zgubić się", "to get lost"], ["Jak dojść do…?", "How do I get to… (on foot)?"],
+      ["Jak dojechać do…?", "How do I get to… (by transport)?"], ["chodzić", "to go, walk (regularly)", "Chodzę do pracy pieszo."], ["jeździć", "to go, ride (regularly)", "Jeżdżę do pracy autobusem."]],
+  10: [["sześćdziesiąt", "60"], ["siedemdziesiąt", "70"], ["osiemdziesiąt", "80"], ["dziewięćdziesiąt", "90"], ["dwieście", "200"], ["tysiąc", "1,000"],
+       ["grosz", "grosz (1/100 of a złoty)"], ["reszta", "change (money back)"], ["paragon", "receipt"], ["cena", "price"], ["promocja", "special offer"],
+       ["rozmiar", "size"], ["przymierzyć", "to try on"], ["kasa", "till, checkout"], ["litr", "litre"], ["deko", "10 grams", "dwadzieścia deko sera"]],
+  11: [["poszedłem / poszłam", "I went (on foot, m / f)"], ["jadłem / jadłam", "I ate (m / f)"], ["piłem / piłam", "I drank (m / f)"], ["widziałem / widziałam", "I saw (m / f)"],
+       ["kupiłem / kupiłam", "I bought (m / f)"], ["miałem / miałam", "I had (m / f)"], ["chciałem / chciałam", "I wanted (m / f)"], ["mogłem / mogłam", "I could (m / f)"],
+       ["w zeszłym tygodniu", "last week"], ["w zeszłym miesiącu", "last month"], ["koncert", "concert"], ["było fajnie", "it was great"], ["było nudno", "it was boring"],
+       ["spacer", "a walk"], ["zrobić zakupy", "to do the shopping"]],
+  12: [["kucharz / kucharka", "cook (m / f)"], ["pielęgniarz / pielęgniarka", "nurse (m / f)"], ["policjant / policjantka", "police officer (m / f)"],
+       ["sprzedawca / sprzedawczyni", "shop assistant (m / f)"], ["prawnik / prawniczka", "lawyer (m / f)"], ["księgowy / księgowa", "accountant (m / f)"],
+       ["dziennikarz / dziennikarka", "journalist (m / f)"], ["aktor / aktorka", "actor / actress"], ["architekt", "architect"], ["mechanik", "mechanic"],
+       ["rolnik", "farmer"], ["emeryt / emerytka", "pensioner (m / f)"], ["bezrobotny", "unemployed"], ["pracownik", "employee"], ["zarabiać", "to earn"], ["fabryka", "factory"]],
+  13: [["powinienem / powinnam", "I should (m / f)"], ["warto", "it's worth it"], ["spróbować", "to try"], ["prowadzić samochód", "to drive a car"], ["zdążyć", "to make it in time"],
+       ["pozwolić", "to allow"], ["Czy mogę…?", "May I…?"], ["Czy można…?", "Is it possible / allowed to…?"], ["zakaz", "ban, no…"], ["Palenie wzbronione", "No smoking (sign)"],
+       ["Wstęp wolny", "Free entry"], ["Nie dotykać", "Do not touch"], ["Pchać / Ciągnąć", "Push / Pull (on doors)"], ["Wejście / Wyjście", "Entrance / Exit"],
+       ["Czynne / Nieczynne", "Open / Closed"], ["Zajęte", "Occupied"]],
+  14: [["para", "a pair"], ["sztuka", "a piece, an item", "dwie sztuki"], ["kilkanaście", "a dozen or so"], ["żaden / żadna / żadne", "no, none"],
+       ["ci / te", "these (men / other)"], ["tamten / tamta / tamto", "that (over there)"], ["rzecz / rzeczy", "thing / things"], ["noc / noce", "night / nights"],
+       ["dzieci", "children"], ["bracia", "brothers"], ["tygodnie", "weeks"], ["pieniądze", "money", "plural only"], ["garaż", "garage"], ["piwnica", "cellar"], ["ogrzewanie", "heating"]],
+  15: [["kąpać się", "to have a bath"], ["brać prysznic", "to take a shower"], ["czesać się", "to comb your hair"], ["golić się", "to shave"], ["malować się", "to put on make-up"],
+       ["myć zęby", "to brush your teeth"], ["śpieszyć się", "to be in a hurry"], ["kłaść się spać", "to go to bed"], ["zasypiać", "to fall asleep"], ["prać", "to do the washing"],
+       ["prasować", "to iron"], ["zmywać naczynia", "to wash the dishes"], ["wynosić śmieci", "to take out the rubbish"], ["budzik", "alarm clock"],
+       ["relaksować się", "to relax"], ["nudzić się", "to be bored"]],
+  16: [["namiot", "tent"], ["kemping", "campsite"], ["pensjonat", "guesthouse"], ["rezerwacja", "booking, reservation"], ["wyjazd", "trip away, departure"], ["plan", "plan"],
+       ["marzyć", "to dream (of)"], ["zostać w domu", "to stay at home"], ["za rok", "in a year's time"], ["w przyszły weekend", "next weekend"], ["jutro rano", "tomorrow morning"],
+       ["za godzinę", "in an hour"], ["prognoza pogody", "weather forecast"], ["spakować się", "to pack"]],
+  17: [["wstawać / wstać", "to get up"], ["zaczynać / zacząć", "to begin"], ["kończyć / skończyć", "to finish"], ["uczyć się / nauczyć się", "to learn"],
+       ["otwierać / otworzyć", "to open"], ["zamykać / zamknąć", "to close"], ["sprzedawać / sprzedać", "to sell"], ["wysyłać / wysłać", "to send"],
+       ["dzwonić / zadzwonić", "to call, phone"], ["spotykać / spotkać", "to meet"], ["odpowiadać / odpowiedzieć", "to answer"], ["pytać / zapytać", "to ask"],
+       ["płacić / zapłacić", "to pay"], ["wracać / wrócić", "to come back"], ["przychodzić / przyjść", "to come (on foot)"], ["wychodzić / wyjść", "to go out, leave"]],
+  18: [["podarować", "to give (as a gift)"], ["życzyć", "to wish (+ dative)"], ["pożyczyć", "to lend, to borrow"], ["oddać", "to give back"], ["przynieść", "to bring"],
+       ["obiecać", "to promise"], ["wierzyć", "to believe (+ dative)"], ["ufać", "to trust (+ dative)"], ["Wszystko mi jedno.", "I don't mind."], ["Przykro mi.", "I'm sorry (sympathy)."],
+       ["Gorąco mi.", "I'm hot."], ["Nudno mi.", "I'm bored."], ["Daj spokój!", "Come on! / Leave it!"], ["niespodzianka", "surprise"], ["bukiet", "bouquet"], ["kartka", "card"]],
+  19: [["pokroić", "to slice, cut"], ["dodać", "to add"], ["wymieszać", "to mix, stir"], ["ugotować", "to cook, boil"], ["usmażyć", "to fry"], ["upiec", "to bake"],
+       ["nalać", "to pour"], ["przepis", "recipe"], ["garnek", "pot, saucepan"], ["patelnia", "frying pan"], ["piekarnik", "oven"], ["sól i pieprz", "salt and pepper"],
+       ["cebula", "onion"], ["Niech pan wejdzie.", "Please come in (to a man)."], ["Zostaw to!", "Leave it!"], ["Pospiesz się!", "Hurry up!"]],
+  20: [["najbardziej", "the most"], ["gorzej", "worse (adverb)"], ["dłuższy", "longer"], ["krótszy", "shorter (length)"], ["starszy", "older"], ["młodszy", "younger"],
+       ["wyższy", "taller"], ["niższy", "shorter (height)"], ["taki sam", "the same"], ["inny", "different, other"], ["podobny", "similar"], ["Moim zdaniem…", "In my opinion…"],
+       ["zgadzać się", "to agree"], ["Masz rację.", "You're right."], ["Nie zgadzam się.", "I disagree."]]
+};
+
+const UNIT_READS = {
+  0: { read: { kind: "sms", title: "SMS od Kasi", body: ["Cześć! Tu Kasia, przyjaciółka Ani.", "Jestem tutaj, w kawiarni.", "Jak się masz?", "Do zobaczenia!"],
+       q: [{ q: "Who is writing?", o: ["Kasia, Ania's friend", "Ania", "Ania's sister"], a: 0 }, { q: "Where is Kasia?", o: ["in a café", "at home", "at work"], a: 0 }, { q: "What does she ask?", o: ["how you are", "your name", "where you live"], a: 0 }] },
+       cloze: "Dzień dobry! {{Mam|Jestem|Masz}} na imię Tom. {{Jestem|Jest|Są}} tutaj pierwszy raz. – Miło {{mi|mnie|ja}}! Ja {{jestem|jest|jesteś}} Ola." },
+  1: { read: { kind: "email", title: "Zdjęcie rodziny", body: ["Cześć Olu!", "To jest zdjęcie mojej rodziny. Po lewej jest mój tata, a obok moja mama.", "To dziecko to mój syn, Adam. Ma pięć lat.", "A to jest moja siostra i jej mąż.", "Pozdrawiam, Marek"],
+       q: [{ q: "Who is on the left?", o: ["Marek's dad", "Marek's mum", "Marek's son"], a: 0 }, { q: "Who is Adam?", o: ["Marek's son", "Marek's brother", "Marek's sister's husband"], a: 0 }, { q: "How old is Adam?", o: ["5", "15", "25"], a: 0 }] },
+       cloze: "To jest {{moja|mój|moje}} mama, a to {{mój|moja|moje}} tata. A to jest {{moje|mój|moja}} dziecko. Kto to jest? To {{twoja|twój|twoje}} siostra?" },
+  2: { read: { kind: "form", title: "Karta biblioteczna", body: ["Imię: Ola", "Nazwisko: Nowak", "Wiek: 22 lata", "Telefon: 600 123 456", "Wypożyczone książki: 3"],
+       q: [{ q: "How old is Ola?", o: ["22", "12", "20"], a: 0 }, { q: "How many books has she borrowed?", o: ["3", "6", "22"], a: 0 }, { q: "What's her surname?", o: ["Nowak", "Ola", "Telefon"], a: 0 }] },
+       cloze: "Mam dwadzieścia {{lat|lata|rok}}. Mój brat ma dwanaście {{lat|lata|rok}}, a siostra ma trzy {{lata|lat|rok}}. My {{mamy|mają|macie}} też dom." },
+  3: { read: { kind: "menu", title: "Kawiarnia „Pod Wawelem”", body: ["Kawa czarna | 9 zł", "Kawa z mlekiem | 11 zł", "Herbata | 8 zł", "Sok pomarańczowy | 10 zł", "Ciastko | 7 zł", "Kanapka z serem | 14 zł"],
+       q: [{ q: "How much is a coffee with milk?", o: ["11 zł", "9 zł", "8 zł"], a: 0 }, { q: "What's the cheapest thing?", o: ["a cake", "tea", "juice"], a: 0 }, { q: "What's in the sandwich?", o: ["cheese", "ham", "egg"], a: 0 }] },
+       cloze: "Dzień dobry! Poproszę {{kawę|kawa|kawy}} z mlekiem i {{kanapkę|kanapka|kanapki}}. A dla syna {{sok|soku|soki}}. Poproszę też {{rachunek|rachunku|rachunki}}." },
+  4: { read: { kind: "notice", title: "Szukam partnera do rozmowy!", body: ["Mam na imię Emma. Mieszkam w Krakowie i pracuję w szkole.", "Mówię po angielsku i trochę po polsku.", "Szukam osoby, która mówi po polsku i chce mówić po angielsku.", "Tel. 500 111 222"],
+       q: [{ q: "Where does Emma work?", o: ["in a school", "in a bank", "in an office"], a: 0 }, { q: "Which languages does she speak?", o: ["English and a little Polish", "only Polish", "Polish and German"], a: 0 }, { q: "What is she looking for?", o: ["a conversation partner", "a flat", "a job"], a: 0 }] },
+       cloze: "Ja {{mieszkam|mieszka|mieszkają}} w Warszawie. Mój brat {{pracuje|pracuję|pracujesz}} w banku. My często {{czytamy|czytają|czytam}} książki. Czy ty {{mówisz|mówię|mówi}} po polsku?" },
+  5: { read: { kind: "sms", title: "SMS od Ani", body: ["Jestem jeszcze w pracy.", "Potem jestem na poczcie i w sklepie.", "Wieczorem jestem w domu.", "Kino jutro?"],
+       q: [{ q: "Where is Ania now?", o: ["at work", "at home", "at the post office"], a: 0 }, { q: "Where will she be in the evening?", o: ["at home", "at the cinema", "in the shop"], a: 0 }, { q: "What does she suggest?", o: ["the cinema tomorrow", "the park today", "dinner now"], a: 0 }] },
+       cloze: "Mieszkam w {{Polsce|Polska|Polskę}}. Teraz jestem w {{parku|park|parkiem}}. Potem jestem na {{poczcie|poczta|pocztę}}, a wieczorem w {{domu|dom|domem}}." },
+  6: { read: { kind: "ad", title: "Szukam współlokatora", body: ["Mam 25 lat, lubię sport i muzykę.", "Nie lubię hałasu i nie palę.", "Bardzo lubię gotować – lubisz pizzę?", "Nie mam kota ani psa.", "tel. 600 700 800"],
+       q: [{ q: "What does the writer like?", o: ["sport, music and cooking", "noise", "cats"], a: 0 }, { q: "Which is true?", o: ["The writer doesn't smoke", "The writer has a dog", "The writer is 52"], a: 0 }, { q: "Which food is mentioned?", o: ["pizza", "fish", "chocolate"], a: 0 }] },
+       cloze: "Lubię {{muzykę|muzyka|muzyki}} i sport. Nie lubię {{kawy|kawa|kawę}}. Mój brat lubi {{rybę|ryba|ryby}}, ale nie lubi {{mięsa|mięso|mięsem}}." },
+  7: { read: { kind: "notice", title: "Basen miejski · godziny otwarcia", body: ["pon.–pt. 6:00–22:00", "sobota 8:00–20:00", "niedziela 9:00–15:00", "We wtorek od 10:00 do 12:00 basen nieczynny."],
+       q: [{ q: "When does the pool open on Saturday?", o: ["at 8:00", "at 6:00", "at 9:00"], a: 0 }, { q: "When is it closed?", o: ["Tuesday, 10:00–12:00", "all day Sunday", "every evening"], a: 0 }, { q: "Until when is it open on Sunday?", o: ["15:00", "20:00", "22:00"], a: 0 }] },
+       cloze: "{{W|We|O}} poniedziałek pracuję. {{We|W|O}} wtorek mam czas. Spotkanie jest {{o|w|we}} ósmej. W {{sobotę|sobota|sobocie}} jestem w domu." },
+  8: { read: { kind: "ad", title: "SPRZEDAM", body: ["Kurtka zimowa, czarna, rozmiar M – 120 zł", "Sukienka czerwona, nowa – 80 zł", "Buty sportowe, białe – 60 zł", "Wszystko w bardzo dobrym stanie.", "tel. 511 222 333"],
+       q: [{ q: "What colour is the dress?", o: ["red", "black", "white"], a: 0 }, { q: "How much is the jacket?", o: ["120 zł", "80 zł", "60 zł"], a: 0 }, { q: "Which is true?", o: ["Everything is in very good condition", "The shoes are black", "The jacket is size L"], a: 0 }] },
+       cloze: "To jest {{nowy|nowa|nowe}} dom. Mam {{czerwone|czerwony|czerwona}} auto. Ta kurtka jest bardzo {{droga|drogi|drogie}}, ale {{ładna|ładny|ładne}}." },
+  9: { read: { kind: "notice", title: "Jak do nas dojechać?", body: ["Szkoła Języka Polskiego, ul. Floriańska 10", "Z dworca: idź prosto 10 minut albo jedź tramwajem nr 4 (dwa przystanki).", "Przystanek: Teatr Słowackiego. Potem w lewo.", "Parking obok szkoły."],
+       q: [{ q: "How long is the walk from the station?", o: ["10 minutes", "4 minutes", "2 minutes"], a: 0 }, { q: "Which tram?", o: ["number 4", "number 10", "number 2"], a: 0 }, { q: "Where is the car park?", o: ["next to the school", "at the station", "there isn't one"], a: 0 }] },
+       cloze: "Rano {{idę|jadę|idzie}} do pracy pieszo. Mój brat {{jedzie|idzie|jadę}} do pracy autobusem. W sobotę jedziemy do {{Krakowa|Kraków|Krakowie}}. Idziesz do {{sklepu|sklep|sklepie}}?" },
+  10: { read: { kind: "menu", title: "Paragon · sklep „Zielony Koszyk”", body: ["Jabłka 2 kg | 9,98 zł", "Mleko 1 l | 3,49 zł", "Chleb | 4,99 zł", "Woda 1,5 l | 1,99 zł", "RAZEM | 20,45 zł", "Płatność: karta"],
+       q: [{ q: "How much was the bread?", o: ["4,99 zł", "3,49 zł", "9,98 zł"], a: 0 }, { q: "What was the total?", o: ["20,45 zł", "9,98 zł", "45,20 zł"], a: 0 }, { q: "How did the customer pay?", o: ["by card", "in cash", "by phone"], a: 0 }] },
+       cloze: "To kosztuje dwa {{złote|złoty|złotych}}. Te jabłka kosztują pięć {{złotych|złote|złoty}}. Poproszę litr {{mleka|mleko|mlekiem}} i butelkę {{wody|woda|wodę}}." },
+  11: { read: { kind: "email", title: "Weekend", body: ["Cześć Marto!", "W sobotę byłam w Krakowie. Najpierw byłam na rynku, potem w muzeum.", "Wieczorem jadłam pierogi w restauracji – były super!", "W niedzielę spałam cały dzień. :)", "Ala"],
+       q: [{ q: "Where was Ala on Saturday?", o: ["in Kraków", "at home", "in Warsaw"], a: 0 }, { q: "What did she eat?", o: ["pierogi", "pizza", "fish"], a: 0 }, { q: "What did she do on Sunday?", o: ["slept all day", "went to a museum", "worked"], a: 0 }] },
+       cloze: "Wczoraj Tomek {{był|była|byłem}} w kinie. Moja siostra {{była|był|byłam}} w pracy. My {{byliśmy|byli|był}} na kolacji, a oni {{czytali|czytał|czytałam}} w domu." },
+  12: { read: { kind: "ad", title: "PRACA", body: ["Restauracja „Pod Lipą” szuka kucharza i kelnerki.", "Praca od poniedziałku do piątku, 10:00–18:00.", "Wymagany język polski (komunikatywny).", "CV: praca@podlipa.pl"],
+       q: [{ q: "Who is the restaurant looking for?", o: ["a cook and a waitress", "a driver", "a doctor"], a: 0 }, { q: "What are the hours?", o: ["Mon–Fri, 10:00–18:00", "weekends only", "nights"], a: 0 }, { q: "What's required?", o: ["communicative Polish", "a car", "English"], a: 0 }] },
+       cloze: "Jestem {{nauczycielem|nauczyciel|nauczyciela}}. Moja żona jest {{lekarką|lekarka|lekarkę}}. Idę do kina z {{bratem|brat|brata}}. Interesuję się {{muzyką|muzyka|muzykę}}." },
+  13: { read: { kind: "sign", title: "Muzeum Narodowe", body: ["Wejście / Wyjście", "Pchać", "Palenie wzbronione", "Nie dotykać eksponatów!", "Wstęp wolny w czwartki"],
+       q: [{ q: "What mustn't you do?", o: ["smoke or touch the exhibits", "go in", "buy tickets"], a: 0 }, { q: "When is entry free?", o: ["on Thursdays", "on Mondays", "every day"], a: 0 }, { q: "„Pchać” on a door means…", o: ["push", "pull", "closed"], a: 0 }] },
+       cloze: "Przepraszam, {{muszę|musi|musisz}} już iść. Czy {{może|mogę|możesz}} pan mi pomóc? Oni {{chcą|chce|chcę}} jechać do Krakowa. Tu nie {{wolno|musi|umie}} palić." },
+  14: { read: { kind: "ad", title: "SPRZEDAM DOM", body: ["Dom na wsi, 120 m²", "5 pokoi, 2 łazienki, duża kuchnia", "Ogród i garaż na dwa samochody", "Cena: 650 000 zł", "tel. 602 333 444"],
+       q: [{ q: "How many rooms?", o: ["5", "2", "120"], a: 0 }, { q: "How many cars fit in the garage?", o: ["two", "one", "five"], a: 0 }, { q: "Where is the house?", o: ["in the countryside", "in the city centre", "by the sea"], a: 0 }] },
+       cloze: "W mieszkaniu są trzy {{pokoje|pokój|pokoi}}. Mam dwa {{koty|kot|kotów}} i pięć {{książek|książki|książka}}. W parku jest dużo {{ludzi|ludzie|człowiek}}." },
+  15: { read: { kind: "timetable", title: "Plan dnia – Ania", body: ["Godzina | Co robię?", "6:30 | budzę się", "7:00 | myję się i ubieram się", "7:30 | śniadanie", "8:00–16:00 | praca", "18:00 | uczę się polskiego", "23:00 | idę spać"],
+       q: [{ q: "What does Ania do at 18:00?", o: ["she studies Polish", "she has breakfast", "she works"], a: 0 }, { q: "When does she wake up?", o: ["6:30", "7:00", "8:00"], a: 0 }, { q: "How long does she work?", o: ["8 hours", "6 hours", "10 hours"], a: 0 }] },
+       cloze: "Codziennie budzę {{się|sobie|siebie}} o siódmej. Potem {{myję|myje|myjesz}} się i ubieram się. Jak się {{nazywasz|nazywam|nazywa}}? Ten film bardzo mi się {{podoba|lubi|podobam}}." },
+  16: { read: { kind: "email", title: "Plany na wakacje", body: ["Cześć Zosiu!", "W lipcu pojadę nad morze, do Gdańska. Będę tam dwa tygodnie.", "Będę pływać i odpoczywać na plaży. W sierpniu odwiedzę babcię w górach.", "A ty? Co będziesz robić?", "Michał"],
+       q: [{ q: "Where will Michał go in July?", o: ["to the seaside (Gdańsk)", "to the mountains", "abroad"], a: 0 }, { q: "How long will he stay?", o: ["two weeks", "one week", "a month"], a: 0 }, { q: "Who will he visit in August?", o: ["his grandma", "his sister", "Zosia"], a: 0 }] },
+       cloze: "Jutro {{będę|jestem|byłem}} w domu. W weekend {{pojadę|pojechałem|pojechali}} do Krakowa – już mam bilet. Co {{będziesz|będzie|będę}} robić w sobotę? Oni {{będą|będzie|będę}} pracować." },
+  17: { read: { kind: "sms", title: "SMS od mamy", body: ["Kuba, zrobiłeś już zakupy?", "Kup jeszcze chleb i mleko.", "Ja wrócę o szóstej, a potem zjemy obiad.", "Nie zapomnij zadzwonić do babci!"],
+       q: [{ q: "What does mum ask first?", o: ["if Kuba has done the shopping", "what time it is", "where Kuba is"], a: 0 }, { q: "When will mum be back?", o: ["at six", "at seven", "at noon"], a: 0 }, { q: "What mustn't Kuba forget?", o: ["to call grandma", "to cook", "to buy a cake"], a: 0 }] },
+       cloze: "Codziennie {{czytam|przeczytam|przeczytałem}} gazetę. Wczoraj {{przeczytałem|przeczytam|czytam}} całą książkę. Jutro {{napiszę|piszę|pisałem}} list do mamy. Długo {{oglądałem|obejrzę|obejrzałem}} telewizję." },
+  18: { read: { kind: "sms", title: "Kartka urodzinowa", body: ["Droga Mamo!", "Dziękuję Ci za wszystko.", "Życzę Ci dużo zdrowia i szczęścia!", "Kupiłem Ci kwiaty i książkę – mam nadzieję, że Ci się spodobają.", "Twój syn, Kuba"],
+       q: [{ q: "Who is the card for?", o: ["Kuba's mum", "Kuba's sister", "a friend"], a: 0 }, { q: "What did Kuba buy?", o: ["flowers and a book", "perfume", "a cake"], a: 0 }, { q: "What does he wish her?", o: ["health and happiness", "a good trip", "luck in an exam"], a: 0 }] },
+       cloze: "Dziękuję {{ci|cię|ty}} za prezent! Kupię {{mamie|mama|mamę}} kwiaty. Daj {{mi|mnie|ja}} to, proszę. Zimno {{mi|mnie|ja}}." },
+  19: { read: { kind: "notice", title: "Przepis: jajecznica", body: ["Składniki: 3 jajka, masło, sól, pieprz", "1. Rozgrzej masło na patelni.", "2. Dodaj jajka i wymieszaj.", "3. Smaż 2–3 minuty.", "4. Dodaj sól i pieprz. Smacznego!"],
+       q: [{ q: "How many eggs?", o: ["3", "2", "4"], a: 0 }, { q: "What do you heat first?", o: ["butter", "water", "oil"], a: 0 }, { q: "How long do you fry the eggs?", o: ["2–3 minutes", "10 minutes", "30 seconds"], a: 0 }] },
+       cloze: "{{Chodź|Chodzić|Chodzisz}} tutaj, szybko! Dzieci, {{słuchajcie|słuchaj|słuchają}}! Proszę {{usiąść|usiądź|usiadł}}. Nie {{martw|martwić|martwisz}} się!" },
+  20: { read: { kind: "ad", title: "Porównaj telefony", body: ["Model A: 1200 zł, ekran 6,1″, bateria 1 dzień", "Model B: 1800 zł, ekran 6,7″, bateria 2 dni", "Model C: 900 zł, ekran 5,8″, bateria 1 dzień", "Najlepszy wybór: Model B – największy ekran i najlepsza bateria!"],
+       q: [{ q: "Which is the cheapest?", o: ["Model C", "Model A", "Model B"], a: 0 }, { q: "Which has the biggest screen?", o: ["Model B", "Model A", "Model C"], a: 0 }, { q: "Why is B the best choice, according to the ad?", o: ["biggest screen and best battery", "lowest price", "smallest size"], a: 0 }] },
+       cloze: "Kraków jest {{mniejszy|mały|najmniejszy}} niż Warszawa. Ta kawa jest {{lepsza|dobra|najlepsza}} niż tamta. To jest {{najlepsza|lepszy|najlepszy}} restauracja w mieście. Mówisz po polsku coraz {{lepiej|lepszy|dobrze}}!" }
+};
+
+/* Can-do statements for the new units (ids 21–33) */
+const NEW_CAN_DO = {
+  21: ["Say where you're from and which languages you speak", "Give your personal details and fill in a hotel form"],
+  22: ["Describe what someone looks like and what they're wearing", "Say what someone is like as a person"],
+  23: ["Say what there isn't or what's run out", "Ask for quantities and everyday household things"],
+  24: ["Name the months and seasons and talk about the weather", "Say dates and give birthday and holiday wishes"],
+  25: ["Describe your flat or house, room by room", "Say where things are: on, under, above, behind, between"],
+  26: ["Buy a ticket and ask about platforms, departures and arrivals", "Read a departure board and a timetable"],
+  27: ["Say what hurts and how you feel", "See a doctor and buy medicine at a pharmacy"],
+  28: ["Join sentences with and, but, so, because, that and when", "Write a text message, a short email and a „Mój dzień” essay"],
+  29: ["Order in a restaurant politely with 'would'", "Say what you would like to do"],
+  30: ["Talk about groups of men and mixed groups correctly", "Address people politely and start formal and informal letters"],
+  31: ["Make and answer simple phone calls", "Invite people, accept and decline, and say why"],
+  32: ["Deal with a bank, a post office and simple official matters", "Rent a flat and fill in forms and applications"],
+  33: ["Talk about trips, sights and nature", "Say how long, since when and how long ago things happened"]
+};
+
+/* Course order. The original units keep their ids (0–20) so saved progress,
+   flashcards and test scores stay attached; new units (21–33) are placed where
+   they belong. The first 25 positions are A1, the rest A2. */
+const COURSE_ORDER = [0, 1, 21, 2, 3, 4, 5, 6, 23, 7, 24, 8, 22, 9, 26, 10, 11, 12, 25, 13, 27, 14, 15, 16, 28,
+                      17, 29, 18, 30, 19, 31, 32, 20, 33];
+const A1_COUNT = 25;
+
+/* Extra grammar reminder tables */
+const NEW_REF = [
+{
+  id: "dates", pl: "Miesiące i daty", en: "Months, dates & ordinal numbers", units: [24, 26, 32],
+  note: "Today's date: the day in the nominative + the month in the genitive (Dzisiaj jest trzeci maja). On a date: both in the genitive (trzeciego maja).",
+  tables: [
+    { caption: "Months", head: ["month", "on the … of", "in …"], rows: [
+      ["styczeń", "stycznia", "w styczniu"], ["luty", "lutego", "w lutym"], ["marzec", "marca", "w marcu"], ["kwiecień", "kwietnia", "w kwietniu"],
+      ["maj", "maja", "w maju"], ["czerwiec", "czerwca", "w czerwcu"], ["lipiec", "lipca", "w lipcu"], ["sierpień", "sierpnia", "w sierpniu"],
+      ["wrzesień", "września", "we wrześniu"], ["październik", "października", "w październiku"], ["listopad", "listopada", "w listopadzie"], ["grudzień", "grudnia", "w grudniu"]
+    ] },
+    { caption: "Ordinal numbers (the day: … is / on the …)", head: ["", "Dzisiaj jest…", "…-ego (on)"], pl: [1, 2], rows: [
+      ["1", "pierwszy", "pierwszego"], ["2", "drugi", "drugiego"], ["3", "trzeci", "trzeciego"], ["4", "czwarty", "czwartego"], ["5", "piąty", "piątego"],
+      ["6", "szósty", "szóstego"], ["7", "siódmy", "siódmego"], ["8", "ósmy", "ósmego"], ["9", "dziewiąty", "dziewiątego"], ["10", "dziesiąty", "dziesiątego"],
+      ["11", "jedenasty", "jedenastego"], ["12", "dwunasty", "dwunastego"], ["15", "piętnasty", "piętnastego"], ["20", "dwudziesty", "dwudziestego"],
+      ["21", "dwudziesty pierwszy", "dwudziestego pierwszego"], ["30", "trzydziesty", "trzydziestego"], ["31", "trzydziesty pierwszy", "trzydziestego pierwszego"]
+    ] }
+  ]
+},
+{
+  id: "conditional", pl: "Tryb przypuszczający", en: "The conditional (would)", units: [29, 31, 32],
+  note: "Past-tense form + -by- + ending. Polite requests (Chciałbym…, Czy mógłby pan…?), wishes and suggestions.",
+  tables: [
+    { head: ["", "chcieć (m)", "chcieć (f)", "móc (m)", "móc (f)"], rows: [
+      ["ja", "chciałbym", "chciałabym", "mógłbym", "mogłabym"], ["ty", "chciałbyś", "chciałabyś", "mógłbyś", "mogłabyś"], ["on / ona", "chciałby", "chciałaby", "mógłby", "mogłaby"],
+      ["my", "chcielibyśmy", "chciałybyśmy", "moglibyśmy", "mogłybyśmy"], ["wy", "chcielibyście", "chciałybyście", "moglibyście", "mogłybyście"], ["oni / one", "chcieliby", "chciałyby", "mogliby", "mogłyby"]
+    ] }
+  ]
+},
+{
+  id: "vocative", pl: "Wołacz", en: "Calling people (vocative)", units: [30],
+  note: "Used when you call or write to someone: Panie Marku!, Droga Ewo!",
+  tables: [
+    { head: ["name / title", "vocative"], pl: [0, 1], rows: [
+      ["pan", "Panie!"], ["pani", "Pani!"], ["Marek", "Marku!"], ["Piotr", "Piotrze!"], ["Tomek", "Tomku!"], ["Adam", "Adamie!"], ["Ewa", "Ewo!"], ["Ania", "Aniu!"],
+      ["Kasia", "Kasiu!"], ["Marta", "Marto!"], ["profesor", "profesorze!"], ["kolega", "kolego!"], ["mama", "mamo!"], ["tata", "tato!"]
+    ] }
+  ]
+},
+{
+  id: "men-plural", pl: "Rodzaj męskoosobowy", en: "Men and mixed groups", units: [30, 14],
+  note: "Groups with at least one man use special plural forms for nouns, adjectives, numbers and past-tense verbs.",
+  tables: [
+    { head: ["singular", "men / mixed", "women / things"], rows: [
+      ["student / studentka", "studenci", "studentki"], ["Polak / Polka", "Polacy", "Polki"], ["kolega / koleżanka", "koledzy", "koleżanki"],
+      ["pan / pani", "panowie", "panie"], ["nowy", "nowi", "nowe"], ["dobry", "dobrzy", "dobre"], ["był / była", "byli", "były"],
+      ["dwa / dwie", "dwaj (+ nom.) / dwóch (+ gen.)", "dwa / dwie"], ["trzy", "trzej / trzech", "trzy"], ["pięć", "pięciu (+ gen.)", "pięć"]
+    ] }
+  ]
+},
+{
+  id: "linking", pl: "Spójniki", en: "Linking words", units: [28, 31],
+  note: "Commas go before a, ale, więc, bo, że, kiedy, gdy, żeby, dlatego (że) — but normally not before i, lub, albo.",
+  tables: [
+    { head: ["word", "meaning", "level"], pl: [0], rows: [
+      ["i", "and", "A1"], ["a", "and / while", "A1"], ["ale", "but", "A1"], ["lub", "or", "A1"], ["więc", "so", "A1"], ["że", "that", "A1"],
+      ["bo / dlatego że", "because", "A1"], ["kiedy", "when", "A1"], ["albo / czy", "or", "A2"], ["a także", "and also", "A2"], ["dlatego", "that's why", "A2"],
+      ["gdy", "when", "A2"], ["żeby", "in order to, so that", "A2"]
+    ] }
+  ]
+}
+];
+/* New units also use some existing tables */
+const REF_EXTRA_UNITS = { cases: [23], "nouns-sg": [23], prepositions: [23, 25, 33], numbers: [24, 32], adjectives: [22], pronouns: [27], past: [33], softening: [25], questions: [26] };
+NEW_UNITS_A1.concat(NEW_UNITS_A2).forEach(u => { UNITS[u.id] = u; });
+for (const [id, words] of Object.entries(EXTRA_VOCAB)) UNITS[id].vocab.push(...words);  /* appended, so existing card ids stay the same */
+for (const [id, extra] of Object.entries(UNIT_READS)) Object.assign(UNITS[id], extra);
+for (const [id, lines] of Object.entries(NEW_CAN_DO)) CAN_DO[id] = lines;
+REF.push(...NEW_REF);
+for (const [rid, ids] of Object.entries(REF_EXTRA_UNITS)) { const r = REF.find(x => x.id === rid); if (r) r.units.push(...ids); }
+const COURSE = COURSE_ORDER.map(id => UNITS[id]);   /* units in course order */
+const POS = {};                                      /* unit id -> position in the course */
+COURSE.forEach((u, i) => { POS[u.id] = i; });
+const unitNo = u => (POS[typeof u === "object" ? u.id : u] ?? 0) + 1;
+const levelOf = u => POS[typeof u === "object" ? u.id : u] < A1_COUNT ? "A1" : "A2";
+/* The first unfinished unit at or after a position (or any unfinished one before it) */
+function nextUnitFrom(mastered, fromId) {
+  const i = POS[fromId] ?? 0;
+  const u = COURSE.slice(i).find(x => !mastered.includes(x.id)) || COURSE.find(x => !mastered.includes(x.id));
+  return u ? u.id : COURSE[COURSE.length - 1].id;
+}
 
 /* ================================================================
    Utilities
@@ -1675,8 +2646,7 @@ function mergeProgress(local, incoming) {
   m.lastDay = Math.max(a.lastDay || 0, b.lastDay || 0) || null;
   m.streak = computeStreak(m);
   m.best = Math.max(a.best || 0, b.best || 0, m.streak);
-  const next = UNITS.find(u => !m.mastered.includes(u.id));
-  m.unit = next ? next.id : UNITS.length - 1;
+  m.unit = nextUnitFrom(m.mastered, (POS[b.unit] ?? -1) > (POS[a.unit] ?? -1) ? b.unit : a.unit);
   return m;
 }
 function mergeSrs(local, incoming) {
@@ -1791,7 +2761,7 @@ Reply with only JSON:
 {"items":[{"t":"fill","q":"Polish sentence with ___","h":"base form or hint","a":["answer"],"en":"English translation","tag":"tag"},{"t":"choice","q":"sentence with ___","o":["correct","wrong","wrong"],"a":0,"tag":"tag"}]}`;
 }
 async function makePack(onStatus, signal) {
-  const cur = curUnit(), next = UNITS[cur.id + 1];
+  const cur = curUnit(), next = COURSE[POS[cur.id] + 1];
   const jobs = [0, 1, 2, 3].map(i => ({ kind: "dlg", u: cur, i })).concat([{ kind: "drill", u: cur }]);
   if (next && !S.progress.mastered.includes(next.id)) jobs.push({ kind: "dlg", u: next, i: 4 }, { kind: "dlg", u: next, i: 5 });
   const pack = { made: Date.now(), units: {}, drill: null };
@@ -1929,19 +2899,23 @@ function tagLabel(tag) {
 }
 function unitOfTag(tag) { return tag.startsWith("v") ? UNITS[+tag.slice(1)] : UNITS.find(u => u.tag === tag); }
 function weakList() { return Object.entries(S.progress.weak).filter(([, v]) => v >= 1).sort((a, b) => b[1] - a[1]); }
-function curUnit() { return UNITS[Math.min(S.progress.unit, UNITS.length - 1)]; }
+function curUnit() { return UNITS[S.progress.unit] || COURSE[0]; }
 function advanceIfDone() { if (S.progress.mastered.includes(S.progress.unit)) advanceUnit(); }
-/* Move to the first unit that isn't finished yet (also repairs saved progress when new units are added) */
+/* Move on to the next unfinished unit. Units added to the course before the
+   learner's position don't pull them back: they show up as optional catch-up. */
 function advanceUnit() {
   const P = S.progress;
-  const next = UNITS.find(u => !P.mastered.includes(u.id));
-  P.unit = next ? next.id : UNITS.length - 1;
+  P.unit = nextUnitFrom(P.mastered, P.unit);
 }
+/* Unfinished units that sit before the learner's position (added after they passed that point) */
+function catchUpUnits() { const P = S.progress; return COURSE.filter(u => !P.mastered.includes(u.id) && POS[u.id] < POS[P.unit]); }
 const courseDone = () => S.progress.mastered.length >= UNITS.length;
 function levelLabel() {
-  const m = S.progress.mastered.length;
-  if (m >= UNITS.length) return "A2 ✓";
-  return m >= 17 ? "A2.2" : m >= 12 ? "A2.1" : m >= 6 ? "A1.2" : "A1.1";
+  const P = S.progress, done = list => list.filter(u => P.mastered.includes(u.id)).length;
+  const a1 = COURSE.slice(0, A1_COUNT), a2 = COURSE.slice(A1_COUNT), n1 = done(a1), n2 = done(a2);
+  if (n1 + n2 >= COURSE.length) return "A2 ✓";
+  if (n1 < a1.length) return n1 >= a1.length / 2 ? "A1.2" : "A1.1";
+  return n2 >= a2.length / 2 ? "A2.2" : "A2.1";
 }
 
 /* ================================================================
@@ -1950,7 +2924,7 @@ function levelLabel() {
 const INTERVALS = [0, 1, 2, 4, 8, 16, 32];
 function allCards() {
   const out = [];
-  UNITS.forEach(u => u.vocab.forEach((v, i) => out.push({ id: u.id + "-" + i, pl: v[0], en: v[1], note: v[2] || "", unit: u.id })));
+  COURSE.forEach(u => u.vocab.forEach((v, i) => out.push({ id: u.id + "-" + i, pl: v[0], en: v[1], note: v[2] || "", unit: u.id })));
   for (const [id, c] of Object.entries(S.srs.custom || {})) out.push({ id, pl: c.pl, en: c.en, note: c.note || "", unit: c.unit ?? -1, custom: true });
   return out;
 }
@@ -1962,7 +2936,10 @@ function newCardsForToday() {
   const t0 = new Date(); t0.setHours(0, 0, 0, 0);
   const today = Object.values(S.srs.cards).filter(c => c.f >= t0.getTime()).length;
   const left = Math.max(0, (+settings().newPerDay || 10) - today);
-  return allCards().filter(c => c.unit === u.id && !S.srs.cards[c.id]).slice(0, left);
+  /* this unit's words first, then words added to units already finished */
+  const rank = { [u.id]: 0 };
+  COURSE.forEach(x => { if (x.id !== u.id && S.progress.mastered.includes(x.id)) rank[x.id] = 1 + POS[x.id]; });
+  return allCards().filter(c => c.unit in rank && !S.srs.cards[c.id]).sort((a, b) => rank[a.unit] - rank[b.unit]).slice(0, left);
 }
 function grade(card, g) {
   const t = TODAY();
@@ -2073,6 +3050,7 @@ function render() {
 const STEPS = [
   { id: "review", pl: "Powtórka", en: "Flashcard review", min: 6, desc: () => { const d = dueCards().length, n = newCardsForToday().length; return `${d} due · ${n} new words`; } },
   { id: "grammar", pl: "Gramatyka", en: "Grammar lesson", min: 7, desc: () => curUnit().grammar.title },
+  { id: "read", pl: "Czytanie", en: "Reading", min: 5, desc: () => (curUnit().read ? curUnit().read.title + " · " : "") + "a real-life text and a gap-fill" },
   { id: "mini", pl: "Szybki test", en: "Quick test", min: 4, desc: () => "6 questions on this unit" },
   { id: "dialogue", pl: "Dialog", en: "Reading dialogue", min: 5, desc: () => aiOn() ? "Written for you from the words you know" : "Scripted dialogue + questions" },
   { id: "listen", pl: "Słuchanie", en: "Listening", min: 4, desc: () => "Hear a sentence, type what you heard" },
@@ -2127,13 +3105,14 @@ function renderToday() {
     weeklyCard(),
     h("section", { class: "card stack" },
       h("div", { class: "unit-banner" },
-        h("div", { class: "stop-num" }, String(u.id + 1)),
+        h("div", { class: "stop-num" }, String(unitNo(u))),
         h("div", { style: "min-width:0" },
-          h("div", { class: "eyebrow" }, courseDone() ? "Core course complete · free practice" : `Unit ${u.id + 1} of ${UNITS.length}`),
+          h("div", { class: "eyebrow" }, courseDone() ? "Core course complete · free practice" : `Unit ${unitNo(u)} of ${COURSE.length} · ${levelOf(u)}`),
           h("h2", { class: "pl" }, u.pl),
           h("div", { class: "row small" }, h("span", { class: "muted" }, u.en), h("span", { class: "chip red" }, u.focus)))),
       h("div", { class: "meter", role: "progressbar", "aria-valuenow": done, "aria-valuemax": plan.length }, h("span", { style: `width:${(done / plan.length) * 100}%` })),
       h("p", { class: "small muted" }, "After this unit you can: ", CAN_DO[u.id].join("; ").replace(/^./, c => c.toLowerCase()), ".")),
+    catchUpCard(),
     h("section", { class: "card" },
       h("div", { class: "spread", style: "margin-bottom:6px" }, h("h3", null, "Today's plan"), lenSwitch),
       h("div", { class: "plan" }, plan.map((s, i) => row(s, i, true))),
@@ -2152,6 +3131,16 @@ function renderToday() {
   ));
 }
 
+function catchUpCard() {
+  const list = catchUpUnits();
+  if (!list.length || courseDone()) return null;
+  return h("section", { class: "card stack" },
+    h("div", { class: "spread" }, h("h3", null, "Nowe lekcje · new units to catch up on"), h("span", { class: "chip gold" }, String(list.length))),
+    h("p", { class: "small muted" }, "These units were added to the course before your current position, to match the official A1/A2 standard for adults. Your place in the course stays the same. Do them when you like: open one and pass its unit test to tick it off. Their words also join your flashcards once a unit is finished."),
+    h("div", { class: "row" }, list.slice(0, 6).map(x => h("button", { class: "chip-btn", onclick: () => openUnit(x.id) }, `${unitNo(x)} · `, h("span", { class: "pl" }, x.pl)))),
+    list.length > 6 ? h("button", { class: "btn ghost sm", onclick: () => setView("course") }, `See all ${list.length} on the course map`) : null);
+}
+
 /* ================================================================
    Session runner
    ================================================================ */
@@ -2166,18 +3155,18 @@ function startStep(id, opts = {}) {
   const d = todayRec();
   keyHandler = null; stopAudio();
   const plan = planSteps();
-  const dots = session.revisit ? h("span", { class: "chip" }, "Revisiting unit " + (opts.unit + 1)) : plan.some(x => x.id === id) ? h("div", { class: "steps-dots", "aria-hidden": "true" }, plan.map(x => h("i", { class: x.id === id ? "on" : d.steps[x.id] ? "done" : "" }))) : h("span", { class: "chip" }, "Extra practice");
+  const dots = session.revisit ? h("span", { class: "chip" }, "Revisiting unit " + unitNo(opts.unit)) : plan.some(x => x.id === id) ? h("div", { class: "steps-dots", "aria-hidden": "true" }, plan.map(x => h("i", { class: x.id === id ? "on" : d.steps[x.id] ? "done" : "" }))) : h("span", { class: "chip" }, "Extra practice");
   const body = h("div", { class: "stack-lg" });
   app.replaceChildren(h("div", null,
     h("div", { class: "session-head" },
-      session.revisit ? h("button", { class: "btn ghost sm", onclick: () => openUnit(opts.unit) }, "← Unit " + (opts.unit + 1)) : h("button", { class: "btn ghost sm", onclick: () => setView("today") }, "← Today"),
+      session.revisit ? h("button", { class: "btn ghost sm", onclick: () => openUnit(opts.unit) }, "← Unit " + unitNo(opts.unit)) : h("button", { class: "btn ghost sm", onclick: () => setView("today") }, "← Today"),
       dots),
     h("div", { class: "stack", style: "margin-bottom:18px" },
       h("span", { class: "eyebrow" }, session.revisit ? `${s.en} · ${UNITS[opts.unit].pl}` : s.en),
       h("h1", { class: "pl" }, s.pl)),
     body));
   window.scrollTo({ top: 0 });
-  const runners = { review: runReview, grammar: runGrammar, dialogue: runDialogue, convo: runConvo, writing: runWriting, quiz: runQuiz, drill: runDrill, mini: runMini, listen: runListen };
+  const runners = { review: runReview, grammar: runGrammar, dialogue: runDialogue, convo: runConvo, writing: runWriting, quiz: runQuiz, drill: runDrill, mini: runMini, listen: runListen, read: runRead };
   runners[id](body, opts);
 }
 function stepUnit() { return session && session.opts && session.opts.unit != null ? UNITS[session.opts.unit] : curUnit(); }
@@ -2188,7 +3177,7 @@ function finishStep(id, container, msg) {
       h("h2", null, "Gotowe! ", h("span", { class: "muted", style: "font-weight:500" }, "Done.")),
       msg ? h("p", null, msg) : null,
       h("div", { class: "row" },
-        h("button", { class: "btn primary", onclick: () => openUnit(uid) }, "Back to unit " + (uid + 1)),
+        h("button", { class: "btn primary", onclick: () => openUnit(uid) }, "Back to unit " + unitNo(uid)),
         h("button", { class: "btn ghost", onclick: () => startStep(id, { unit: uid }) }, "Do it again"))));
     container.lastChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
     return;
@@ -2410,7 +3399,7 @@ function runGrammar(body) {
   const practice = h("div");
   body.append(...[
     h("section", { class: "card stack lesson" },
-      h("span", { class: "eyebrow" }, `Unit ${u.id + 1} · ${u.focus}`),
+      h("span", { class: "eyebrow" }, `Unit ${unitNo(u)} · ${u.focus}`),
       h("h2", null, g.title),
       h("div", { html: g.html }),
       table,
@@ -2465,7 +3454,7 @@ function runDialogue(body) {
 ${learnerContext()}
 ${storyPrompt(u)}
 Requirements:
-- 8 to 10 lines between two named Polish speakers, natural everyday Polish, at the learner's level (${u.id >= 12 ? "A2" : "A1"}).
+- 8 to 10 lines between two named Polish speakers, natural everyday Polish, at the learner's level (${levelOf(u)}).
 - Mostly use words the learner has studied plus the current grammar focus; bring in the weak spots where natural.
 - Introduce at most 4 new words, and list them in newWords.
 - Then 3 comprehension questions in English, each with 4 answer options in English.
@@ -2693,20 +3682,39 @@ function similarity(a, b) {
 
 /* ---------- Step 5: Writing ---------- */
 function runWriting(body) {
-  const u = stepUnit();
-  const ta = h("textarea", { id: "writing-box", placeholder: "Pisz tutaj… (write here)", "aria-label": "Your writing" });
-  try { const d = localStorage.getItem("pc.draft." + u.id); if (d) ta.value = d; } catch (e) {}
-  ta.addEventListener("input", () => { try { localStorage.setItem("pc.draft." + u.id, ta.value); } catch (e) {} });
+  const u = stepUnit(), form = u.writing.form;
+  const dkey = "pc.draft." + u.id;
+  let draft = ""; try { draft = localStorage.getItem(dkey) || ""; } catch (e) {}
+  let ta = null, inputs = [], lastInput = null, field;
+  if (form) {
+    /* a form to fill in: one labelled box per field, sent on as "Label: value" lines */
+    let saved = []; try { saved = JSON.parse(draft || "[]"); } catch (e) {}
+    const save = () => { try { localStorage.setItem(dkey, JSON.stringify(inputs.map(i => i.value))); } catch (e) {} };
+    field = h("div", { class: "form-grid" }, form.map((label, i) => {
+      const inp = h("input", { type: "text", id: "wf-" + i, autocomplete: "off", spellcheck: "false" });
+      inp.value = typeof saved[i] === "string" ? saved[i] : "";
+      inp.addEventListener("input", save); inp.addEventListener("focus", () => { lastInput = inp; });
+      inputs.push(inp);
+      return h("label", { class: "form-row" }, h("span", { class: "small muted" }, label), inp);
+    }));
+    lastInput = inputs[0];
+  } else {
+    ta = field = h("textarea", { id: "writing-box", placeholder: "Pisz tutaj… (write here)", "aria-label": "Your writing" });
+    ta.value = draft;
+    ta.addEventListener("input", () => { try { localStorage.setItem(dkey, ta.value); } catch (e) {} });
+  }
+  const getText = () => form ? inputs.map((inp, i) => inp.value.trim() ? `${form[i]}: ${inp.value.trim()}` : "").filter(Boolean).join("\n") : ta.value.trim();
+  const modelEl = () => form ? h("dl", { class: "read-form" }, u.writing.model.split(" · ").map(l => { const i = l.indexOf(":"); return [h("dt", null, l.slice(0, i)), h("dd", { class: "pl" }, l.slice(i + 1).trim())]; }).flat()) : h("p", { class: "pl" }, u.writing.model);
   const out = h("div", { class: "stack" });
   const btn = h("button", { class: "btn primary", onclick: check }, aiOn() ? "Check my writing" : "Compare with a model answer");
   body.append(h("section", { class: "card stack" },
-    h("span", { class: "eyebrow" }, "Task"),
+    h("span", { class: "eyebrow" }, form ? "Task · fill in the form" : "Task"),
     h("p", { style: "font-size:1.1rem;font-weight:700" }, u.writing.prompt),
-    h("p", { class: "small muted" }, "Use words from this unit and earlier ones. Keep it simple: short correct sentences are better than long ones."),
-    ta, keypad(ta), h("div", { class: "row" }, btn)), out);
+    h("p", { class: "small muted" }, form ? "Write the details in Polish, the way you would on a real form: dates as 12.05.1995, citizenship as an adjective (polskie, serbskie)." : "Use words from this unit and earlier ones. Keep it simple: short correct sentences are better than long ones."),
+    field, keypad(form ? () => lastInput : ta), h("div", { class: "row" }, btn)), out);
   async function check() {
-    const text = ta.value.trim();
-    if (!text) { ta.focus(); return; }
+    const text = getText();
+    if (!text) { (ta || inputs[0]).focus(); return; }
     if (!aiOn()) {
       const queue = IS_APP || !!sample;
       if (queue) {
@@ -2714,7 +3722,7 @@ function runWriting(body) {
         if (!W.some(w => w.u === u.id && w.text === text)) W.push({ id: rid(), u: u.id, text, at: Date.now(), d: localKey() });
         persist("progress");
       }
-      out.replaceChildren(h("div", { class: "card stack" }, h("h3", null, "Model answer"), h("p", { class: "pl" }, u.writing.model),
+      out.replaceChildren(h("div", { class: "card stack" }, h("h3", null, "Model answer"), modelEl(),
         h("p", { class: "small muted" }, "Compare it with yours. Do your endings match the patterns from the grammar lesson?"),
         queue ? h("p", { class: "small" }, "✓ Your text is saved. " + (IS_APP ? "Sync with claude.ai and it will be marked there, and the feedback comes back to this app." : "It will be marked when you're back online (see the Today page).")) : null));
       addXP(15); finishStep("writing", body); return;
@@ -2730,18 +3738,92 @@ function runWriting(body) {
       finishStep("writing", body);
     } catch (e) {
       out.replaceChildren(h("div", { class: "notice" }, aiErrorText(e) || "Stopped."));
-      if (!sample) { out.append(h("div", { class: "card stack" }, h("h3", null, "Model answer"), h("p", { class: "pl" }, u.writing.model))); addXP(15); finishStep("writing", body); }
+      if (!sample) { out.append(h("div", { class: "card stack" }, h("h3", null, "Model answer"), modelEl())); addXP(15); finishStep("writing", body); }
     }
     btn.disabled = false;
+  }
+}
+
+/* ---------- Reading: a real-life text, questions, then a gap-fill ---------- */
+const READ_KIND = { form: "Formularz · a form", sms: "Wiadomość · a message", email: "E-mail", notice: "Ogłoszenie · a notice", ad: "Ogłoszenie · an advert", timetable: "Rozkład · a timetable", menu: "Cennik · a price list", sign: "Napisy · signs" };
+function readText(r) {
+  let inner;
+  if (r.kind === "timetable" || r.kind === "menu") {
+    const rows = r.body.map(l => l.split(" | "));
+    const head = r.kind === "timetable" ? rows.shift() : null;
+    inner = h("div", { class: "tbl-wrap" }, h("table", null,
+      head ? h("thead", null, h("tr", null, head.map(c => h("th", null, c)))) : null,
+      h("tbody", null, rows.map(cells => h("tr", null, cells.map(c => h("td", { class: "pl" }, c)))))));
+  } else if (r.kind === "form") {
+    inner = h("dl", { class: "read-form" }, r.body.map(l => { const i = l.indexOf(":"); return i > 0 ? [h("dt", null, l.slice(0, i)), h("dd", { class: "pl" }, l.slice(i + 1).trim())] : [h("dd", { class: "pl" }, l)]; }).flat());
+  } else inner = h("div", { class: "read-lines pl" }, r.body.map(l => h("p", null, l)));
+  return h("div", { class: "read-doc rd-" + r.kind }, h("div", { class: "read-title pl" }, r.title), inner);
+}
+function clozeParts(text) {
+  const out = [], re = /\{\{([^}]+)\}\}/g; let last = 0, m;
+  while ((m = re.exec(text))) { out.push(text.slice(last, m.index), { o: m[1].split("|") }); last = re.lastIndex; }
+  out.push(text.slice(last));
+  return out;
+}
+function runRead(body) {
+  const u = stepUnit(), r = u.read;
+  if (!r) { finishStep("read", body); return; }
+  const qhost = h("div"), clozeHost = h("div");
+  body.append(
+    h("p", { class: "muted" }, "A text like the ones you'll meet in Poland. You don't need every word: look for the information the questions ask about."),
+    h("section", { class: "card stack" }, h("span", { class: "eyebrow" }, READ_KIND[r.kind] || "Tekst"), readText(r)),
+    h("h3", null, `Questions (${r.q.length})`), qhost, clozeHost);
+  const items = r.q.map(q => ({ t: "choice", q: q.q, o: q.o, a: q.a, _label: "reading" }));
+  runSet(qhost, items).then(score => {
+    addXP(score * 5);
+    qhost.append(h("p", { class: "small muted" }, `${score} of ${items.length} questions right.`));
+    if (u.cloze) runCloze(body, clozeHost, u, `Reading: ${score} of ${items.length}.`);
+    else finishStep("read", body, `Reading: ${score} of ${items.length}.`);
+  });
+}
+function runCloze(body, host, u, before) {
+  const gaps = [];
+  const para = h("p", { class: "cloze pl" }, clozeParts(u.cloze).map(p => {
+    if (typeof p === "string") return p;
+    const sel = h("select", { class: "gap", "aria-label": "Gap " + (gaps.length + 1) }, h("option", { value: "" }, "…"), shuffle(p.o).map(o => h("option", { value: o }, o)));
+    gaps.push({ sel, a: p.o[0] });
+    return sel;
+  }));
+  const fb = h("div");
+  const btn = h("button", { class: "btn primary", onclick: check }, "Check");
+  host.append(h("section", { class: "card stack" },
+    h("span", { class: "eyebrow" }, "Uzupełnij tekst · gap-fill"),
+    h("p", { class: "small muted" }, "Choose the right form for each gap, like the grammar part of the exam."),
+    para, h("div", { class: "row" }, btn), fb));
+  setTimeout(() => { gaps[0] && gaps[0].sel.scrollIntoView({ behavior: "smooth", block: "center" }); }, 50);
+  function check() {
+    if (gaps.some(g => !g.sel.value)) { fb.replaceChildren(h("p", { class: "small muted" }, "Choose a word for every gap first.")); return; }
+    btn.disabled = true;
+    let ok = 0;
+    gaps.forEach(g => {
+      const right = g.sel.value === g.a;
+      g.sel.disabled = true; g.sel.classList.add(right ? "right" : "wrong");
+      if (right) ok++; else g.sel.after(h("b", { class: "gap-fix" }, " → " + g.a));
+      hit(u.tag, right);
+    });
+    addXP(ok * 4);
+    const all = ok === gaps.length;
+    const full = clozeParts(u.cloze).map(p => typeof p === "string" ? p : p.o[0]).join("");
+    fb.replaceChildren(h("div", { class: "feedback " + (all ? "ok" : ok * 2 >= gaps.length ? "almost" : "no") },
+      h("strong", null, `${ok} / ${gaps.length} gaps right.`),
+      all ? null : h("div", { class: "small" }, "The right forms are shown next to your answers."),
+      h("div", { class: "row", style: "margin-top:6px" }, sayBtn(full), all ? null : h("button", { class: "btn ghost sm", onclick: () => openRule(u) }, "▦ Show the rule"))));
+    finishStep("read", body, `${before} Gap-fill: ${ok} of ${gaps.length}.`);
   }
 }
 
 /* ---------- Step 6: Daily test ---------- */
 function buildQuiz(u) {
   const items = tagItems(u, 6).concat(vocabItems(u, 4));
-  const earlier = UNITS.filter(x => x.id < u.id);
+  const learned = x => POS[x.id] < POS[u.id] && S.progress.mastered.includes(x.id);
+  const earlier = COURSE.filter(learned);
   if (earlier.length) {
-    const weakEarlier = weakList().map(([t]) => unitOfTag(t)).filter(x => x && x.id < u.id && !String(x.tag).startsWith("v"));
+    const weakEarlier = weakList().map(([t]) => unitOfTag(t)).filter(x => x && learned(x) && !String(x.tag).startsWith("v"));
     const srcs = weakEarlier.length ? weakEarlier : earlier;
     for (let i = 0; i < 2; i++) { const src = srcs[Math.floor(Math.random() * srcs.length)]; items.push(Object.assign(tagItems(src, 1)[0], { _label: "review · " + src.focus.split(" · ")[1] })); }
   } else items.push(...vocabItems(u, 2));
@@ -2754,7 +3836,7 @@ function runQuiz(body, opts = {}) {
   const items = R.items;
   const need = Math.ceil(items.length * 0.8);
   const practice = S.progress.mastered.includes(u.id);
-  body.append(h("p", { class: "muted" }, practice ? `A practice retake of unit ${u.id + 1}: ${items.length} questions on its grammar and words. Your best score is kept.` : `${items.length} questions covering this unit's grammar and words, plus a review of earlier units. Get ${need} or more right to finish the unit.`));
+  body.append(h("p", { class: "muted" }, practice ? `A practice retake of unit ${unitNo(u)}: ${items.length} questions on its grammar and words. Your best score is kept.` : `${items.length} questions covering this unit's grammar and words, plus a review of earlier units. Get ${need} or more right to finish the unit.`));
   const host = h("div");
   body.append(resumeNote(R) || "", host);
   runSet(host, items, { key: qkey, start: R.start, score: R.score }).then(score => {
@@ -2765,14 +3847,14 @@ function runQuiz(body, opts = {}) {
     P.quizzes.push({ d: localKey(), u: u.id, s: score, t: items.length, at: Date.now() });
     let msg;
     if (pass && !P.mastered.includes(u.id)) {
-      if (opts.testOut) newCardsForToday().forEach(c => { S.srs.cards[c.id] = { b: 2, due: TODAY() + 2, l: 0, n: 0, t: Date.now(), f: Date.now() }; });
+      if (opts.testOut) allCards().filter(c => c.unit === u.id && !S.srs.cards[c.id]).forEach(c => { S.srs.cards[c.id] = { b: 2, due: TODAY() + 2, l: 0, n: 0, t: Date.now(), f: Date.now() }; });
       P.mastered.push(u.id);
       P.masteredAt = P.masteredAt || {}; P.masteredAt[u.id] = localKey();
       if (u.id === P.unit) advanceUnit();
       persist("srs");
       addXP(score * 5 + 50);
       const nu = curUnit();
-      msg = courseDone() ? `You've finished all ${UNITS.length} units. Keep up the daily reviews and conversations to stay sharp.` : `Unit complete! Next up: Unit ${nu.id + 1}, „${nu.pl}” (${nu.en}). Your next session starts there.`;
+      msg = courseDone() ? `You've finished all ${UNITS.length} units. Keep up the daily reviews and conversations to stay sharp.` : `Unit complete! Next up: Unit ${unitNo(nu)}, „${nu.pl}” (${nu.en}). Your next session starts there.`;
     } else {
       addXP(score * 5);
       msg = pass ? "Passed again. Good revision." : practice ? `${score} of ${items.length}. Look at the grammar tables for this unit and try again another day.` : `You need ${need} to pass. Tomorrow's session stays on this unit and focuses on the questions you missed.`;
@@ -2789,7 +3871,7 @@ function runQuiz(body, opts = {}) {
     if (!session.revisit && pass && !courseDone() && P.unit !== u.id) {
       const d = todayRec();
       // let the learner start the next unit today if they want
-      body.append(h("button", { class: "btn", onclick: () => { ["grammar", "dialogue", "convo", "writing", "quiz"].forEach(k => delete d.steps[k]); persist("progress"); setView("today"); } }, "Start the next unit today"));
+      body.append(h("button", { class: "btn", onclick: () => { ["grammar", "read", "dialogue", "listen", "convo", "writing", "quiz"].forEach(k => delete d.steps[k]); persist("progress"); setView("today"); } }, "Start the next unit today"));
     }
   });
 }
@@ -2843,7 +3925,7 @@ function renderCards() {
   const count = h("span", { class: "small muted" });
   const letters = h("div", { class: "row letter-bar", role: "group", "aria-label": "Filter by first letter" });
   const sortBar = h("div", { class: "seg", role: "group", "aria-label": "Sort words" });
-  const unitRank = c => c.unit >= 0 ? c.unit : UNITS.length;
+  const unitRank = c => c.unit >= 0 && c.unit in POS ? POS[c.unit] : COURSE.length;
   const drawList = () => {
     const s = strip(norm(q.value));
     let rows = intro.filter(c => !s || strip(norm(c.pl)).includes(s) || norm(c.en).includes(s));
@@ -2862,7 +3944,7 @@ function renderCards() {
       groupOf = c => firstLetter(c.pl);
     } else {
       rows.sort((a, b) => unitRank(a) - unitRank(b));  /* stable: keeps lesson order, added words after */
-      groupOf = c => c.unit >= 0 && UNITS[c.unit] ? `Unit ${c.unit + 1} · ${UNITS[c.unit].pl}` : "Other words you added";
+      groupOf = c => c.unit >= 0 && UNITS[c.unit] ? `Unit ${unitNo(c.unit)} · ${UNITS[c.unit].pl}` : "Other words you added";
     }
     count.textContent = rows.length === intro.length ? "" : `Showing ${rows.length} of ${intro.length}`;
     const out = []; let last = null;
@@ -2907,26 +3989,29 @@ function startFree(opts) {
 function renderCourse() {
   const P = S.progress;
   const map = h("div", { class: "line-map" });
-  UNITS.forEach(u => {
+  const catchUp = new Set(catchUpUnits().map(u => u.id));
+  COURSE.forEach((u, i) => {
     const st = P.mastered.includes(u.id) ? "mastered" : u.id === P.unit ? "current" : "";
     const open = reached(u.id);
     const best = bestScore(u.id);
     map.append(h("div", { class: "stop " + st },
-      h("div", { class: "dot" }, st === "mastered" ? "✓" : String(u.id + 1)),
+      h("div", { class: "dot" }, st === "mastered" ? "✓" : String(i + 1)),
       h("div", { class: "name" },
-        h("div", { class: "pl" }, u.pl),
+        h("div", { class: "pl" }, u.pl, catchUp.has(u.id) ? h("span", { class: "chip gold", style: "margin-left:6px" }, "new") : null),
         h("div", { class: "small muted" }, u.en, " · ", u.focus.split(" · ")[1] || u.focus, best >= 0 ? ` · best ${best}%` : "")),
-      open ? h("button", { class: "btn sm" + (st === "current" ? " primary" : ""), onclick: () => openUnit(u.id), "aria-label": "Open unit " + (u.id + 1) }, st === "mastered" ? "Revisit" : "Open")
+      open ? h("button", { class: "btn sm" + (st === "current" ? " primary" : ""), onclick: () => openUnit(u.id), "aria-label": "Open unit " + (i + 1) }, st === "mastered" ? "Revisit" : "Open")
         : h("span", { class: "small muted" }, "locked")));
-    if (u.id === 11) map.append(h("div", { class: "stage-mark" }, h("span", { class: "chip green" }, "A1 complete"), h("span", { class: "small muted" }, "Next: A2")));
+    if (i === A1_COUNT - 1) map.append(h("div", { class: "stage-mark" }, h("span", { class: "chip green" }, "A1 complete"), h("span", { class: "small muted" }, "Next: A2")));
   });
+  const n = COURSE.length, stops = n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "przystanki" : "przystanków";
   app.replaceChildren(h("div", { class: "stack-lg" },
-    h("div", { class: "stack" }, h("span", { class: "eyebrow" }, `Linia A1–A2 · ${UNITS.length} przystanków (${UNITS.length} stops)`), h("h1", { class: "pl" }, "Kurs")),
-    h("p", { class: "muted" }, "Each stop is one unit. You move on when you score 80% on the daily test. Units 1–12 cover CEFR A1, and units 13–21 take you through the core grammar of A2. Open any unit you've reached to redo its lesson, flashcards, dialogue, conversation, writing or test."),
+    h("div", { class: "stack" }, h("span", { class: "eyebrow" }, `Linia A1–A2 · ${n} ${stops} (${n} stops)`), h("h1", { class: "pl" }, "Kurs")),
+    h("p", { class: "muted" }, `Each stop is one unit. You move on when you score 80% on the daily test. Units 1–${A1_COUNT} cover A1 and units ${A1_COUNT + 1}–${n} cover A2, following the official Polish standard for adult learners (the state certificate exams). Open any unit you've reached to redo its lesson, flashcards, reading, dialogue, conversation, writing or test.`),
+    catchUp.size ? h("p", { class: "small muted" }, `Stops marked „new” were added before your current position. They're optional catch-up: your place in the course doesn't change.`) : null,
     h("section", { class: "card" }, map)
   ));
 }
-function reached(id) { const P = S.progress; return P.mastered.includes(id) || id <= P.unit; }
+function reached(id) { const P = S.progress; return P.mastered.includes(id) || POS[id] <= POS[P.unit]; }
 function bestScore(id) { return S.progress.quizzes.filter(q => q.u === id).reduce((m, q) => Math.max(m, Math.round(q.s / q.t * 100)), -1); }
 
 /* ---------- Tables: shared rendering ---------- */
@@ -2966,7 +4051,7 @@ function openSheet(title, content) {
 function openRule(u) {
   const refs = relatedRefs(u.id);
   openSheet(u.grammar.title, h("div", { class: "stack" },
-    h("span", { class: "eyebrow" }, `Unit ${u.id + 1} · ${u.focus}`),
+    h("span", { class: "eyebrow" }, `Unit ${unitNo(u)} · ${u.focus}`),
     h("div", { class: "lesson", html: u.grammar.html }),
     tableEl(u.grammar.table),
     refs.length ? h("div", { class: "stack" }, h("span", { class: "eyebrow" }, "More tables"),
@@ -2977,7 +4062,8 @@ function openRule(u) {
 let unitPage = 0;
 function openUnit(uid) { unitPage = uid; setView("unit"); }
 function renderUnitPage() {
-  const u = UNITS[unitPage], P = S.progress;
+  const u = UNITS[unitPage] || curUnit(), P = S.progress;
+  const prevU = COURSE[POS[u.id] - 1], nextU = COURSE[POS[u.id] + 1];
   const mastered = P.mastered.includes(u.id);
   const best = bestScore(u.id);
   const cards = allCards().filter(c => c.unit === u.id);
@@ -2985,6 +4071,7 @@ function renderUnitPage() {
   const acts = [
     ["grammar", "Gramatyka", "Lesson & practice", u.grammar.title],
     ["review", "Fiszki", "Flashcards", `${cards.length} words · ${learned} in your deck`],
+    ["read", "Czytanie", "Reading", u.read ? `${u.read.title} + a gap-fill` : "A text and a gap-fill"],
     ["dialogue", "Dialog", "Reading dialogue", aiOn() ? "A new dialogue for this topic" : "The unit's scripted dialogue"],
     ["convo", "Rozmowa", "Conversation", aiOn() ? `Roleplay with ${u.partner}` : "Recall the dialogue"],
     ["writing", "Pisanie", "Writing", u.writing.prompt],
@@ -2993,12 +4080,12 @@ function renderUnitPage() {
   app.replaceChildren(h("div", { class: "stack-lg" },
     h("div", { class: "session-head" }, h("button", { class: "btn ghost sm", onclick: () => setView("course") }, "← Course"),
       h("div", { class: "row" },
-        unitPage > 0 && reached(unitPage - 1) ? h("button", { class: "btn ghost sm", onclick: () => openUnit(unitPage - 1), "aria-label": "Previous unit" }, "‹") : null,
-        unitPage < UNITS.length - 1 && reached(unitPage + 1) ? h("button", { class: "btn ghost sm", onclick: () => openUnit(unitPage + 1), "aria-label": "Next unit" }, "›") : null)),
+        prevU && reached(prevU.id) ? h("button", { class: "btn ghost sm", onclick: () => openUnit(prevU.id), "aria-label": "Previous unit" }, "‹") : null,
+        nextU && reached(nextU.id) ? h("button", { class: "btn ghost sm", onclick: () => openUnit(nextU.id), "aria-label": "Next unit" }, "›") : null)),
     h("section", { class: "unit-banner" },
-      h("div", { class: "stop-num" + (mastered ? " done" : "") }, mastered ? "✓" : String(u.id + 1)),
+      h("div", { class: "stop-num" + (mastered ? " done" : "") }, mastered ? "✓" : String(unitNo(u))),
       h("div", { style: "min-width:0" },
-        h("div", { class: "eyebrow" }, `Unit ${u.id + 1} of ${UNITS.length} · ${mastered ? "finished" : "in progress"}`),
+        h("div", { class: "eyebrow" }, `Unit ${unitNo(u)} of ${COURSE.length} · ${levelOf(u)} · ${mastered ? "finished" : catchUpUnits().includes(u) ? "new · catch up" : "in progress"}`),
         h("h1", { class: "pl" }, u.pl),
         h("div", { class: "row small" }, h("span", { class: "muted" }, u.en), h("span", { class: "chip red" }, u.focus)))),
     h("section", { class: "card stack" }, h("span", { class: "eyebrow" }, mastered ? "You can now" : "After this unit you can"), h("ul", { class: "cando" }, CAN_DO[u.id].map(t => h("li", null, t)))),
@@ -3034,12 +4121,12 @@ function renderTables() {
     const shown = REF.filter((r, i) => !s || secText[i].includes(s));
     index.replaceChildren(...shown.map(r => h("button", { class: "chip-btn", onclick: () => { const el = document.getElementById("ref-" + r.id); el && el.scrollIntoView({ behavior: "smooth", block: "start" }); } }, r.en)));
     list.replaceChildren(...(shown.length ? shown.map(r => {
-      const first = Math.min(...r.units);
+      const first = Math.min(...r.units.map(unitNo));
       const known = r.units.some(reached);
       return h("section", { class: "card stack", id: "ref-" + r.id },
         h("div", { class: "spread" },
           h("div", { style: "min-width:0" }, h("h2", { class: "pl" }, r.pl), h("div", { class: "muted small" }, r.en)),
-          h("span", { class: "chip " + (known ? "green" : "") }, known ? `from unit ${first + 1}` : `coming in unit ${first + 1}`)),
+          h("span", { class: "chip " + (known ? "green" : "") }, known ? `from unit ${first}` : `coming in unit ${first}`)),
         refBody(r));
     }) : [h("p", { class: "muted" }, "Nothing matches that search. Try a Polish form like idę, or a word like genitive.")]));
   }
@@ -3105,7 +4192,7 @@ function syncPanel() {
       h("p", { class: "small muted" }, "This app works fully offline. When you're online, sync to send your progress to claude.ai, get feedback on writing you did offline, and bring back a new offline pack."),
       h("div", { class: "tiles" },
         stat(ago(info.sent), "last sent", "to claude.ai"), stat(ago(info.got), "last received", "from claude.ai"),
-        stat(String(packLeft(u.id)), "pack dialogues", p ? `for unit ${u.id + 1} · made ${ago(p.made)}` : "no pack yet"),
+        stat(String(packLeft(u.id)), "pack dialogues", p ? `for unit ${unitNo(u)} · made ${ago(p.made)}` : "no pack yet"),
         stat(String(waiting), "texts to mark", waiting ? "sync to get feedback" : "all marked")),
       h("div", { class: "row" }, go), out, importBox(() => render()));
   } else {
@@ -3149,13 +4236,13 @@ function syncPanel() {
 
 /* ---------- writing: shared grading + offline queue ---------- */
 async function gradeWriting(u, text) {
-  const tags = UNITS.slice(0, Math.max(S.progress.unit, u.id) + 1).map(x => `${x.tag} = ${x.tagLabel}`).join("; ");
+  const tags = COURSE.filter(x => reached(x.id) || x.id === u.id).map(x => `${x.tag} = ${x.tagLabel}`).join("; ");
   const r = await sample.json(`You are a kind but precise Polish teacher marking a short piece of writing.
 ${learnerContext(u)}
 Task: ${u.writing.prompt}
 Learner's text:
 """${String(text).slice(0, 2000)}"""
-Mark it for a ${u.id >= 12 ? "A2" : "A1"} learner. Reply with only JSON:
+Mark it for a ${levelOf(u)} learner. Reply with only JSON:
 {"score": integer 0-10, "corrected": "the full text with mistakes fixed (keep their meaning)", "praise": "one encouraging English sentence about what they did well", "mistakes": [{"wrong":"...","right":"...","why":"short English explanation"}], "tags": ["grammar tags the mistakes belong to, choose only from: ${tags}"], "tip": "one short English tip for next time"}`, { modelTier: "default", cache: false });
   return {
     score: Math.max(0, Math.min(10, parseInt(r && r.score, 10) || 0)),
@@ -3203,7 +4290,7 @@ function writingsCard() {
     }
     freshNow.forEach(w => {
       const u = UNITS[w.u] || curUnit();
-      box.append(h("details", { class: "ref" }, h("summary", null, `Unit ${u.id + 1} · ${w.d} · ${w.fb.score}/10`),
+      box.append(h("details", { class: "ref" }, h("summary", null, `Unit ${unitNo(u)} · ${w.d} · ${w.fb.score}/10`),
         feedbackCard(u, w.fb, w.text),
         h("button", { class: "btn ghost sm", style: "margin-block:10px", onclick: () => { w.seen = true; persist("progress"); draw(); } }, "Got it, hide this")));
     });
@@ -3345,7 +4432,7 @@ function weeklyCard() {
       h("button", { class: "btn ghost sm", onclick: () => { P.weekSeen = wk; persist("progress"); render(); } }, "Got it")),
     h("div", { class: "tiles" }, stat(`${active} / 7`, "days studied", active >= 5 ? "Świetnie!" : active >= 3 ? "Dobrze!" : "Every day counts"),
       stat(String(xp), "XP earned", ""), stat(String(words), "new words", ""), stat(best >= 0 ? best + "%" : "–", "best test", tests.length ? `${tests.length} test${tests.length === 1 ? "" : "s"}` : "no tests")),
-    units.length ? h("p", { class: "small" }, "Finished: ", units.map(u => `unit ${u.id + 1} (${u.en})`).join(", "), ".") : null,
+    units.length ? h("p", { class: "small" }, "Finished: ", units.map(u => `unit ${unitNo(u)} (${u.en})`).join(", "), ".") : null,
     earned.length ? h("p", { class: "small" }, "New milestones: ", earned.map(m => m.en).join(", "), ".") : null);
 }
 
@@ -3353,8 +4440,8 @@ function weeklyCard() {
    WORD OF THE DAY & CULTURE NOTE
    ================================================================ */
 function wordOfDay() {
-  const P = S.progress, max = Math.min(UNITS.length - 1, P.unit + 1);
-  const pool = allCards().filter(c => c.unit >= 0 && c.unit <= max && !/…/.test(c.pl));
+  const P = S.progress, max = POS[P.unit] + 1;
+  const pool = allCards().filter(c => c.unit >= 0 && POS[c.unit] <= max && !/…/.test(c.pl));
   return pool.length ? pool[(TODAY() * 7919) % pool.length] : null;
 }
 function dailyCards() {
@@ -3365,7 +4452,7 @@ function dailyCards() {
     w ? h("section", { class: "card stack" }, h("span", { class: "eyebrow" }, "Słowo dnia · word of the day"),
       h("div", { class: "row", style: "flex-wrap:nowrap" }, h("div", { class: "pl", style: "font-size:1.5rem;min-width:0;overflow-wrap:anywhere" }, w.pl), sayBtn(w.pl)),
       h("div", null, w.en, w.note ? h("span", { class: "muted small" }, " · " + w.note) : null),
-      h("div", { class: "row small muted" }, `Unit ${w.unit + 1}`, known ? h("span", { class: "chip green" }, "in your flashcards") : add)) : null,
+      h("div", { class: "row small muted" }, `Unit ${unitNo(w.unit)}`, known ? h("span", { class: "chip green" }, "in your flashcards") : add)) : null,
     h("section", { class: "card stack" }, h("span", { class: "eyebrow" }, "Ciekawostka · culture note"),
       h("h3", null, note.t),
       h("p", { class: "small" }, note.text),
@@ -3418,7 +4505,7 @@ function runMini(body) {
   const u = stepUnit(), key = rkey("mini", u);
   const R = resumeItems(key, () => shuffle(tagItems(u, 4).concat(vocabItems(u, 2))));
   const host = h("div");
-  body.append(h("p", { class: "muted" }, `A 6-question check on unit ${u.id + 1}. It doesn't count towards finishing the unit (the daily test does).`), resumeNote(R), host);
+  body.append(h("p", { class: "muted" }, `A 6-question check on unit ${unitNo(u)}. It doesn't count towards finishing the unit (the daily test does).`), resumeNote(R), host);
   runSet(host, R.items, { key, start: R.start, score: R.score }).then(score => {
     addXP(score * 5);
     finishStep("mini", body, `${score} of ${R.items.length} right.`);
@@ -3429,7 +4516,7 @@ function listenPool(u) {
   const add = (pl, en) => { if (pl && pl.split(" ").length >= 2 && pl.length <= 70 && canSpeak(pl)) pool.push({ pl, en }); };
   u.dialogue.forEach(([, pl, en]) => add(pl, en));
   u.quiz.forEach(q => { const s = fullSentence(q); if (s && (q.t !== "choice" || /___/.test(q.q))) add(s, q.en || ""); });
-  UNITS.filter(x => x.id < u.id && reached(x.id)).forEach(x => x.dialogue.forEach(([, pl, en]) => add(pl, en)));
+  COURSE.filter(x => POS[x.id] < POS[u.id] && S.progress.mastered.includes(x.id)).forEach(x => x.dialogue.forEach(([, pl, en]) => add(pl, en)));
   return pool;
 }
 function runListen(body) {
@@ -3510,7 +4597,7 @@ function canDoPanel() {
   return h("section", { class: "card stack" },
     h("div", { class: "spread" }, h("h3", null, "Co już umiesz · what you can do now"), h("span", { class: "chip green" }, `${done.length} / ${UNITS.length} units`)),
     done.length ? h("ul", { class: "cando" }, done.flatMap(u => CAN_DO[u.id].map(t => h("li", null, t)))) : h("p", { class: "small muted" }, "Finish your first unit and the things you can now do in Polish will be listed here."),
-    !courseDone() ? h("p", { class: "small muted" }, `Next, in unit ${curUnit().id + 1}: `, CAN_DO[curUnit().id].join("; "), ".") : null);
+    !courseDone() ? h("p", { class: "small muted" }, `Next, in unit ${unitNo(curUnit())}: `, CAN_DO[curUnit().id].join("; "), ".") : null);
 }
 function milestonesPanel() {
   const P = S.progress, got = P.milestones || {};
@@ -3534,7 +4621,7 @@ function renderProgress() {
   const qs = P.quizzes.slice(-14);
   const bars = h("div", { class: "bars", role: "img", "aria-label": "Daily test scores" });
   bars.append(h("div", { class: "pass-line", style: "bottom:80%" }));
-  qs.forEach(q => { const pct = Math.round(q.s / q.t * 100); bars.append(h("div", { class: "b" + (pct >= 80 ? " pass" : ""), style: `height:${Math.max(pct, 3)}%`, title: `${q.d} · Unit ${q.u + 1} · ${q.s}/${q.t}` }, h("span", null, pct + ""))); });
+  qs.forEach(q => { const pct = Math.round(q.s / q.t * 100); bars.append(h("div", { class: "b" + (pct >= 80 ? " pass" : ""), style: `height:${Math.max(pct, 3)}%`, title: `${q.d} · Unit ${unitNo(q.u)} · ${q.s}/${q.t}` }, h("span", null, pct + ""))); });
   const heat = h("div", { class: "heat", role: "img", "aria-label": "Study days in the last 4 weeks" });
   const now = new Date();
   const start = new Date(now); start.setDate(now.getDate() - 27);
