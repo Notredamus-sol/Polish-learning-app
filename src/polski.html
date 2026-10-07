@@ -67,7 +67,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .stat.streak { color: var(--warn); }
 .sync { font-size: 0.75rem; color: var(--muted); align-self: center; }
 
-nav.tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 4px; margin-bottom: 18px; }
+nav.tabs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 4px; margin-bottom: 18px; }
 nav.tabs button { border: 0; background: transparent; border-radius: 9px; padding: 7px 4px; display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
 nav.tabs button .pl { font-size: 0.98rem; }
 nav.tabs button .en { font-size: 0.72rem; color: var(--muted); }
@@ -291,6 +291,7 @@ caption { caption-side: top; text-align: left; font-weight: 700; font-size: 0.85
 .act .pl { font-size: 1.1rem; }
 .act-en { font-weight: 700; font-size: 0.9rem; }
 .stop-num.done { background: var(--good); border-color: var(--good); color: var(--surface); }
+mark.chg { background: var(--warn-soft); color: var(--warn); font-weight: 700; border-radius: 3px; padding: 0 1px; }
 .stage-mark { display: flex; gap: 10px; align-items: center; padding: 6px 0 6px 54px; position: relative; }
 .stage-mark::before { content: ""; position: absolute; left: 19px; top: 0; bottom: 0; width: 4px; background: var(--line); }
 .code-box { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 0.75rem; min-height: 90px; word-break: break-all; }
@@ -341,6 +342,14 @@ ul.cando li::before { content: "✓"; position: absolute; left: 0; color: var(--
 .vocab-list .grp { grid-column: 1 / -1; display: block; border: 0; margin: 10px 0 0; padding: 0 0 2px; font-family: var(--display); font-size: 0.85rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
 .vocab-list .grp:first-child { margin-top: 0; }
 .letter-bar { gap: 4px; }
+.dict-list { display: grid; }
+.dict-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.dict-row .hw { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
+.dict-row .hw b { font-size: 1.05rem; overflow-wrap: anywhere; }
+.dict-row .gram { font-size: 0.78rem; color: var(--blue); font-style: italic; }
+.dict-row .gl { grid-column: 1; font-size: 0.92rem; overflow-wrap: anywhere; }
+.dict-row .act { grid-column: 2; grid-row: 1 / span 2; }
+#dict-search { width: 100%; }
 .letter { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 7px; min-width: 32px; height: 32px; padding: 0 8px; font-family: var(--display); font-weight: 700; }
 .letter.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .notice { border-left: 4px solid var(--blue); background: var(--blue-soft); padding: 10px 14px; border-radius: 0 10px 10px 0; font-size: 0.9rem; }
@@ -368,6 +377,7 @@ ul.cando li::before { content: "✓"; position: absolute; left: 0; color: var(--
     <button data-view="today"><span class="pl">Dziś</span><span class="en">Today</span></button>
     <button data-view="cards"><span class="pl">Fiszki</span><span class="en">Flashcards</span></button>
     <button data-view="course"><span class="pl">Kurs</span><span class="en">Course</span></button>
+    <button data-view="dict"><span class="pl">Słownik</span><span class="en">Dictionary</span></button>
     <button data-view="tables"><span class="pl">Tabele</span><span class="en">Tables</span></button>
     <button data-view="progress"><span class="pl">Postępy</span><span class="en">Progress</span></button>
   </nav>
@@ -1624,6 +1634,16 @@ const PLANS = {
 /*@include content/new_units_a1b.js*/
 /*@include content/new_units_a2b.js*/
 /*@include content/fixes_a1.js*/
+/*@include content/case_tables.js*/
+/*@include content/dict1.js*/
+/*@include content/dict2.js*/
+/*@include content/dict3.js*/
+/*@include content/dict4.js*/
+/*@include content/dict5.js*/
+/*@include content/dict6.js*/
+/*@include content/dict7.js*/
+/*@include content/dict8.js*/
+const DICT_RAW = [DICT_1, DICT_2, DICT_3, DICT_4, DICT_5, DICT_6, DICT_7, DICT_8].join("\n");
 NEW_UNITS_A1.concat(NEW_UNITS_A2, NEW_UNITS_A1B, NEW_UNITS_A2B).forEach(u => { UNITS[u.id] = u; });
 /* word lists are only ever appended to, so existing card ids stay the same */
 for (const [id, words] of Object.entries(EXTRA_VOCAB)) UNITS[id].vocab.push(...words);
@@ -1645,6 +1665,9 @@ REF.push(...NEW_REF, ...NEW_REF_2, {
   note: "Polish words that look like Serbian ones but mean something else.",
   tables: [{ head: ["polski", "means", "srpski", "which in Polish is"], pl: [0], rows: FALSE_FRIENDS }]
 });
+/* full 7-case tables go right after the plural endings; the letter-change list replaces the old softening table */
+REF.splice(REF.findIndex(r => r.id === "nouns-pl") + 1, 0, ...CASE_REF);
+Object.assign(REF.find(r => r.id === "softening"), LETTER_CHANGES);
 for (const [rid, ids] of Object.entries(REF_EXTRA_UNITS)) { const r = REF.find(x => x.id === rid); if (r) r.units.push(...ids); }
 const COURSE = COURSE_ORDER.map(id => UNITS[id]);   /* units in course order */
 const POS = {};                                      /* unit id -> position in the course */
@@ -1793,6 +1816,7 @@ function mergeSrs(local, incoming) {
     const o = m.cards[id];
     if (!o || (c.t || 0) > (o.t || 0) || (!c.t && !o.t && (c.n || 0) > (o.n || 0))) m.cards[id] = c;
   }
+  reindexSrs(m);
   return m;
 }
 
@@ -1942,7 +1966,7 @@ function readLocal() {
   try {
     const p = localStorage.getItem("pc.progress"), s = localStorage.getItem("pc.srs");
     if (p) S.progress = normalizeProgress(JSON.parse(p));
-    if (s) S.srs = Object.assign(DEFAULT_SRS(), JSON.parse(s));
+    if (s) { S.srs = Object.assign(DEFAULT_SRS(), JSON.parse(s)); if (reindexSrs(S.srs)) writeLocal("srs"); }
   } catch (e) {}
 }
 function writeLocal(key) { try { localStorage.setItem("pc." + key, JSON.stringify(S[key])); } catch (e) {} }
@@ -2102,7 +2126,7 @@ function dueCards() { const t = TODAY(); return introduced().filter(c => S.srs.c
 function newCardsForToday() {
   const u = curUnit();
   const t0 = new Date(); t0.setHours(0, 0, 0, 0);
-  const today = Object.values(S.srs.cards).filter(c => c.f >= t0.getTime()).length;
+  const today = Object.values(S.srs.cards).filter(c => c.f >= t0.getTime() && !c.x).length;
   const left = Math.max(0, (+settings().newPerDay || 10) - today);
   /* words of units waiting for their check-back test first (they're needed to finish those units),
      then this unit's words, then words added to units already finished */
@@ -2239,6 +2263,7 @@ function render() {
   else if (view === "cards") renderCards();
   else if (view === "course") renderCourse();
   else if (view === "unit") renderUnitPage();
+  else if (view === "dict") renderDict();
   else if (view === "tables") renderTables();
   else if (view === "progress") renderProgress();
   else if (view === "exam") renderExam();
@@ -2454,7 +2479,7 @@ function runReview(body, opts = {}) {
   if (opts.practiceAll) queue = pick(introduced(), 20).map(c => ({ c, isNew: false }));
   else if (session && session.revisit) queue = shuffle(allCards().filter(c => c.unit === session.opts.unit)).map(c => ({ c, isNew: !S.srs.cards[c.id] }));
   else {
-    const due = dueCards().slice(0, 60).map(c => ({ c, isNew: false }));
+    const due = dueCards().slice(0, 60).map(c => ({ c, isNew: !S.srs.cards[c.id].n }));
     const fresh = opts.noNew ? [] : newCardsForToday().map(c => ({ c, isNew: true }));
     queue = fresh.concat(shuffle(due));
   }
@@ -2777,7 +2802,7 @@ function showDialogue(holder, dl, body) {
   const nw = dl.newWords && dl.newWords.length ? h("div", { class: "stack" },
     h("h3", null, "New words in this dialogue"),
     h("div", { class: "row" }, dl.newWords.map(w => {
-      const id = "c-" + strip(norm(w.pl)).replace(/[^a-z0-9]+/g, "_").slice(0, 40);
+      const id = customIdFor(w.pl);
       const have = !!(S.srs.custom[id]);
       const b = h("button", { class: "btn sm" + (have ? " ghost" : ""), disabled: have, onclick: () => {
         S.srs.custom[id] = { pl: w.pl, en: w.en, unit: dl.unit ?? curUnit().id };
@@ -3235,8 +3260,180 @@ const PL_COLLATOR = new Intl.Collator("pl", { sensitivity: "base" });
 const PL_ALPHABET = "AĄBCĆDEĘFGHIJKLŁMNŃOÓPQRSŚTUVWXYZŹŻ".split("");
 const firstLetter = t => { const m = String(t).toLocaleLowerCase("pl").match(/\p{L}/u); return m ? m[0].toLocaleUpperCase("pl") : "#"; };
 const sortKey = t => String(t).replace(/^[^\p{L}]+/u, "");
+/* ================================================================
+   DICTIONARY (Słownik): every course word plus about 2,800 more.
+   A course word keeps its lesson card id (unit-index). Any other word becomes
+   a custom card ("c-" + slug, the same ids as words saved from dialogues).
+   Cards you add yourself carry x: 1, so they don't use up a lesson's new words.
+   If a lesson teaches a word you added (now, or in a later content update),
+   reindexSrs moves the card to the lesson's id and keeps its review history.
+   ================================================================ */
+const dictKey = t => norm(String(t).replace(/…/g, " "));
+const customIdFor = pl => "c-" + strip(norm(pl)).replace(/[^a-z0-9]+/g, "_").slice(0, 40);
+let _courseIdx = null;
+/* every form a lesson teaches → its card id (first lesson wins); "wnuk / wnuczka" also indexes each half */
+function courseIndex() {
+  if (_courseIdx) return _courseIdx;
+  const m = new Map();
+  COURSE.forEach(u => u.vocab.forEach((v, i) => {
+    [v[0], ...String(v[0]).split(" / ")].forEach(f => { const k = dictKey(f); if (k && !m.has(k)) m.set(k, u.id + "-" + i); });
+  }));
+  return (_courseIdx = m);
+}
+function reindexSrs(srs) {
+  let moved = 0;
+  if (!srs || !srs.custom) return 0;
+  for (const [id, c] of Object.entries(srs.custom)) {
+    const cid = c && courseIndex().get(dictKey(c.pl));
+    if (!cid) continue;
+    const a = srs.cards[id], b = srs.cards[cid];
+    if (a && (!b || (a.t || 0) > (b.t || 0))) srs.cards[cid] = a;
+    delete srs.cards[id]; delete srs.custom[id]; moved++;
+  }
+  return moved;
+}
+/* "My words": cards you added that no lesson you've reached teaches yet */
+function isMine(c) {
+  const st = S.srs.cards[c.id];
+  if (c.custom) return c.unit < 0 && !!(st && st.x);
+  return c.unit >= 0 && !reached(c.unit);
+}
+const GRAM = { m: "masc.", f: "fem.", n: "neut.", pl: "plural noun", adj: "adj.", adv: "adv.", prep: "prep.", conj: "conj.", pron: "pron.", num: "number", part: "particle", phr: "phrase", v: "verb" };
+const CASE_ABBR = { G: "genitive", D: "dative", A: "accusative", I: "instrumental", L: "locative" };
+function fmtGram(g) {
+  if (!g) return "";
+  const [head, ...rest] = String(g).split(" ");
+  let tail = rest.join(" ")
+    .replace(/^impf · pf (.+)$/, "imperfective · perfective: $1").replace(/^pf · impf (.+)$/, "perfective · imperfective: $1")
+    .replace(/^impf$/, "imperfective").replace(/^pf$/, "perfective")
+    .replace(/\+([GDAIL])(?:\/\+([GDAIL]))?/, (_, a, b) => "+ " + CASE_ABBR[a] + (b ? " / " + CASE_ABBR[b] : ""));
+  return [GRAM[head] || head, tail].filter(Boolean).join(" · ");
+}
+let _dict = null;
+function dictionary() {
+  if (_dict) return _dict;
+  const out = [], byKey = new Map(), byId = new Map(), slugs = new Map();
+  COURSE.forEach(u => u.vocab.forEach((v, i) => {
+    const k = dictKey(v[0]);
+    if (byKey.has(k)) return;  /* a word taught twice: keep its first lesson */
+    const e = { pl: v[0], en: v[1], note: v[2] || "", g: "", id: u.id + "-" + i, unit: u.id };
+    byKey.set(k, e); byId.set(e.id, e); out.push(e);
+  }));
+  for (const line of DICT_RAW.split("\n")) {
+    const [pl, en, g = ""] = line.split("|");
+    if (!pl || !en) continue;
+    const k = dictKey(pl), cid = courseIndex().get(k);
+    const hit = byKey.get(k) || (cid && byId.get(cid));
+    if (hit) {
+      if (!hit.g && (hit.id ? dictKey(hit.pl) === k : true)) hit.g = g;
+      if (!hit.id && !hit.en.split("; ").includes(en)) hit.en += "; " + en;
+      continue;
+    }
+    /* two different words with the same slug (kat, kąt) get different card ids */
+    let id = customIdFor(pl);
+    if (slugs.has(id)) id += "-" + slugs.size;
+    slugs.set(id, pl);
+    const e = { pl, en, note: "", g, id: null, cid: id, unit: -1 };
+    byKey.set(k, e); out.push(e);
+  }
+  for (const e of out) {
+    const partner = (String(e.g).match(/\b(?:pf|impf) ([^·]+)$/) || [])[1] || "";
+    e.letter = firstLetter(e.pl);
+    e.sp = strip(dictKey(e.pl + " " + partner));
+    e.se = norm(e.en);
+  }
+  out.sort((a, b) => PL_COLLATOR.compare(sortKey(a.pl), sortKey(b.pl)) || PL_COLLATOR.compare(a.pl, b.pl));
+  return (_dict = out);
+}
+const dictCardId = e => e.id || e.cid;
+function inDeck(e) { const id = dictCardId(e); return !!S.srs.cards[id] && (!!e.id || !!S.srs.custom[id]); }
+function addFromDict(e) {
+  const id = dictCardId(e);
+  if (!e.id) S.srs.custom[id] = { pl: e.pl, en: e.en, note: fmtGram(e.g), unit: -1 };
+  if (!S.srs.cards[id]) S.srs.cards[id] = { b: 0, due: TODAY(), l: 0, n: 0, t: Date.now(), x: 1 };
+  persist("srs");
+}
+function removeFromDict(e) {
+  const id = dictCardId(e), st = S.srs.cards[id];
+  if (!st || !st.x || st.n) return false;  /* only an unreviewed card you added can be taken back */
+  delete S.srs.cards[id];
+  if (!e.id) delete S.srs.custom[id];
+  persist("srs");
+  return true;
+}
+/* best matches first: the exact word (or one of its forms), an exact English meaning,
+   then words starting with the search, then anything containing it */
+function dictSearch(q) {
+  const s = strip(dictKey(q)), en = norm(q), bare = en.replace(/^to /, "");
+  if (!s) return [];
+  const score = e => {
+    const forms = [e.pl, ...String(e.pl).split(" / ")].map(f => strip(dictKey(f)));
+    if (forms.includes(s)) return 0;
+    if (e.sp.split(" ").includes(s) && e.g && /\bpf\b/.test(e.g) && e.sp.endsWith(s)) return 0.5;  /* the aspect partner */
+    const glosses = e.en.toLowerCase().replace(/\([^)]*\)/g, "").split(/[;,/]/).map(x => norm(x).replace(/^to /, ""));
+    if (glosses.includes(bare)) return 0.6;
+    if (forms.some(f => f.startsWith(s))) return 1;
+    if (e.se.split(" ").includes(bare)) return 2;
+    if (e.sp.includes(s)) return 2.5;
+    if (e.se.includes(en)) return 3;
+    return 9;
+  };
+  return dictionary().map(e => [score(e), e]).filter(([n]) => n < 9).sort((a, b) => a[0] - b[0] || a[1].pl.length - b[1].pl.length).map(([, e]) => e);
+}
+let dictLetter = "A", dictFilter = "all";
+function renderDict() {
+  const all = dictionary();
+  const q = h("input", { type: "text", id: "dict-search", placeholder: "Search in Polish or English (no Polish letters needed)", "aria-label": "Search the dictionary", autocomplete: "off" });
+  const letters = h("div", { class: "row letter-bar", role: "group", "aria-label": "Jump to a letter" });
+  const filterBar = h("div", { class: "seg", role: "group", "aria-label": "Show" });
+  const list = h("div", { class: "dict-list" });
+  const count = h("span", { class: "small muted", "aria-live": "polite" });
+  let limit = 120;
+  const present = new Set(all.map(e => e.letter));
+  const statusOf = e => inDeck(e) ? "deck" : e.id ? "course" : "extra";
+  function row(e) {
+    const act = h("div", { class: "act" });
+    const drawAct = () => {
+      const st = S.srs.cards[dictCardId(e)];
+      act.replaceChildren(inDeck(e)
+        ? (st && st.x && !st.n
+          ? h("button", { class: "btn ghost sm", title: "Not reviewed yet: tap to take it out again", onclick: () => { removeFromDict(e); drawAct(); } }, "✓ Added")
+          : h("span", { class: "chip green" }, "✓ In flashcards"))
+        : h("button", { class: "btn sm", "aria-label": "Add " + e.pl + " to flashcards", onclick: () => { addFromDict(e); drawAct(); } }, "+ Add"));
+    };
+    drawAct();
+    const where = e.id ? h("span", { class: "chip" + (reached(e.unit) ? " green" : ""), title: reached(e.unit) ? "Taught in a unit you've reached" : "A lesson teaches this later" }, "unit " + unitNo(e.unit)) : null;
+    return h("div", { class: "dict-row" },
+      h("div", { class: "hw" }, h("b", { class: "pl" }, e.pl), sayBtn(e.pl) || "", e.g ? h("span", { class: "gram" }, fmtGram(e.g)) : null, where),
+      h("div", { class: "gl" }, e.en, e.note ? h("span", { class: "muted" }, " · " + e.note) : null),
+      act);
+  }
+  function draw() {
+    const s = q.value.trim();
+    let rows = s ? dictSearch(s) : all.filter(e => e.letter === dictLetter);
+    if (dictFilter !== "all") rows = rows.filter(e => dictFilter === "deck" ? statusOf(e) === "deck" : !!e.id);
+    letters.hidden = !!s;
+    letters.replaceChildren(...PL_ALPHABET.filter(L => present.has(L)).map(L =>
+      h("button", { class: "letter" + (dictLetter === L ? " on" : ""), "aria-pressed": dictLetter === L ? "true" : "false", onclick: () => { dictLetter = L; limit = 120; draw(); } }, L)));
+    filterBar.replaceChildren(...[["all", "All words"], ["course", "Course words"], ["deck", "In my flashcards"]].map(([k, l]) =>
+      h("button", { class: dictFilter === k ? "on" : "", "aria-pressed": dictFilter === k ? "true" : "false", onclick: () => { dictFilter = k; limit = 120; draw(); } }, l)));
+    count.textContent = s ? `${rows.length} match${rows.length === 1 ? "" : "es"}` : `${rows.length} word${rows.length === 1 ? "" : "s"} under ${dictLetter}`;
+    const shown = rows.slice(0, limit);
+    list.replaceChildren(...(shown.length ? shown.map(row) : [h("p", { class: "muted" }, s ? "No words match. Try the English meaning, or fewer letters." : "No words here yet.")]),
+      ...(rows.length > limit ? [h("button", { class: "btn ghost sm", style: "justify-self:start;margin-top:10px", onclick: () => { limit += 200; draw(); } }, `Show more (${rows.length - limit} left)`)] : []));
+  }
+  let tmr = null;
+  q.addEventListener("input", () => { clearTimeout(tmr); tmr = setTimeout(() => { limit = 120; draw(); }, 120); });
+  const nCourse = all.filter(e => e.id).length;
+  app.replaceChildren(h("div", { class: "stack-lg" },
+    h("div", { class: "stack" }, h("span", { class: "eyebrow" }, "Polish – English"), h("h1", { class: "pl" }, "Słownik")),
+    h("p", { class: "muted" }, `${all.length.toLocaleString("en")} words: the ${nCourse.toLocaleString("en")} the course teaches, and ${(all.length - nCourse).toLocaleString("en")} more everyday words. Tap + Add to put a word in your flashcards. It goes into “My words”, and if a lesson teaches it later, it moves into that lesson and keeps its progress.`),
+    h("div", { class: "stack" }, q, h("div", { class: "spread" }, filterBar, count), letters),
+    list));
+  draw();
+}
 let deckSort = "az", deckLetter = null;
-try { deckSort = localStorage.getItem("pc.deckSort") === "unit" ? "unit" : "az"; } catch (e) {}
+try { const v = localStorage.getItem("pc.deckSort"); deckSort = v === "unit" || v === "mine" ? v : "az"; } catch (e) {}
 function renderCards() {
   const intro = introduced();
   const due = dueCards();
@@ -3248,19 +3445,21 @@ function renderCards() {
   const letters = h("div", { class: "row letter-bar", role: "group", "aria-label": "Filter by first letter" });
   const sortBar = h("div", { class: "seg", role: "group", "aria-label": "Sort words" });
   const unitRank = c => c.unit >= 0 && c.unit in POS ? POS[c.unit] : COURSE.length;
+  const mine = intro.filter(isMine);
   const drawList = () => {
     const s = strip(norm(q.value));
-    let rows = intro.filter(c => !s || strip(norm(c.pl)).includes(s) || norm(c.en).includes(s));
+    let rows = (deckSort === "mine" ? mine : deckSort === "unit" ? intro.filter(c => !isMine(c)) : intro)
+      .filter(c => !s || strip(norm(c.pl)).includes(s) || norm(c.en).includes(s));
     const present = new Set(rows.map(c => firstLetter(c.pl)));
     if (deckLetter && !present.has(deckLetter)) deckLetter = null;
-    sortBar.replaceChildren(...[["az", "A–Z"], ["unit", "By course"]].map(([k, l]) =>
+    sortBar.replaceChildren(...[["az", "A–Z"], ["unit", "By lesson"], ["mine", `My words (${mine.length})`]].map(([k, l]) =>
       h("button", { class: deckSort === k ? "on" : "", "aria-pressed": deckSort === k ? "true" : "false", onclick: () => { deckSort = k; try { localStorage.setItem("pc.deckSort", k); } catch (e) {} drawList(); } }, l)));
-    letters.hidden = deckSort !== "az" || !rows.length;
+    letters.hidden = deckSort === "unit" || !rows.length;
     letters.replaceChildren(h("button", { class: "letter" + (deckLetter ? "" : " on"), onclick: () => { deckLetter = null; drawList(); } }, "All"),
       ...PL_ALPHABET.filter(L => present.has(L)).concat(present.has("#") ? ["#"] : []).map(L =>
         h("button", { class: "letter" + (deckLetter === L ? " on" : ""), "aria-pressed": deckLetter === L ? "true" : "false", onclick: () => { deckLetter = deckLetter === L ? null : L; drawList(); } }, L)));
     let groupOf;
-    if (deckSort === "az") {
+    if (deckSort !== "unit") {
       if (deckLetter) rows = rows.filter(c => firstLetter(c.pl) === deckLetter);
       rows.sort((a, b) => PL_COLLATOR.compare(sortKey(a.pl), sortKey(b.pl)));
       groupOf = c => firstLetter(c.pl);
@@ -3269,14 +3468,19 @@ function renderCards() {
       groupOf = c => c.unit >= 0 && UNITS[c.unit] ? `Unit ${unitNo(c.unit)} · ${UNITS[c.unit].pl}` : "Other words you added";
     }
     count.textContent = rows.length === intro.length ? "" : `Showing ${rows.length} of ${intro.length}`;
+    const tip = deckSort === "mine" ? h("p", { class: "small muted", style: "grid-column:1/-1;margin:0 0 4px" }, mine.length
+      ? "Words you added from the dictionary or the word of the day. When a lesson teaches one of them, it moves into that lesson's list and keeps its progress."
+      : "No words of your own yet. Add any word from the Słownik (dictionary) tab and it will show up here.") : null;
     const out = []; let last = null;
+    if (tip) out.push(tip);
     for (const c of rows) {
       const g = groupOf(c);
       if (g !== last) { out.push(h("h4", { class: "grp" }, g)); last = g; }
+      const later = deckSort === "mine" && c.unit >= 0 && !c.custom ? h("span", { class: "chip", title: "A lesson teaches this word later. It moves there when you reach it." }, "unit " + unitNo(c.unit)) : null;
       out.push(h("div", null, h("span", { class: "row", style: "gap:6px;flex-wrap:nowrap;min-width:0" }, h("span", { class: "pl" }, c.pl), sayBtn(c.pl)),
-        h("span", { class: "muted small", style: "text-align:right" }, c.en, " ", h("span", { class: "chip", title: "Memory box (0 = new, 6 = long-term)" }, String(S.srs.cards[c.id].b)))));
+        h("span", { class: "muted small", style: "text-align:right" }, c.en, " ", ...[later, h("span", { class: "chip", title: "Memory box (0 = new, 6 = long-term)" }, String(S.srs.cards[c.id].b))].filter(Boolean))));
     }
-    list.replaceChildren(...(out.length ? out : [h("p", { class: "muted small grp" }, "No words match.")]));
+    list.replaceChildren(...(rows.length || tip ? out : [h("p", { class: "muted small grp" }, "No words match.")]));
   };
   q.addEventListener("input", drawList);
   app.replaceChildren(h("div", { class: "stack-lg" },
@@ -3350,8 +3554,14 @@ function tableEl(t) {
   return h("div", { class: "tbl-wrap" }, h("table", null,
     t.caption ? h("caption", null, t.caption) : null,
     t.head.some(x => x) ? h("thead", null, h("tr", null, t.head.map(x => h("th", null, x)))) : null,
-    h("tbody", null, t.rows.map(r => h("tr", null, r.map((c, i) => h("td", { class: plCols.includes(i) && r[0] !== "meaning" ? "pl" : "" }, c)))))));
+    h("tbody", null, t.rows.map(r => h("tr", null, r.map((c, i) => h("td", { class: plCols.includes(i) && r[0] !== "meaning" ? "pl" : "" }, ...markChanges(c))))))));
 }
+/* "rę[c]e" → rę<mark>c</mark>e: letters that change in the stem */
+function markChanges(c) {
+  if (typeof c !== "string" || !c.includes("[")) return [c];
+  return c.split(/\[([^\]]*)\]/).map((x, i) => i % 2 ? h("mark", { class: "chg" }, x) : x).filter(x => x !== "");
+}
+const unmark = s => String(s).replace(/[\[\]]/g, "");
 const relatedRefs = uid => REF.filter(r => r.units.includes(uid));
 function refBody(sec) {
   return h("div", { class: "stack" },
@@ -3871,7 +4081,7 @@ function renderTables() {
   const q = h("input", { type: "text", id: "ref-search", placeholder: "Search: jestem, genitive, idę, dobrego…", "aria-label": "Search the tables" });
   const list = h("div", { class: "stack-lg" });
   const index = h("div", { class: "row ref-index" });
-  const secText = REF.map(r => strip(norm([r.pl, r.en, r.note || "", r.foot || "", ...r.tables.flatMap(t => [t.caption || "", ...t.head, ...t.rows.flat()])].join(" "))));
+  const secText = REF.map(r => strip(norm([r.pl, r.en, r.note || "", r.foot || "", ...r.tables.flatMap(t => [t.caption || "", ...t.head, ...t.rows.flat()])].map(unmark).join(" "))));
   function draw() {
     const s = strip(norm(q.value));
     const shown = REF.filter((r, i) => !s || secText[i].includes(s));
@@ -4205,7 +4415,7 @@ function wordOfDay() {
 function dailyCards() {
   const w = wordOfDay(), note = CULTURE[TODAY() % CULTURE.length];
   const known = w && S.srs.cards[w.id];
-  const add = w && !known ? h("button", { class: "btn ghost sm", onclick: e => { S.srs.cards[w.id] = { b: 0, due: TODAY() + 1, l: 0, n: 0, t: Date.now(), f: Date.now() }; persist("srs"); e.currentTarget.replaceWith(h("span", { class: "chip green" }, "✓ in your flashcards")); } }, "+ Add to flashcards") : null;
+  const add = w && !known ? h("button", { class: "btn ghost sm", onclick: e => { S.srs.cards[w.id] = { b: 0, due: TODAY(), l: 0, n: 0, t: Date.now(), x: 1 }; persist("srs"); e.currentTarget.replaceWith(h("span", { class: "chip green" }, "✓ in your flashcards")); } }, "+ Add to flashcards") : null;
   return h("div", { class: "daily" },
     w ? h("section", { class: "card stack" }, h("span", { class: "eyebrow" }, "Słowo dnia · word of the day"),
       h("div", { class: "row", style: "flex-wrap:nowrap" }, h("div", { class: "pl", style: "font-size:1.5rem;min-width:0;overflow-wrap:anywhere" }, w.pl), sayBtn(w.pl)),

@@ -81,7 +81,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .stat.streak { color: var(--warn); }
 .sync { font-size: 0.75rem; color: var(--muted); align-self: center; }
 
-nav.tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 4px; margin-bottom: 18px; }
+nav.tabs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 4px; margin-bottom: 18px; }
 nav.tabs button { border: 0; background: transparent; border-radius: 9px; padding: 7px 4px; display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
 nav.tabs button .pl { font-size: 0.98rem; }
 nav.tabs button .en { font-size: 0.72rem; color: var(--muted); }
@@ -305,6 +305,7 @@ caption { caption-side: top; text-align: left; font-weight: 700; font-size: 0.85
 .act .pl { font-size: 1.1rem; }
 .act-en { font-weight: 700; font-size: 0.9rem; }
 .stop-num.done { background: var(--good); border-color: var(--good); color: var(--surface); }
+mark.chg { background: var(--warn-soft); color: var(--warn); font-weight: 700; border-radius: 3px; padding: 0 1px; }
 .stage-mark { display: flex; gap: 10px; align-items: center; padding: 6px 0 6px 54px; position: relative; }
 .stage-mark::before { content: ""; position: absolute; left: 19px; top: 0; bottom: 0; width: 4px; background: var(--line); }
 .code-box { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 0.75rem; min-height: 90px; word-break: break-all; }
@@ -355,6 +356,14 @@ ul.cando li::before { content: "✓"; position: absolute; left: 0; color: var(--
 .vocab-list .grp { grid-column: 1 / -1; display: block; border: 0; margin: 10px 0 0; padding: 0 0 2px; font-family: var(--display); font-size: 0.85rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
 .vocab-list .grp:first-child { margin-top: 0; }
 .letter-bar { gap: 4px; }
+.dict-list { display: grid; }
+.dict-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.dict-row .hw { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
+.dict-row .hw b { font-size: 1.05rem; overflow-wrap: anywhere; }
+.dict-row .gram { font-size: 0.78rem; color: var(--blue); font-style: italic; }
+.dict-row .gl { grid-column: 1; font-size: 0.92rem; overflow-wrap: anywhere; }
+.dict-row .act { grid-column: 2; grid-row: 1 / span 2; }
+#dict-search { width: 100%; }
 .letter { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 7px; min-width: 32px; height: 32px; padding: 0 8px; font-family: var(--display); font-weight: 700; }
 .letter.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .notice { border-left: 4px solid var(--blue); background: var(--blue-soft); padding: 10px 14px; border-radius: 0 10px 10px 0; font-size: 0.9rem; }
@@ -382,6 +391,7 @@ ul.cando li::before { content: "✓"; position: absolute; left: 0; color: var(--
     <button data-view="today"><span class="pl">Dziś</span><span class="en">Today</span></button>
     <button data-view="cards"><span class="pl">Fiszki</span><span class="en">Flashcards</span></button>
     <button data-view="course"><span class="pl">Kurs</span><span class="en">Course</span></button>
+    <button data-view="dict"><span class="pl">Słownik</span><span class="en">Dictionary</span></button>
     <button data-view="tables"><span class="pl">Tabele</span><span class="en">Tables</span></button>
     <button data-view="progress"><span class="pl">Postępy</span><span class="en">Progress</span></button>
   </nav>
@@ -4505,6 +4515,4185 @@ const LISTEN_Q = {
   20: [["Why does the first speaker prefer Kraków?", "it's smaller but prettier", "it's bigger", "it's more modern"], ["What is Warsaw like, according to them?", "bigger and more modern", "smaller and cheaper", "older and prettier"], ["Where are the best pierogi?", "at grandma's", "in Warsaw", "in a restaurant in Kraków"]],
   33: [["How long were they in Kraków?", "a week", "two days", "a month"], ["What was the weather like in Zakopane?", "it kept raining", "sunny and hot", "snowy"], ["Where hasn't the speaker been yet?", "to the Baltic Sea", "to the mountains", "to Kraków"]]
 };
+/* ================================================================
+   Full declension tables: all 7 cases, singular and plural, for every
+   noun type, with the letters that change in the stem marked [like this]
+   (the table renderer turns [..] into a highlight).
+   A dropped vowel is shown by marking the letters that now touch
+   (pies → [ps]a); an added or swapped vowel is marked itself.
+   ================================================================ */
+const CASE_ROWS = ["mianownik", "dopełniacz", "celownik", "biernik", "narzędnik", "miejscownik", "wołacz"];
+/* cols: one array of 7 singular forms (or 7 plural forms) per word */
+const caseTable = (caption, words, cols) => ({ caption, head: ["", ...words], pl: words.map((_, i) => i + 1),
+  rows: CASE_ROWS.map((label, r) => [label, ...cols.map(c => c[r])]) });
+
+const CASE_REF = [{
+  id: "all-cases", pl: "Pełna odmiana rzeczowników", en: "All 7 cases: full noun tables", units: [3, 5, 6, 12, 14, 18, 34],
+  note: "Every case, singular and plural, for each kind of noun. Highlighted letters change in the stem: a consonant softens, a vowel swaps, or a vowel drops out. In the plural, the vocative is always the same as the nominative. The question words for each case are in “The 7 cases at a glance”.",
+  tables: [
+    caseTable("Masculine, people · singular", ["student", "Polak", "chłopiec", "nauczyciel"], [
+      ["student", "studenta", "studentowi", "studenta", "studentem", "studen[ci]e", "studen[ci]e!"],
+      ["Polak", "Polaka", "Polakowi", "Polaka", "Polak[i]em", "Polaku", "Polaku!"],
+      ["chłopiec", "chło[pc]a", "chło[pc]u", "chło[pc]a", "chło[pc]em", "chło[pc]u", "chło[pcz]e!"],
+      ["nauczyciel", "nauczyciela", "nauczycielowi", "nauczyciela", "nauczycielem", "nauczycielu", "nauczycielu!"]]),
+    caseTable("Masculine, people · plural", ["student", "Polak", "chłopiec", "nauczyciel"], [
+      ["studen[ci]", "studentów", "studentom", "studentów", "studentami", "studentach", "studen[ci]!"],
+      ["Pola[c]y", "Polaków", "Polakom", "Polaków", "Polakami", "Polakach", "Pola[c]y!"],
+      ["chło[pc]y", "chło[pc]ów", "chło[pc]om", "chło[pc]ów", "chło[pc]ami", "chło[pc]ach", "chło[pc]y!"],
+      ["nauczyciele", "nauczycieli", "nauczycielom", "nauczycieli", "nauczycielami", "nauczycielach", "nauczyciele!"]]),
+    caseTable("Masculine, animals and things · singular", ["pies", "stół", "ogród", "dzień"], [
+      ["pies", "[ps]a", "[ps]u", "[ps]a", "[ps]em", "[psi]e", "[psi]e!"],
+      ["stół", "st[o]łu", "st[o]łowi", "stół", "st[o]łem", "st[ol]e", "st[ol]e!"],
+      ["ogród", "ogr[o]du", "ogr[o]dowi", "ogród", "ogr[o]dem", "ogr[odzi]e", "ogr[odzi]e!"],
+      ["dzień", "[dn]ia", "[dn]iowi", "dzień", "[dn]iem", "[dn]iu", "[dn]iu!"]]),
+    caseTable("Masculine, animals and things · plural", ["pies", "stół", "ogród", "dzień"], [
+      ["[ps]y", "[ps]ów", "[ps]om", "[ps]y", "[ps]ami", "[ps]ach", "[ps]y!"],
+      ["st[o]ły", "st[o]łów", "st[o]łom", "st[o]ły", "st[o]łami", "st[o]łach", "st[o]ły!"],
+      ["ogr[o]dy", "ogr[o]dów", "ogr[o]dom", "ogr[o]dy", "ogr[o]dami", "ogr[o]dach", "ogr[o]dy!"],
+      ["[dn]i", "[dn]i", "[dn]iom", "[dn]i", "[dn]iami", "[dn]iach", "[dn]i!"]]),
+    caseTable("Feminine in -a, hard stems · singular", ["kobieta", "ręka", "siostra", "szkoła"], [
+      ["kobieta", "kobiety", "kobie[ci]e", "kobietę", "kobietą", "kobie[ci]e", "kobieto!"],
+      ["ręka", "ręk[i]", "rę[c]e", "rękę", "ręką", "rę[c]e", "ręko!"],
+      ["siostra", "siostry", "siost[rz]e", "siostrę", "siostrą", "siost[rz]e", "siostro!"],
+      ["szkoła", "szkoły", "szko[l]e", "szkołę", "szkołą", "szko[l]e", "szkoło!"]]),
+    caseTable("Feminine in -a, hard stems · plural", ["kobieta", "ręka", "siostra", "szkoła"], [
+      ["kobiety", "kobiet", "kobietom", "kobiety", "kobietami", "kobietach", "kobiety!"],
+      ["rę[c]e", "r[ą]k", "rękom", "rę[c]e", "rękami", "rękach", "rę[c]e!"],
+      ["siostry", "si[ó]str", "siostrom", "siostry", "siostrami", "siostrach", "siostry!"],
+      ["szkoły", "szk[ó]ł", "szkołom", "szkoły", "szkołami", "szkołach", "szkoły!"]]),
+    caseTable("Feminine: more stems · singular", ["noga", "mucha", "ulica", "noc"], [
+      ["noga", "nog[i]", "no[dz]e", "nogę", "nogą", "no[dz]e", "nogo!"],
+      ["mucha", "muchy", "mu[sz]e", "muchę", "muchą", "mu[sz]e", "mucho!"],
+      ["ulica", "ulicy", "ulicy", "ulicę", "ulicą", "ulicy", "ulico!"],
+      ["noc", "nocy", "nocy", "noc", "nocą", "nocy", "nocy!"]]),
+    caseTable("Feminine: more stems · plural", ["noga", "mucha", "ulica", "noc"], [
+      ["nog[i]", "n[ó]g", "nogom", "nog[i]", "nogami", "nogach", "nog[i]!"],
+      ["muchy", "much", "muchom", "muchy", "muchami", "muchach", "muchy!"],
+      ["ulice", "ulic", "ulicom", "ulice", "ulicami", "ulicach", "ulice!"],
+      ["noce", "nocy", "nocom", "noce", "nocami", "nocach", "noce!"]]),
+    caseTable("Neuter · singular", ["okno", "miasto", "morze", "imię"], [
+      ["okno", "okna", "oknu", "okno", "oknem", "ok[ni]e", "okno!"],
+      ["miasto", "miasta", "miastu", "miasto", "miastem", "m[ieści]e", "miasto!"],
+      ["morze", "morza", "morzu", "morze", "morzem", "morzu", "morze!"],
+      ["imię", "imi[eni]a", "imi[eni]u", "imię", "imi[eni]em", "imi[eni]u", "imię!"]]),
+    caseTable("Neuter · plural", ["okno", "miasto", "morze", "imię"], [
+      ["okna", "ok[ie]n", "oknom", "okna", "oknami", "oknach", "okna!"],
+      ["miasta", "miast", "miastom", "miasta", "miastami", "miastach", "miasta!"],
+      ["morza", "m[ó]rz", "morzom", "morza", "morzami", "morzach", "morza!"],
+      ["imi[on]a", "imi[on]", "imi[on]om", "imi[on]a", "imi[on]ami", "imi[on]ach", "imi[on]a!"]]),
+    { caption: "Irregular plurals: learn these as pairs", head: ["word", "genitive sg.", "plural", "genitive pl.", "instrumental pl."], pl: [0, 1, 2, 3, 4], rows: [
+      ["człowiek", "człowieka", "[ludzie]", "[ludzi]", "[ludźmi]"],
+      ["dziecko", "dziecka", "dzie[ci]", "dzie[ci]", "dzie[ćmi]"],
+      ["brat", "brata", "bra[cia]", "bra[ci]", "bra[ćmi]"],
+      ["przyjaciel", "przyjaciela", "przyjaciele", "przyjaci[ół]", "przyjaci[ół]mi"],
+      ["rok", "roku", "[lata]", "[lat]", "[latami]"],
+      ["tydzień", "ty[go]dnia", "ty[go]dnie", "ty[go]dni", "ty[go]dniami"],
+      ["oko", "oka", "o[cz]y", "o[cz]u", "o[cz]ami"],
+      ["ucho", "ucha", "u[sz]y", "u[sz]u", "u[sz]ami"],
+      ["ręka", "ręki", "rę[c]e", "r[ą]k", "rękami"],
+      ["pieniądz", "pieniądza", "pieniądze", "pieni[ę]dzy", "pieni[ę]dzmi"]
+    ] }
+  ],
+  foot: "Masculine people and animals: the accusative singular is the same as the genitive (widzę studenta, psa). Men in the plural: the accusative plural is the same as the genitive plural (widzę studentów). Things keep the nominative (widzę stół, stoły)."
+}];
+
+/* The letter changes, all in one list: replaces the old "Consonant changes before -e" table (same id, so lesson links keep working). */
+const LETTER_CHANGES = {
+  pl: "Wymiany głosek", en: "Letter changes in all cases",
+  note: "Polish changes letters in the stem when an ending is added. Most changes happen before -e (the locative, the feminine dative and the vocative) and in the plural of nouns for men. The highlighted letters are the ones that change.",
+  tables: [
+    { caption: "Consonants before -e: locative, feminine dative, vocative", head: ["change", "example", "the form"], pl: [1, 2], rows: [
+      ["k → c", "Polska, ręka", "w Pol[c]e, w rę[c]e"], ["g → dz", "Praga, noga", "w Pra[dz]e, na no[dz]e"], ["ch → sz", "mucha", "o mu[sz]e"],
+      ["r → rz", "siostra, teatr", "o siost[rz]e, w teat[rz]e"], ["t → ci", "poczta, student", "na pocz[ci]e, studen[ci]e!"],
+      ["d → dzi", "woda, ogród", "w wo[dzi]e, w ogro[dzi]e"], ["st → ści", "most, miasto", "na mo[ści]e, w mie[ści]e"],
+      ["zd → ździ", "gwiazda, zjazd", "na gwie[ździ]e, na zje[ździ]e"], ["ł → l", "szkoła, stół", "w szko[l]e, na sto[l]e"],
+      ["s → si, z → zi", "autobus, wóz", "w autobu[si]e, na wo[zi]e"], ["n → ni", "kino, okno", "w ki[ni]e, w ok[ni]e"],
+      ["p, b, m, w, f → pi, bi, mi, wi, fi", "sklep, klub, mama, Warszawa, szafa", "w skle[pi]e, w klu[bi]e, o ma[mi]e, w Warsza[wi]e, w sza[fi]e"],
+      ["no change: -u instead of -e", "park, dach, pokój; and dom, syn, pan", "w parku, na dachu, w pokoju; w domu, o synu, o panu"]
+    ] },
+    { caption: "Men in the plural (nominative): -i / -y softens the consonant", head: ["change", "singular", "plural"], pl: [1, 2], rows: [
+      ["t → ci", "student", "studen[ci]"], ["d → dzi", "Szwed", "Szwe[dzi]"], ["r → rz", "doktor", "dokto[rz]y"],
+      ["k → c", "Polak", "Pola[c]y"], ["g → dz", "kolega", "kole[dz]y"], ["ch → si", "Czech", "Cze[si]"],
+      ["z → zi", "Francuz", "Francu[zi]"], ["st → ści", "turysta", "tury[ści]"]
+    ] },
+    { caption: "Vowels that change", head: ["change", "when", "example"], pl: [2], rows: [
+      ["ó → o", "an ending is added", "stół → st[o]łu, Kraków → w Krak[o]wie, pokój → pok[o]ju"],
+      ["o → ó", "genitive plural (no ending)", "szkoła → szk[ó]ł, noga → n[ó]g, morze → m[ó]rz"],
+      ["ą → ę", "an ending is added", "ząb → z[ę]ba, mąż → m[ę]ża"],
+      ["ę → ą", "genitive plural (no ending)", "ręka → r[ą]k, święto → św[ią]t"],
+      ["a → e, o → e", "before a softened consonant", "miasto → w m[ie]ście, las → w l[e]sie, świat → na św[ie]cie, kościół → w kości[e]le"],
+      ["e drops out", "an ending is added", "pies → [ps]a, chłopiec → chło[pc]a, dzień → [dn]ia, Marek → Ma[rk]a"],
+      ["e appears", "genitive plural (no ending)", "okno → ok[ie]n, matka → mat[e]k, jabłko → jabł[e]k"],
+      ["k, g + i", "before -e in the instrumental, and the genitive", "Polak → Polak[i]em, noga → nog[i], ręka → ręk[i]"]
+    ] }
+  ],
+  foot: "Serbian does some of the same: ruka → ruci, noga → nozi, knjiga → knjizi. Polish does it more often, and also before -i in the plural for men."
+};
+/* Dictionary, part 1: body, health, food, kitchen, home, clothes, household.
+   One entry per line: polish|english|grammar. Grammar: m / f / n = noun gender, pl = plural only. */
+const DICT_1 = `
+ciało|body|n
+głowa|head|f
+twarz|face|f
+czoło|forehead|n
+brew|eyebrow|f
+rzęsa|eyelash|f
+powieka|eyelid|f
+oko|eye|n
+ucho|ear|n
+nos|nose|m
+policzek|cheek|m
+usta|mouth, lips|pl
+warga|lip|f
+ząb|tooth|m
+język|tongue; language|m
+gardło|throat|n
+szyja|neck|f
+kark|back of the neck|m
+broda|chin; beard|f
+wąsy|moustache|pl
+włosy|hair|pl
+włos|a single hair|m
+ramię|arm; shoulder|n
+bark|shoulder (joint)|m
+łokieć|elbow|m
+nadgarstek|wrist|m
+dłoń|palm, hand|f
+pięść|fist|f
+palec|finger; toe|m
+kciuk|thumb|m
+paznokieć|nail (finger, toe)|m
+pierś|breast, chest|f
+klatka piersiowa|chest|f
+brzuch|belly, stomach|m
+plecy|back|pl
+kręgosłup|spine|m
+biodro|hip|n
+pośladek|buttock|m
+udo|thigh|n
+kolano|knee|n
+łydka|calf (of the leg)|f
+kostka|ankle; cube|f
+stopa|foot|f
+pięta|heel|f
+skóra|skin; leather|f
+kość|bone|f
+mięsień|muscle|m
+krew|blood|f
+serce|heart|n
+płuco|lung|n
+wątroba|liver|f
+nerka|kidney|f
+żołądek|stomach (organ)|m
+jelito|intestine|n
+mózg|brain|m
+nerw|nerve|m
+żyła|vein|f
+pot|sweat|m
+łza|tear|f
+oddech|breath|m
+głos|voice; vote|m
+wzrok|eyesight|m
+słuch|hearing|m
+węch|sense of smell|m
+smak|taste|m
+dotyk|touch|m
+zdrowie|health|n
+choroba|illness, disease|f
+ból|pain|m
+ból głowy|headache|m
+ból zęba|toothache|m
+gorączka|fever|f
+kaszel|cough|m
+katar|runny nose|m
+przeziębienie|cold (illness)|n
+grypa|flu|f
+alergia|allergy|f
+astma|asthma|f
+cukrzyca|diabetes|f
+nadciśnienie|high blood pressure|n
+zawał|heart attack|m
+udar|stroke|m
+rak|cancer; crayfish|m
+infekcja|infection|f
+zapalenie|inflammation|n
+wirus|virus|m
+bakteria|bacterium|f
+rana|wound|f
+skaleczenie|cut (on the skin)|n
+siniak|bruise|m
+oparzenie|burn (injury)|n
+złamanie|fracture|n
+zwichnięcie|sprain|n
+blizna|scar|f
+wysypka|rash|f
+swędzenie|itching|n
+mdłości|nausea|pl
+wymioty|vomiting|pl
+biegunka|diarrhoea|f
+zaparcie|constipation|n
+zawroty głowy|dizziness|pl
+omdlenie|fainting|n
+bezsenność|insomnia|f
+zmęczenie|tiredness|n
+stres|stress|m
+depresja|depression|f
+ciąża|pregnancy|f
+poród|childbirth|m
+pacjent|patient|m
+lekarz rodzinny|GP, family doctor|m
+pielęgniarka|nurse|f
+dentysta|dentist|m
+chirurg|surgeon|m
+okulista|eye doctor|m
+pediatra|paediatrician|m
+ginekolog|gynaecologist|m
+psycholog|psychologist|m
+ratownik|paramedic; lifeguard|m
+przychodnia|clinic, health centre|f
+gabinet|doctor's office; study|m
+poczekalnia|waiting room|f
+izba przyjęć|A&E admissions|f
+oddział|hospital ward; branch|m
+karetka|ambulance|f
+pogotowie|emergency service|n
+badanie|examination, test|n
+wizyta|appointment, visit|f
+skierowanie|referral|n
+recepta|prescription|f
+diagnoza|diagnosis|f
+leczenie|treatment|n
+operacja|operation, surgery|f
+zastrzyk|injection|m
+szczepionka|vaccine|f
+szczepienie|vaccination|n
+lekarstwo|medicine|n
+tabletka|pill, tablet|f
+syrop|syrup|m
+maść|ointment|f
+krople|drops|pl
+plaster|plaster, band-aid|m
+bandaż|bandage|m
+termometr|thermometer|m
+ciśnienie|blood pressure; pressure|n
+temperatura|temperature|f
+puls|pulse|m
+wynik|result|m
+okulary|glasses|pl
+soczewki|contact lenses|pl
+aparat słuchowy|hearing aid|m
+wózek inwalidzki|wheelchair|m
+kula|crutch; ball, sphere|f
+ubezpieczenie zdrowotne|health insurance|n
+zwolnienie lekarskie|sick note|n
+dieta|diet|f
+witamina|vitamin|f
+odporność|immunity|f
+higiena|hygiene|f
+mydło|soap|n
+szampon|shampoo|m
+odżywka|conditioner|f
+pasta do zębów|toothpaste|f
+szczoteczka do zębów|toothbrush|f
+nić dentystyczna|dental floss|f
+grzebień|comb|m
+szczotka|brush|f
+ręcznik|towel|m
+golarka|shaver|f
+maszynka do golenia|razor|f
+krem|cream|m
+dezodorant|deodorant|m
+perfumy|perfume|pl
+makijaż|make-up|m
+szminka|lipstick|f
+lakier do paznokci|nail polish|m
+chusteczka|tissue; handkerchief|f
+papier toaletowy|toilet paper|m
+podpaska|sanitary pad|f
+pieluszka|nappy, diaper|f
+żywność|food (in general)|f
+jedzenie|food; eating|n
+posiłek|meal|m
+przekąska|snack|f
+danie|dish, course|n
+przystawka|starter|f
+zupa|soup|f
+deser|dessert|m
+pieczywo|bread products|n
+bułka|bread roll|f
+rogal|croissant|m
+chleb razowy|wholemeal bread|m
+kromka|slice of bread|f
+tost|toast|m
+kanapka|sandwich|f
+mąka|flour|f
+kasza|groats, kasha|f
+ryż|rice|m
+makaron|pasta, noodles|m
+płatki|cereal; flakes|pl
+owsianka|porridge|f
+naleśnik|pancake|m
+pierogi|dumplings (pierogi)|pl
+gołąbki|stuffed cabbage rolls|pl
+bigos|hunter's stew (sauerkraut and meat)|m
+żurek|sour rye soup|m
+barszcz|beetroot soup|m
+rosół|chicken broth|m
+kotlet|cutlet|m
+schabowy|breaded pork cutlet|m
+kiełbasa|sausage|f
+parówka|frankfurter|f
+szynka|ham|f
+boczek|bacon|m
+wołowina|beef|f
+wieprzowina|pork|f
+cielęcina|veal|f
+baranina|mutton, lamb|f
+drób|poultry|m
+indyk|turkey|m
+kaczka|duck|f
+gęś|goose|f
+pierś z kurczaka|chicken breast|f
+udko|drumstick|n
+mięso mielone|minced meat|n
+stek|steak|m
+pasztet|pâté|m
+smalec|lard|m
+ryba|fish|f
+łosoś|salmon|m
+dorsz|cod|m
+śledź|herring|m
+karp|carp|m
+pstrąg|trout|m
+tuńczyk|tuna|m
+krewetka|prawn, shrimp|f
+owoce morza|seafood|pl
+nabiał|dairy products|m
+twaróg|curd cheese|m
+ser żółty|hard cheese|m
+śmietana|sour cream|f
+śmietanka|cream (for coffee)|f
+jogurt|yoghurt|m
+kefir|kefir|m
+maślanka|buttermilk|f
+masło|butter|n
+margaryna|margarine|f
+olej|oil|m
+oliwa|olive oil|f
+ocet|vinegar|m
+sól|salt|f
+pieprz|pepper (spice)|m
+cukier|sugar|m
+miód|honey|m
+dżem|jam|m
+konfitura|preserve, jam|f
+musztarda|mustard|f
+ketchup|ketchup|m
+majonez|mayonnaise|m
+sos|sauce|m
+przyprawa|spice, seasoning|f
+cynamon|cinnamon|m
+koper|dill|m
+pietruszka|parsley|f
+bazylia|basil|f
+czosnek|garlic|m
+imbir|ginger|m
+papryka|pepper (vegetable); paprika|f
+ogórek|cucumber|m
+pomidor|tomato|m
+kapusta|cabbage|f
+kalafior|cauliflower|m
+brokuł|broccoli|m
+marchew|carrot|f
+burak|beetroot|m
+cebula|onion|f
+por|leek|m
+seler|celery|m
+rzodkiewka|radish|f
+sałata|lettuce|f
+szpinak|spinach|m
+groszek|peas|m
+fasola|beans|f
+soczewica|lentils|f
+kukurydza|maize, sweetcorn|f
+dynia|pumpkin|f
+cukinia|courgette|f
+bakłażan|aubergine|m
+grzyb|mushroom|m
+pieczarka|button mushroom|f
+ziemniak|potato|m
+frytki|chips, fries|pl
+jabłko|apple|n
+gruszka|pear|f
+śliwka|plum|f
+wiśnia|sour cherry|f
+czereśnia|sweet cherry|f
+truskawka|strawberry|f
+malina|raspberry|f
+borówka|blueberry|f
+porzeczka|currant|f
+agrest|gooseberry|m
+brzoskwinia|peach|f
+morela|apricot|f
+winogrono|grape|n
+arbuz|watermelon|m
+melon|melon|m
+banan|banana|m
+pomarańcza|orange|f
+mandarynka|tangerine|f
+cytryna|lemon|f
+grejpfrut|grapefruit|m
+ananas|pineapple|m
+kiwi|kiwi|n
+orzech|nut|m
+migdał|almond|m
+rodzynki|raisins|pl
+jajko|egg|n
+jajecznica|scrambled eggs|f
+omlet|omelette|m
+ciasto|cake; dough|n
+ciastko|biscuit, small cake|n
+sernik|cheesecake|m
+szarlotka|apple pie|f
+pączek|doughnut|m
+tort|layer cake|m
+czekolada|chocolate|f
+cukierek|sweet, candy|m
+lody|ice cream|pl
+guma do żucia|chewing gum|f
+chipsy|crisps|pl
+napój|drink|m
+woda mineralna|mineral water|f
+sok|juice|m
+kompot|fruit drink (stewed fruit)|m
+lemoniada|lemonade|f
+herbata|tea|f
+kakao|cocoa|n
+piwo|beer|n
+wino|wine|n
+wódka|vodka|f
+nalewka|fruit liqueur|f
+szampan|champagne|m
+kieliszek|small (wine) glass|m
+szklanka|glass (for water)|f
+kubek|mug|m
+filiżanka|cup|f
+talerz|plate|m
+miska|bowl|f
+półmisek|serving dish|m
+sztućce|cutlery|pl
+łyżka|spoon|f
+łyżeczka|teaspoon|f
+widelec|fork|m
+nóż|knife|m
+serwetka|napkin|f
+obrus|tablecloth|m
+garnek|pot|m
+patelnia|frying pan|f
+czajnik|kettle|m
+deska do krojenia|chopping board|f
+tarka|grater|f
+otwieracz|opener|m
+korkociąg|corkscrew|m
+durszlak|colander|m
+chochla|ladle|f
+łopatka|spatula|f
+blacha|baking tray|f
+piekarnik|oven|m
+kuchenka|cooker, stove|f
+mikrofalówka|microwave|f
+lodówka|fridge|f
+zamrażarka|freezer|f
+zmywarka|dishwasher|f
+toster|toaster|m
+ekspres do kawy|coffee machine|m
+mikser|mixer|m
+blender|blender|m
+przepis|recipe; regulation|m
+składnik|ingredient|m
+porcja|portion|f
+kawałek|piece|m
+plasterek|slice|m
+szczypta|pinch|f
+smaczny|tasty|adj
+pyszny|delicious|adj
+słodki|sweet|adj
+słony|salty|adj
+kwaśny|sour|adj
+gorzki|bitter|adj
+ostry|spicy; sharp|adj
+łagodny|mild, gentle|adj
+świeży|fresh|adj
+nieświeży|stale, not fresh|adj
+surowy|raw; strict|adj
+gotowany|boiled|adj
+smażony|fried|adj
+pieczony|roasted, baked|adj
+duszony|stewed|adj
+wędzony|smoked|adj
+mrożony|frozen|adj
+wegetariański|vegetarian|adj
+wegański|vegan|adj
+bezglutenowy|gluten-free|adj
+dom jednorodzinny|detached house|m
+blok|block of flats|m
+kamienica|tenement house|f
+osiedle|housing estate|n
+mieszkanie własnościowe|owner-occupied flat|n
+kawalerka|studio flat|f
+piętro|floor, storey|n
+parter|ground floor|m
+piwnica|cellar, basement|f
+strych|attic|m
+dach|roof|m
+ściana|wall|f
+sufit|ceiling|m
+podłoga|floor|f
+schody|stairs|pl
+winda|lift, elevator|f
+korytarz|corridor|m
+przedpokój|hall|m
+salon|living room|m
+jadalnia|dining room|f
+sypialnia|bedroom|f
+pokój dziecięcy|children's room|m
+łazienka|bathroom|f
+toaleta|toilet|f
+balkon|balcony|m
+taras|terrace|m
+garaż|garage|m
+ogródek|small garden|m
+płot|fence|m
+brama|gate|f
+furtka|garden gate|f
+drzwi|door|pl
+klamka|door handle|f
+zamek|lock; castle|m
+klucz|key|m
+dzwonek|doorbell; bell|m
+domofon|intercom|m
+skrzynka pocztowa|mailbox|f
+okno|window|n
+parapet|windowsill|m
+roleta|roller blind|f
+zasłona|curtain|f
+firanka|net curtain|f
+meble|furniture|pl
+szafa|wardrobe|f
+szafka|cupboard, cabinet|f
+komoda|chest of drawers|f
+szuflada|drawer|f
+półka|shelf|f
+regał|bookcase|m
+stolik|small table|m
+biurko|desk|n
+fotel|armchair|m
+kanapa|sofa|f
+łóżko|bed|n
+materac|mattress|m
+poduszka|pillow, cushion|f
+kołdra|duvet|f
+koc|blanket|m
+pościel|bed linen|f
+prześcieradło|bed sheet|n
+dywan|carpet, rug|m
+wykładzina|fitted carpet|f
+lustro|mirror|n
+lampa|lamp|f
+żarówka|light bulb|f
+kontakt|socket; contact|m
+gniazdko|power socket|n
+włącznik|switch|m
+kabel|cable|m
+przedłużacz|extension lead|m
+kaloryfer|radiator|m
+ogrzewanie|heating|n
+klimatyzacja|air conditioning|f
+wentylator|fan|m
+kominek|fireplace|m
+piec|stove; furnace|m
+wanna|bathtub|f
+prysznic|shower|m
+umywalka|washbasin|f
+zlew|sink|m
+kran|tap|m
+muszla klozetowa|toilet bowl|f
+pralka|washing machine|f
+suszarka|dryer; hairdryer|f
+żelazko|iron (for clothes)|n
+deska do prasowania|ironing board|f
+odkurzacz|vacuum cleaner|m
+miotła|broom|f
+szufelka|dustpan|f
+mop|mop|m
+wiadro|bucket|n
+ścierka|cloth, rag|f
+gąbka|sponge|f
+płyn do naczyń|washing-up liquid|m
+proszek do prania|washing powder|m
+śmieci|rubbish|pl
+kosz na śmieci|bin|m
+worek|bag, sack|m
+recykling|recycling|m
+czynsz|rent|m
+rachunek za prąd|electricity bill|m
+prąd|electricity; current|m
+gaz|gas|m
+woda bieżąca|running water|f
+właściciel|owner, landlord|m
+lokator|tenant|m
+najemca|tenant (in a contract)|m
+umowa najmu|tenancy agreement|f
+kaucja|deposit|f
+sąsiedztwo|neighbourhood|n
+remont|renovation|m
+przeprowadzka|moving house|f
+hydraulik|plumber|m
+elektryk|electrician|m
+awaria|breakdown, failure|f
+usterka|fault, defect|f
+ubranie|clothes|n
+odzież|clothing|f
+koszula|shirt|f
+bluzka|blouse|f
+koszulka|T-shirt|f
+podkoszulek|vest, undershirt|m
+sweter|sweater|m
+bluza|sweatshirt|f
+kamizelka|waistcoat|f
+marynarka|jacket (suit)|f
+garnitur|suit|m
+kostium|suit (women's); costume|m
+żakiet|women's jacket|m
+płaszcz|coat|m
+kurtka|jacket|f
+kożuch|sheepskin coat|m
+spodnie|trousers|pl
+dżinsy|jeans|pl
+szorty|shorts|pl
+spódnica|skirt|f
+sukienka|dress|f
+piżama|pyjamas|f
+szlafrok|bathrobe|m
+bielizna|underwear|f
+majtki|knickers, underpants|pl
+biustonosz|bra|m
+skarpetki|socks|pl
+rajstopy|tights|pl
+strój kąpielowy|swimsuit|m
+kąpielówki|swimming trunks|pl
+buty|shoes|pl
+kozaki|boots (women's)|pl
+trampki|sneakers|pl
+sandały|sandals|pl
+kapcie|slippers|pl
+czapka|cap, hat|f
+kapelusz|hat (with brim)|m
+szalik|scarf|m
+chusta|headscarf, shawl|f
+rękawiczki|gloves|pl
+pasek|belt; strap|m
+krawat|tie|m
+muszka|bow tie|f
+kieszeń|pocket|f
+guzik|button|m
+zamek błyskawiczny|zip|m
+kaptur|hood|m
+rękaw|sleeve|m
+kołnierz|collar|m
+rozmiar|size|m
+fason|cut, style|m
+materiał|material, fabric|m
+bawełna|cotton|f
+wełna|wool|f
+jedwab|silk|m
+len|linen|m
+torebka|handbag|f
+plecak|backpack|m
+portfel|wallet|m
+parasol|umbrella|m
+zegarek|watch|m
+biżuteria|jewellery|f
+pierścionek|ring|m
+obrączka|wedding ring|f
+naszyjnik|necklace|m
+bransoletka|bracelet|f
+kolczyki|earrings|pl
+przebieralnia|fitting room|f
+elegancki|elegant|adj
+wygodny|comfortable|adj
+modny|fashionable|adj
+ciasny|tight|adj
+luźny|loose|adj
+w kratkę|checked|phr
+w paski|striped|phr
+w kropki|polka-dot|phr
+`;
+/* Dictionary, part 2: town, transport, travel, shopping, services, money, work, office, technology. */
+const DICT_2 = `
+miasto|town, city|n
+wieś|village; countryside|f
+stolica|capital city|f
+centrum|centre|n
+przedmieście|suburb|n
+dzielnica|district|f
+rynek|market square; market|m
+plac|square|m
+ulica|street|f
+aleja|avenue|f
+skrzyżowanie|crossroads|n
+rondo|roundabout|n
+chodnik|pavement|m
+jezdnia|road (carriageway)|f
+przejście dla pieszych|pedestrian crossing|n
+światła|traffic lights|pl
+most|bridge|m
+tunel|tunnel|m
+kładka|footbridge|f
+park|park|m
+skwer|small square, green|m
+pomnik|monument|m
+fontanna|fountain|f
+ratusz|town hall|m
+urząd|office (public)|m
+urząd miasta|city hall|m
+urząd skarbowy|tax office|m
+urząd pracy|job centre|m
+sąd|court|m
+komisariat|police station|m
+straż pożarna|fire brigade|f
+remiza|fire station|f
+więzienie|prison|n
+ambasada|embassy|f
+konsulat|consulate|m
+kościół|church|m
+cerkiew|Orthodox church|f
+meczet|mosque|m
+synagoga|synagogue|f
+katedra|cathedral|f
+klasztor|monastery|m
+cmentarz|cemetery|m
+zamek królewski|royal castle|m
+pałac|palace|m
+twierdza|fortress|f
+mury obronne|city walls|pl
+wieża|tower|f
+stare miasto|old town|n
+zabytek|historic monument|m
+galeria|gallery; shopping centre|f
+centrum handlowe|shopping centre|n
+targ|market|m
+hala targowa|market hall|f
+kiosk|kiosk|m
+księgarnia|bookshop|f
+kwiaciarnia|florist's|f
+cukiernia|cake shop|f
+piekarnia|bakery|f
+apteka|pharmacy|f
+drogeria|chemist's (cosmetics)|f
+sklep spożywczy|grocery|m
+sklep mięsny|butcher's|m
+sklep odzieżowy|clothes shop|m
+sklep obuwniczy|shoe shop|m
+sklep z pamiątkami|souvenir shop|m
+supermarket|supermarket|m
+hipermarket|hypermarket|m
+dyskont|discount store|m
+stoisko|stall, stand|n
+lada|counter|f
+kasa|till; ticket office|f
+kasjer|cashier|m
+sprzedawca|shop assistant, seller|m
+klient|customer|m
+kolejka|queue; small train|f
+koszyk|basket|m
+wózek|trolley; pram|m
+reklamówka|plastic bag|f
+paragon|receipt|m
+faktura|invoice|f
+cena|price|f
+promocja|special offer|f
+wyprzedaż|sale|f
+rabat|discount|m
+zniżka|discount, reduction|f
+gwarancja|guarantee, warranty|f
+reklamacja|complaint (about a product)|f
+zwrot|return; refund; phrase|m
+wymiana|exchange|f
+towar|goods|m
+produkt|product|m
+marka|brand|f
+opakowanie|packaging|n
+butelka|bottle|f
+puszka|can, tin|f
+słoik|jar|m
+paczka|packet; parcel|f
+pudełko|box|n
+karton|carton; cardboard|m
+torba|bag|f
+kilogram|kilogram|m
+deko|10 grams (colloquial)|n
+gram|gram|m
+litr|litre|m
+metr|metre|m
+centymetr|centimetre|m
+kilometr|kilometre|m
+sztuka|piece, item; art|f
+para|pair; couple; steam|f
+tuzin|dozen|m
+pieniądze|money|pl
+gotówka|cash|f
+moneta|coin|f
+banknot|banknote|m
+reszta|change; the rest|f
+drobne|small change|pl
+złoty|zloty|m
+grosz|grosz (1/100 zloty)|m
+euro|euro|n
+waluta|currency|f
+kurs|exchange rate; course|m
+kantor|exchange office|m
+bank|bank|m
+bankomat|cash machine|m
+konto|account|n
+karta płatnicza|payment card|f
+karta kredytowa|credit card|f
+PIN|PIN|m
+przelew|bank transfer|m
+wpłata|deposit (payment in)|f
+wypłata|withdrawal; salary|f
+opłata|fee, charge|f
+prowizja|commission|f
+kredyt|loan, credit|m
+pożyczka|loan|f
+dług|debt|m
+odsetki|interest (on money)|pl
+oszczędności|savings|pl
+budżet|budget|m
+koszt|cost|m
+wydatek|expense|m
+dochód|income|m
+zysk|profit|m
+strata|loss|f
+podatek|tax|m
+VAT|VAT|m
+emerytura|pension; retirement|f
+renta|disability pension|f
+zasiłek|benefit, allowance|m
+ubezpieczenie|insurance|n
+polisa|insurance policy|f
+transport|transport|m
+komunikacja miejska|public transport|f
+autobus|bus|m
+tramwaj|tram|m
+trolejbus|trolleybus|m
+metro|underground, metro|n
+pociąg|train|m
+pociąg pospieszny|fast train|m
+pociąg osobowy|stopping train|m
+wagon|carriage, coach|m
+przedział|compartment|m
+kuszetka|couchette|f
+lokomotywa|locomotive|f
+dworzec|station|m
+dworzec autobusowy|bus station|m
+stacja|station|f
+przystanek|stop|m
+peron|platform|m
+tor|track|m
+rozkład jazdy|timetable|m
+odjazd|departure|m
+przyjazd|arrival|m
+spóźnienie|delay|n
+opóźnienie|delay (official)|n
+przesiadka|change (of train, bus)|f
+połączenie|connection|n
+bilet|ticket|m
+bilet miesięczny|monthly pass|m
+bilet ulgowy|reduced-price ticket|m
+bilet normalny|full-price ticket|m
+kasownik|ticket validator|m
+kontroler|ticket inspector|m
+mandat|fine|m
+pasażer|passenger|m
+kierowca|driver|m
+motorniczy|tram driver|m
+konduktor|conductor|m
+taksówka|taxi|f
+taksówkarz|taxi driver|m
+samochód|car|m
+auto|car|n
+motocykl|motorbike|m
+skuter|scooter|m
+hulajnoga|scooter (kick)|f
+rower|bicycle|m
+ciężarówka|lorry, truck|f
+furgonetka|van|f
+statek|ship|m
+prom|ferry|m
+łódź|boat|f
+żaglówka|sailing boat|f
+samolot|plane|m
+lotnisko|airport|n
+lot|flight|m
+terminal|terminal|m
+odprawa|check-in|f
+kontrola bezpieczeństwa|security check|f
+bramka|gate (at airport); goal|f
+karta pokładowa|boarding pass|f
+bagaż|luggage|m
+bagaż podręczny|hand luggage|m
+walizka|suitcase|f
+torba podróżna|travel bag|f
+pas|belt; lane|m
+pas bezpieczeństwa|seat belt|m
+droga|road; way|f
+autostrada|motorway|f
+obwodnica|ring road|f
+korek|traffic jam; cork|m
+parking|car park|m
+miejsce parkingowe|parking space|n
+parkometr|parking meter|m
+stacja benzynowa|petrol station|f
+benzyna|petrol|f
+olej napędowy|diesel|m
+myjnia|car wash|f
+warsztat|garage (repairs); workshop|m
+mechanik|mechanic|m
+opona|tyre|f
+koło|wheel; circle|n
+kierownica|steering wheel; handlebars|f
+hamulec|brake|m
+silnik|engine|m
+bagażnik|boot (of a car)|m
+prawo jazdy|driving licence|n
+dowód rejestracyjny|vehicle registration|m
+wypadek|accident|m
+stłuczka|minor collision|f
+kolizja|collision|f
+objazd|detour|m
+znak drogowy|road sign|m
+ograniczenie prędkości|speed limit|n
+podróż|journey, trip|f
+wycieczka|trip, excursion|f
+wyjazd|trip away; departure|m
+wakacje|holidays|pl
+urlop|leave, time off|m
+turysta|tourist|m
+przewodnik|guide; guidebook|m
+mapa|map|f
+plan miasta|city map|m
+informacja turystyczna|tourist information|f
+biuro podróży|travel agency|n
+rezerwacja|booking, reservation|f
+nocleg|overnight stay; accommodation|m
+hotel|hotel|m
+hostel|hostel|m
+pensjonat|guest house|m
+schronisko|mountain hut; animal shelter|n
+kemping|campsite|m
+namiot|tent|m
+recepcja|reception|f
+recepcjonista|receptionist|m
+pokój jednoosobowy|single room|m
+pokój dwuosobowy|double room|m
+śniadanie w cenie|breakfast included|n
+zameldowanie|check-in (hotel); registration|n
+wymeldowanie|check-out|n
+pamiątka|souvenir|f
+pocztówka|postcard|f
+zwiedzanie|sightseeing|n
+paszport|passport|m
+wiza|visa|f
+granica|border|f
+odprawa celna|customs clearance|f
+cło|customs duty|n
+zagranica|abroad|f
+cudzoziemiec|foreigner|m
+obcokrajowiec|foreigner|m
+poczta|post office; mail|f
+list polecony|registered letter|m
+koperta|envelope|f
+znaczek|stamp|m
+nadawca|sender|m
+adresat|addressee|m
+kod pocztowy|postcode|m
+paczkomat|parcel locker|m
+kurier|courier|m
+przesyłka|parcel, delivery|f
+awizo|delivery notice|n
+fryzjer|hairdresser|m
+kosmetyczka|beautician; make-up bag|f
+pralnia|laundry|f
+pralnia chemiczna|dry cleaner's|f
+krawiec|tailor|m
+szewc|shoemaker, cobbler|m
+zegarmistrz|watchmaker|m
+zakład fotograficzny|photo studio|m
+punkt ksero|copy shop|m
+serwis|repair service|m
+naprawa|repair|f
+praca|work, job|f
+zawód|profession|m
+stanowisko|position, post|n
+posada|job, post|f
+etat|full-time job|m
+pół etatu|part-time job|n
+umowa o pracę|employment contract|f
+umowa zlecenie|freelance contract|f
+pracodawca|employer|m
+pracownik|employee, worker|m
+kolega z pracy|colleague|m
+szef|boss|m
+kierownik|manager|m
+dyrektor|director|m
+prezes|chairman, CEO|m
+zespół|team; band|m
+dział|department|m
+firma|company|f
+przedsiębiorstwo|enterprise|n
+spółka|company (legal)|f
+fabryka|factory|f
+zakład|plant; establishment; bet|m
+biuro|office|n
+siedziba|headquarters|f
+oddział firmy|branch|m
+pensja|salary|f
+wynagrodzenie|pay, remuneration|n
+premia|bonus|f
+podwyżka|pay rise|f
+nadgodziny|overtime|pl
+zmiana|shift; change|f
+urlop macierzyński|maternity leave|m
+bezrobocie|unemployment|n
+bezrobotny|unemployed|adj
+rekrutacja|recruitment|f
+ogłoszenie|advert, notice|n
+oferta pracy|job offer|f
+CV|CV|n
+list motywacyjny|cover letter|m
+rozmowa kwalifikacyjna|job interview|f
+doświadczenie|experience|n
+umiejętność|skill|f
+kwalifikacje|qualifications|pl
+staż|internship; work experience|m
+praktyka|practice; placement|f
+szkolenie|training|n
+awans|promotion|m
+zwolnienie|dismissal; release|n
+wypowiedzenie|notice (of termination)|n
+emeryt|pensioner|m
+narada|meeting|f
+zebranie|meeting|n
+spotkanie|meeting|n
+projekt|project|m
+zadanie|task|n
+termin|deadline; date; term|m
+raport|report|m
+sprawozdanie|report|n
+dokument|document|m
+umowa|contract, agreement|f
+podpis|signature|m
+pieczątka|stamp (rubber)|f
+formularz|form|m
+wniosek|application; conclusion|m
+podanie|application (letter)|n
+zaświadczenie|certificate|n
+kopia|copy|f
+oryginał|original|m
+teczka|folder; briefcase|f
+segregator|ring binder|m
+długopis|pen|m
+ołówek|pencil|m
+gumka|rubber, eraser; elastic|f
+temperówka|pencil sharpener|f
+linijka|ruler|f
+nożyczki|scissors|pl
+klej|glue|m
+zszywacz|stapler|m
+spinacz|paper clip|m
+taśma klejąca|sticky tape|f
+kartka|sheet of paper; card|f
+notes|notepad|m
+zeszyt|exercise book|m
+kalendarz|calendar|m
+terminarz|diary, planner|m
+drukarka|printer|f
+skaner|scanner|m
+ksero|photocopier; photocopy|n
+komputer|computer|m
+laptop|laptop|m
+tablet|tablet|m
+ekran|screen|m
+monitor|monitor|m
+klawiatura|keyboard|f
+myszka|mouse (computer)|f
+głośnik|loudspeaker|m
+słuchawki|headphones|pl
+mikrofon|microphone|m
+kamera|camera (video)|f
+aparat fotograficzny|camera|m
+ładowarka|charger|f
+bateria|battery|f
+akumulator|battery (rechargeable)|m
+pendrive|USB stick|m
+dysk|disk, drive|m
+plik|file|m
+folder|folder|m
+program|programme; program|m
+aplikacja|app|f
+system|system|m
+oprogramowanie|software|n
+sprzęt|equipment, hardware|m
+internet|internet|m
+sieć|network; chain|f
+strona internetowa|website|f
+przeglądarka|browser|f
+wyszukiwarka|search engine|f
+hasło|password; slogan|n
+login|username|m
+konto e-mail|email account|n
+wiadomość|message; news|f
+załącznik|attachment|m
+link|link|m
+pobieranie|download|n
+aktualizacja|update|f
+wirus komputerowy|computer virus|m
+kopia zapasowa|backup|f
+media społecznościowe|social media|pl
+post|post (online); fast|m
+komentarz|comment|m
+polubienie|like (online)|n
+użytkownik|user|m
+czat|chat|m
+wideorozmowa|video call|f
+smartfon|smartphone|m
+komórka|mobile phone; cell|f
+SMS|text message|m
+zasięg|signal; range|m
+abonament|subscription|m
+karta SIM|SIM card|f
+narzędzie|tool|n
+młotek|hammer|m
+gwóźdź|nail|m
+śrubokręt|screwdriver|m
+śruba|screw, bolt|f
+klucz francuski|adjustable spanner|m
+wiertarka|drill|f
+piła|saw|f
+obcęgi|pliers|pl
+drabina|ladder|f
+farba|paint|f
+pędzel|paintbrush|m
+taśma miernicza|tape measure|f
+latarka|torch|f
+zapalniczka|lighter|f
+zapałki|matches|pl
+świeca|candle|f
+sznurek|string|m
+lina|rope|f
+łańcuch|chain|m
+`;
+/* Dictionary, part 3: nature, animals, plants, weather, geography, countries, people, jobs, materials, shapes. */
+const DICT_3 = `
+przyroda|nature|f
+natura|nature|f
+środowisko|environment|n
+krajobraz|landscape|m
+ziemia|earth, soil, land|f
+Ziemia|the Earth|f
+świat|world|m
+kula ziemska|globe|f
+kontynent|continent|m
+Europa|Europe|f
+Azja|Asia|f
+Afryka|Africa|f
+Ameryka|America|f
+Australia|Australia|f
+Antarktyda|Antarctica|f
+ocean|ocean|m
+morze|sea|n
+jezioro|lake|n
+staw|pond; joint|m
+rzeka|river|f
+strumień|stream|m
+potok|mountain stream|m
+wodospad|waterfall|m
+źródło|spring; source|n
+brzeg|shore, bank; edge|m
+plaża|beach|f
+piasek|sand|m
+wydma|sand dune|f
+fala|wave|f
+przypływ|high tide|m
+odpływ|low tide; drain|m
+wyspa|island|f
+półwysep|peninsula|m
+zatoka|bay, gulf|f
+góra|mountain; top|f
+góry|mountains|pl
+szczyt|summit, peak|m
+pasmo górskie|mountain range|n
+dolina|valley|f
+wzgórze|hill|n
+pagórek|hillock|m
+skała|rock|f
+kamień|stone|m
+jaskinia|cave|f
+wulkan|volcano|m
+nizina|lowland|f
+równina|plain|f
+wyżyna|upland|f
+pustynia|desert|f
+bagno|swamp|n
+las|forest, wood|m
+puszcza|primeval forest|f
+łąka|meadow|f
+pole|field|n
+polana|clearing|f
+ścieżka|path|f
+szlak|trail|m
+park narodowy|national park|m
+rezerwat|nature reserve|m
+drzewo|tree|n
+dąb|oak|m
+brzoza|birch|f
+sosna|pine|f
+świerk|spruce|m
+jodła|fir|f
+buk|beech|m
+klon|maple|m
+lipa|lime tree|f
+wierzba|willow|f
+topola|poplar|f
+kasztan|chestnut|m
+jabłoń|apple tree|f
+liść|leaf|m
+gałąź|branch|f
+pień|trunk|m
+korzeń|root|m
+kora|bark|f
+igła|needle|f
+szyszka|cone|f
+krzak|bush|m
+krzew|shrub|m
+roślina|plant|f
+kwiat|flower|m
+róża|rose|f
+tulipan|tulip|m
+stokrotka|daisy|f
+słonecznik|sunflower|m
+mak|poppy|m
+bez|lilac|m
+konwalia|lily of the valley|f
+fiołek|violet|m
+storczyk|orchid|m
+kaktus|cactus|m
+paproć|fern|f
+mech|moss|m
+trawa|grass|f
+chwast|weed|m
+zboże|cereal crop|n
+pszenica|wheat|f
+żyto|rye|n
+owies|oats|m
+jęczmień|barley|m
+nasiono|seed|n
+kwitnąć|to bloom|v impf · pf zakwitnąć
+zwierzę|animal|n
+zwierzę domowe|pet|n
+pies|dog|m
+szczeniak|puppy|m
+kot|cat|m
+kotek|kitten|m
+mysz|mouse|f
+szczur|rat|m
+chomik|hamster|m
+królik|rabbit|m
+świnka morska|guinea pig|f
+papuga|parrot|f
+rybka|small fish; goldfish|f
+żółw|tortoise, turtle|m
+koń|horse|m
+krowa|cow|f
+byk|bull|m
+cielę|calf|n
+świnia|pig|f
+owca|sheep|f
+koza|goat|f
+kura|hen|f
+kogut|rooster|m
+kurczak|chicken|m
+osioł|donkey|m
+wilk|wolf|m
+lis|fox|m
+niedźwiedź|bear|m
+dzik|wild boar|m
+jeleń|deer, stag|m
+sarna|roe deer|f
+łoś|elk|m
+żubr|European bison|m
+zając|hare|m
+wiewiórka|squirrel|f
+jeż|hedgehog|m
+borsuk|badger|m
+kret|mole|m
+bóbr|beaver|m
+nietoperz|bat|m
+lew|lion|m
+tygrys|tiger|m
+słoń|elephant|m
+żyrafa|giraffe|f
+zebra|zebra|f
+małpa|monkey|f
+wielbłąd|camel|m
+krokodyl|crocodile|m
+wąż|snake|m
+żaba|frog|f
+jaszczurka|lizard|f
+ptak|bird|m
+wróbel|sparrow|m
+gołąb|pigeon|m
+wrona|crow|f
+kruk|raven|m
+sroka|magpie|f
+sowa|owl|f
+orzeł|eagle|m
+bocian|stork|m
+łabędź|swan|m
+mewa|seagull|f
+jaskółka|swallow|f
+dzięcioł|woodpecker|m
+kukułka|cuckoo|f
+skrzydło|wing|n
+pióro|feather; pen|n
+dziób|beak|m
+gniazdo|nest|n
+ogon|tail|m
+łapa|paw|f
+futro|fur; fur coat|n
+sierść|coat, hair (of an animal)|f
+róg|horn; corner|m
+kopyto|hoof|n
+owad|insect|m
+mucha|fly|f
+komar|mosquito|m
+pszczoła|bee|f
+osa|wasp|f
+mrówka|ant|f
+motyl|butterfly|m
+biedronka|ladybird|f
+pająk|spider|m
+kleszcz|tick|m
+ślimak|snail|m
+robak|worm, bug|m
+pogoda|weather|f
+klimat|climate|m
+prognoza pogody|weather forecast|f
+słońce|sun|n
+słonecznie|sunny|adv
+chmura|cloud|f
+pochmurno|cloudy|adv
+deszcz|rain|m
+ulewa|downpour|f
+mżawka|drizzle|f
+burza|storm|f
+grzmot|thunder|m
+błyskawica|lightning|f
+piorun|thunderbolt|m
+tęcza|rainbow|f
+śnieg|snow|m
+śnieżyca|snowstorm|f
+grad|hail|m
+lód|ice|m
+szron|frost (white)|m
+mróz|frost (cold)|m
+mgła|fog|f
+wiatr|wind|m
+wichura|gale|f
+huragan|hurricane|m
+powódź|flood|f
+susza|drought|f
+upał|heatwave|m
+ciepło|warmth; warm|n
+chłód|cold, chill|m
+wilgotność|humidity|f
+stopień|degree; step|m
+pora roku|season|f
+wiosna|spring|f
+lato|summer|n
+jesień|autumn|f
+zima|winter|f
+niebo|sky; heaven|n
+gwiazda|star|f
+księżyc|moon|m
+planeta|planet|f
+kosmos|space (outer)|m
+wschód słońca|sunrise|m
+zachód słońca|sunset|m
+powietrze|air|n
+ogień|fire|m
+dym|smoke|m
+zanieczyszczenie|pollution|n
+smog|smog|m
+ekologia|ecology|f
+ochrona środowiska|environmental protection|f
+energia|energy|f
+klimatyczny|climate-related|adj
+Polska|Poland|f
+Serbia|Serbia|f
+Chorwacja|Croatia|f
+Bośnia i Hercegowina|Bosnia and Herzegovina|f
+Czarnogóra|Montenegro|f
+Słowenia|Slovenia|f
+Bułgaria|Bulgaria|f
+Rumunia|Romania|f
+Węgry|Hungary|pl
+Czechy|Czech Republic|pl
+Słowacja|Slovakia|f
+Austria|Austria|f
+Szwajcaria|Switzerland|f
+Francja|France|f
+Hiszpania|Spain|f
+Portugalia|Portugal|f
+Wielka Brytania|Great Britain|f
+Anglia|England|f
+Irlandia|Ireland|f
+Holandia|the Netherlands|f
+Belgia|Belgium|f
+Dania|Denmark|f
+Szwecja|Sweden|f
+Norwegia|Norway|f
+Finlandia|Finland|f
+Litwa|Lithuania|f
+Łotwa|Latvia|f
+Estonia|Estonia|f
+Ukraina|Ukraine|f
+Białoruś|Belarus|f
+Rosja|Russia|f
+Grecja|Greece|f
+Turcja|Turkey|f
+Chiny|China|pl
+Japonia|Japan|f
+Indie|India|pl
+Kanada|Canada|f
+Meksyk|Mexico|m
+Brazylia|Brazil|f
+Egipt|Egypt|m
+Polak|Pole (man)|m
+Polka|Pole (woman)|f
+Serb|Serb (man)|m
+Serbka|Serb (woman)|f
+Chorwat|Croat (man)|m
+Chorwatka|Croat (woman)|f
+Niemiec|German (man)|m
+Niemka|German (woman)|f
+Francuz|Frenchman|m
+Francuzka|Frenchwoman|f
+Anglik|Englishman|m
+Angielka|Englishwoman|f
+Amerykanin|American (man)|m
+Amerykanka|American (woman)|f
+Włoch|Italian (man)|m
+Włoszka|Italian (woman)|f
+Hiszpan|Spaniard (man)|m
+Hiszpanka|Spaniard (woman)|f
+Rosjanin|Russian (man)|m
+Rosjanka|Russian (woman)|f
+Ukrainiec|Ukrainian (man)|m
+Ukrainka|Ukrainian (woman)|f
+Czech|Czech (man)|m
+Czeszka|Czech (woman)|f
+Słowak|Slovak (man)|m
+Grek|Greek (man)|m
+Turek|Turk (man)|m
+polski|Polish|adj
+serbski|Serbian|adj
+chorwacki|Croatian|adj
+angielski|English|adj
+niemiecki|German|adj
+francuski|French|adj
+hiszpański|Spanish|adj
+włoski|Italian|adj
+rosyjski|Russian|adj
+ukraiński|Ukrainian|adj
+czeski|Czech|adj
+europejski|European|adj
+zagraniczny|foreign|adj
+narodowość|nationality|f
+obywatelstwo|citizenship|n
+obywatel|citizen|m
+mieszkaniec|inhabitant, resident|m
+emigrant|emigrant|m
+imigrant|immigrant|m
+uchodźca|refugee|m
+człowiek|person, human|m
+ludzie|people|pl
+osoba|person|f
+mężczyzna|man|m
+kobieta|woman|f
+chłopiec|boy|m
+dziewczynka|little girl|f
+dziewczyna|girl; girlfriend|f
+chłopak|boy; boyfriend|m
+nastolatek|teenager|m
+dorosły|adult|m
+staruszek|old man|m
+staruszka|old woman|f
+niemowlę|baby|n
+bliźniaki|twins|pl
+rodzeństwo|siblings|n
+rodzice|parents|pl
+pradziadek|great-grandfather|m
+prababcia|great-grandmother|f
+wnuki|grandchildren|pl
+ojczym|stepfather|m
+macocha|stepmother|f
+pasierb|stepson|m
+synowa|daughter-in-law|f
+zięć|son-in-law|m
+chrzestny|godfather|m
+chrzestna|godmother|f
+małżeństwo|marriage; married couple|n
+małżonek|spouse|m
+partner|partner|m
+narzeczona|fiancée|f
+rozwód|divorce|m
+rozwiedziony|divorced|adj
+wdowiec|widower|m
+przyjaciółka|friend (female)|f
+znajomy|acquaintance|m
+kolega|friend, colleague (male)|m
+koleżanka|friend, colleague (female)|f
+gość|guest|m
+gospodarz|host|m
+nieznajomy|stranger|m
+wróg|enemy|m
+lekarz|doctor|m
+nauczyciel|teacher|m
+nauczycielka|teacher (female)|f
+profesor|professor|m
+wykładowca|lecturer|m
+student|student|m
+studentka|student (female)|f
+uczeń|pupil|m
+uczennica|pupil (female)|f
+inżynier|engineer|m
+architekt|architect|m
+informatyk|IT specialist|m
+programista|programmer|m
+prawnik|lawyer|m
+adwokat|barrister, attorney|m
+sędzia|judge; referee|m
+notariusz|notary|m
+policjant|police officer|m
+policjantka|police officer (female)|f
+strażak|firefighter|m
+żołnierz|soldier|m
+urzędnik|clerk, civil servant|m
+księgowy|accountant|m
+ekonomista|economist|m
+biznesmen|businessman|m
+przedsiębiorca|entrepreneur|m
+handlowiec|salesperson|m
+menedżer|manager|m
+sekretarka|secretary|f
+asystent|assistant|m
+tłumacz|translator, interpreter|m
+dziennikarz|journalist|m
+redaktor|editor|m
+fotograf|photographer|m
+pisarz|writer|m
+poeta|poet|m
+malarz|painter|m
+rzeźbiarz|sculptor|m
+muzyk|musician|m
+piosenkarz|singer|m
+piosenkarka|singer (female)|f
+aktor|actor|m
+aktorka|actress|f
+reżyser|director (film, theatre)|m
+tancerz|dancer|m
+sportowiec|athlete|m
+trener|coach, trainer|m
+kucharz|cook|m
+szef kuchni|chef|m
+kelner|waiter|m
+kelnerka|waitress|f
+barman|bartender|m
+piekarz|baker|m
+rzeźnik|butcher|m
+rolnik|farmer|m
+ogrodnik|gardener|m
+leśnik|forester|m
+rybak|fisherman|m
+górnik|miner|m
+robotnik|labourer, worker|m
+murarz|bricklayer|m
+stolarz|carpenter, joiner|m
+malarz pokojowy|decorator|m
+spawacz|welder|m
+listonosz|postman|m
+sprzątaczka|cleaner|f
+opiekunka|carer; babysitter|f
+niania|nanny|f
+farmaceuta|pharmacist|m
+weterynarz|vet|m
+fizjoterapeuta|physiotherapist|m
+naukowiec|scientist|m
+badacz|researcher|m
+ksiądz|priest|m
+zakonnica|nun|f
+polityk|politician|m
+dyplomata|diplomat|m
+materiał budowlany|building material|m
+drewno|wood|n
+metal|metal|m
+żelazo|iron|n
+stal|steel|f
+złoto|gold|n
+srebro|silver|n
+miedź|copper|f
+aluminium|aluminium|n
+szkło|glass|n
+plastik|plastic|m
+guma|rubber|f
+papier|paper|m
+tektura|cardboard|f
+beton|concrete|m
+cegła|brick|f
+porcelana|china, porcelain|f
+ceramika|ceramics|f
+kształt|shape|m
+koło|circle|n
+kwadrat|square|m
+prostokąt|rectangle|m
+trójkąt|triangle|m
+kula|sphere, ball|f
+linia|line|f
+punkt|point|m
+kąt|angle; corner|m
+krawędź|edge|f
+powierzchnia|surface; area|f
+rozmiar|size|m
+wielkość|size; greatness|f
+długość|length|f
+szerokość|width; latitude|f
+wysokość|height|f
+głębokość|depth|f
+waga|weight; scales|f
+objętość|volume|f
+odległość|distance|f
+prędkość|speed|f
+kolor|colour|m
+barwa|colour, hue|f
+biały|white|adj
+czarny|black|adj
+szary|grey|adj
+czerwony|red|adj
+pomarańczowy|orange|adj
+żółty|yellow|adj
+zielony|green|adj
+niebieski|blue|adj
+granatowy|navy blue|adj
+fioletowy|purple|adj
+różowy|pink|adj
+brązowy|brown|adj
+beżowy|beige|adj
+złoty|golden|adj
+srebrny|silver|adj
+jasny|light, bright|adj
+ciemny|dark|adj
+kolorowy|colourful|adj
+`;
+/* Dictionary, part 4: verbs. The headword is usually the imperfective;
+   the perfective partner follows "pf" (and can be searched for too). */
+const DICT_4 = `
+akceptować|to accept|v impf · pf zaakceptować
+analizować|to analyse|v impf · pf przeanalizować
+bać się|to be afraid|v impf
+badać|to examine, research|v impf · pf zbadać
+bawić się|to play, have fun|v impf · pf pobawić się
+biec|to run (now, one way)|v impf · pf pobiec
+biegać|to run (often, about)|v impf
+bić|to beat, hit|v impf · pf pobić
+błądzić|to wander; to err|v impf · pf zabłądzić
+boleć|to hurt, ache|v impf · pf zaboleć
+brać|to take|v impf · pf wziąć
+brakować|to be lacking|v impf · pf zabraknąć
+budować|to build|v impf · pf zbudować
+budzić|to wake (someone)|v impf · pf obudzić
+budzić się|to wake up|v impf · pf obudzić się
+być|to be|v impf
+całować|to kiss|v impf · pf pocałować
+cenić|to value|v impf · pf docenić
+chcieć|to want|v impf · pf zechcieć
+chodzić|to walk, go (often)|v impf
+chorować|to be ill|v impf · pf zachorować
+chować|to hide; to put away|v impf · pf schować
+chronić|to protect|v impf · pf ochronić
+chwalić|to praise|v impf · pf pochwalić
+ciąć|to cut|v impf · pf pociąć
+cieszyć się|to be glad|v impf · pf ucieszyć się
+czekać|to wait|v impf · pf poczekać
+czesać się|to comb one's hair|v impf · pf uczesać się
+czuć|to feel; to smell|v impf · pf poczuć
+czuć się|to feel (well, ill)|v impf · pf poczuć się
+czyścić|to clean|v impf · pf wyczyścić
+czytać|to read|v impf · pf przeczytać
+dbać|to take care of|v impf · pf zadbać
+decydować|to decide|v impf · pf zdecydować
+dawać|to give|v impf · pf dać
+dodawać|to add|v impf · pf dodać
+dochodzić|to reach (on foot); to approach|v impf · pf dojść
+dojeżdżać|to commute; to arrive (by vehicle)|v impf · pf dojechać
+dostawać|to get, receive|v impf · pf dostać
+dotykać|to touch|v impf · pf dotknąć
+dowiadywać się|to find out|v impf · pf dowiedzieć się
+dzielić|to divide, share|v impf · pf podzielić
+działać|to work, function|v impf · pf zadziałać
+dziękować|to thank|v impf · pf podziękować
+dziwić się|to be surprised|v impf · pf zdziwić się
+dzwonić|to call, ring|v impf · pf zadzwonić
+gadać|to chat (colloquial)|v impf · pf pogadać
+ginąć|to die; to get lost|v impf · pf zginąć
+głosować|to vote|v impf · pf zagłosować
+gniewać się|to be angry|v impf · pf pogniewać się
+gotować|to cook; to boil|v impf · pf ugotować
+grać|to play (a game, instrument)|v impf · pf zagrać
+grozić|to threaten|v impf · pf zagrozić
+gubić|to lose (a thing)|v impf · pf zgubić
+hamować|to brake|v impf · pf zahamować
+iść|to go (on foot, now)|v impf · pf pójść
+interesować się|to be interested in|v impf · pf zainteresować się
+jechać|to go (by vehicle, now)|v impf · pf pojechać
+jeść|to eat|v impf · pf zjeść
+jeździć|to go (by vehicle, often)|v impf
+kąpać się|to bathe, have a bath|v impf · pf wykąpać się
+karać|to punish|v impf · pf ukarać
+kichać|to sneeze|v impf · pf kichnąć
+kierować|to drive; to manage|v impf · pf skierować
+kłamać|to lie (say untrue things)|v impf · pf skłamać
+kłaść|to put (lying down)|v impf · pf położyć
+kłócić się|to argue, quarrel|v impf · pf pokłócić się
+kochać|to love|v impf · pf pokochać
+kończyć|to finish|v impf · pf skończyć
+kontrolować|to check, control|v impf · pf skontrolować
+kopać|to kick; to dig|v impf · pf kopnąć
+korzystać|to use, benefit from|v impf · pf skorzystać
+kosztować|to cost; to taste|v impf · pf skosztować
+kraść|to steal|v impf · pf ukraść
+kroić|to slice, cut|v impf · pf pokroić
+krzyczeć|to shout|v impf · pf krzyknąć
+kupować|to buy|v impf · pf kupić
+leczyć|to treat (medically)|v impf · pf wyleczyć
+lecieć|to fly (now)|v impf · pf polecieć
+latać|to fly (often)|v impf
+leżeć|to lie (be lying)|v impf · pf poleżeć
+liczyć|to count|v impf · pf policzyć
+liczyć na|to count on|v impf
+lubić|to like|v impf · pf polubić
+łamać|to break|v impf · pf złamać
+łapać|to catch|v impf · pf złapać
+łączyć|to connect, join|v impf · pf połączyć
+malować|to paint|v impf · pf namalować
+marzyć|to dream (wish)|v impf · pf zamarzyć
+martwić się|to worry|v impf · pf zmartwić się
+męczyć się|to get tired; to struggle|v impf · pf zmęczyć się
+mieć|to have|v impf
+mieszać|to mix, stir|v impf · pf zmieszać
+mieszkać|to live (reside)|v impf · pf zamieszkać
+mijać|to pass (by)|v impf · pf minąć
+milczeć|to be silent|v impf
+myć|to wash|v impf · pf umyć
+myć się|to wash (oneself)|v impf · pf umyć się
+mylić się|to be wrong, make a mistake|v impf · pf pomylić się
+myśleć|to think|v impf · pf pomyśleć
+nadawać|to send (a parcel); to broadcast|v impf · pf nadać
+należeć|to belong|v impf
+naprawiać|to repair|v impf · pf naprawić
+narzekać|to complain|v impf · pf ponarzekać
+nazywać się|to be called|v impf
+niszczyć|to destroy|v impf · pf zniszczyć
+nosić|to carry; to wear|v impf
+nudzić się|to be bored|v impf · pf znudzić się
+obawiać się|to fear|v impf
+obchodzić|to celebrate; to go round|v impf · pf obejść
+obiecywać|to promise|v impf · pf obiecać
+obierać|to peel|v impf · pf obrać
+oglądać|to watch|v impf · pf obejrzeć
+ograniczać|to limit|v impf · pf ograniczyć
+odbierać|to collect, pick up; to answer (a phone)|v impf · pf odebrać
+odpoczywać|to rest|v impf · pf odpocząć
+odpowiadać|to answer; to suit|v impf · pf odpowiedzieć
+odwiedzać|to visit|v impf · pf odwiedzić
+odwoływać|to cancel|v impf · pf odwołać
+odzywać się|to speak up; to get in touch|v impf · pf odezwać się
+ogłaszać|to announce|v impf · pf ogłosić
+okazywać się|to turn out|v impf · pf okazać się
+opiekować się|to look after|v impf · pf zaopiekować się
+opisywać|to describe|v impf · pf opisać
+opowiadać|to tell (a story)|v impf · pf opowiedzieć
+organizować|to organise|v impf · pf zorganizować
+otwierać|to open|v impf · pf otworzyć
+oszczędzać|to save (money)|v impf · pf zaoszczędzić
+oszukiwać|to cheat|v impf · pf oszukać
+pakować|to pack|v impf · pf spakować
+palić|to smoke; to burn|v impf · pf zapalić
+pamiętać|to remember|v impf · pf zapamiętać
+parkować|to park|v impf · pf zaparkować
+patrzeć|to look|v impf · pf popatrzeć
+pić|to drink|v impf · pf wypić
+piec|to bake|v impf · pf upiec
+pisać|to write|v impf · pf napisać
+płacić|to pay|v impf · pf zapłacić
+płakać|to cry|v impf · pf zapłakać
+pływać|to swim|v impf · pf popływać
+płynąć|to swim, sail (now)|v impf · pf popłynąć
+pobierać|to download; to collect|v impf · pf pobrać
+pocieszać|to comfort|v impf · pf pocieszyć
+podawać|to pass, hand; to serve|v impf · pf podać
+podnosić|to lift, raise|v impf · pf podnieść
+podobać się|to be liked|v impf · pf spodobać się
+podpisywać|to sign|v impf · pf podpisać
+podróżować|to travel|v impf
+pokazywać|to show|v impf · pf pokazać
+polecać|to recommend|v impf · pf polecić
+pomagać|to help|v impf · pf pomóc
+poprawiać|to correct, improve|v impf · pf poprawić
+porównywać|to compare|v impf · pf porównać
+postanawiać|to decide|v impf · pf postanowić
+potrzebować|to need|v impf
+poznawać|to get to know; to recognise|v impf · pf poznać
+pożyczać|to lend; to borrow|v impf · pf pożyczyć
+pracować|to work|v impf · pf popracować
+prać|to do the laundry|v impf · pf uprać
+prasować|to iron|v impf · pf wyprasować
+prosić|to ask (for)|v impf · pf poprosić
+proponować|to suggest, offer|v impf · pf zaproponować
+próbować|to try|v impf · pf spróbować
+przebierać się|to get changed|v impf · pf przebrać się
+przechodzić|to cross; to go through|v impf · pf przejść
+przeczyć|to contradict|v impf · pf zaprzeczyć
+przegrywać|to lose (a match)|v impf · pf przegrać
+przeklinać|to swear|v impf · pf przekląć
+przekonywać|to convince|v impf · pf przekonać
+przenosić się|to move (house)|v impf · pf przenieść się
+przepraszać|to apologise|v impf · pf przeprosić
+przeszkadzać|to disturb|v impf · pf przeszkodzić
+przewracać się|to fall over|v impf · pf przewrócić się
+przyjeżdżać|to arrive (by vehicle)|v impf · pf przyjechać
+przychodzić|to come (on foot)|v impf · pf przyjść
+przygotowywać|to prepare|v impf · pf przygotować
+przyjmować|to accept, receive|v impf · pf przyjąć
+przynosić|to bring|v impf · pf przynieść
+przypominać|to remind; to resemble|v impf · pf przypomnieć
+przypominać sobie|to recall|v impf · pf przypomnieć sobie
+przyzwyczajać się|to get used to|v impf · pf przyzwyczaić się
+pukać|to knock|v impf · pf zapukać
+pytać|to ask (a question)|v impf · pf zapytać
+radzić|to advise|v impf · pf poradzić
+radzić sobie|to cope|v impf · pf poradzić sobie
+rezerwować|to book|v impf · pf zarezerwować
+rezygnować|to give up|v impf · pf zrezygnować
+robić|to do, make|v impf · pf zrobić
+rodzić się|to be born|v impf · pf urodzić się
+rosnąć|to grow|v impf · pf urosnąć
+rozmawiać|to talk|v impf · pf porozmawiać
+rozumieć|to understand|v impf · pf zrozumieć
+rozwiązywać|to solve|v impf · pf rozwiązać
+rozwijać|to develop|v impf · pf rozwinąć
+rysować|to draw|v impf · pf narysować
+rzucać|to throw; to quit|v impf · pf rzucić
+siadać|to sit down|v impf · pf usiąść
+siedzieć|to sit, be sitting|v impf · pf posiedzieć
+skakać|to jump|v impf · pf skoczyć
+skręcać|to turn|v impf · pf skręcić
+słuchać|to listen|v impf · pf posłuchać
+słyszeć|to hear|v impf · pf usłyszeć
+smakować|to taste (good)|v impf · pf posmakować
+spacerować|to walk, stroll|v impf · pf pospacerować
+spać|to sleep|v impf · pf pospać
+spadać|to fall|v impf · pf spaść
+spędzać|to spend (time)|v impf · pf spędzić
+spieszyć się|to hurry|v impf · pf pospieszyć się
+spotykać|to meet|v impf · pf spotkać
+spóźniać się|to be late|v impf · pf spóźnić się
+sprawdzać|to check|v impf · pf sprawdzić
+sprzątać|to tidy up|v impf · pf posprzątać
+sprzedawać|to sell|v impf · pf sprzedać
+stać|to stand|v impf · pf postać
+starać się|to try, make an effort|v impf · pf postarać się
+stawać się|to become|v impf · pf stać się
+stawiać|to put (standing)|v impf · pf postawić
+strzelać|to shoot|v impf · pf strzelić
+studiować|to study (at university)|v impf
+suszyć|to dry|v impf · pf wysuszyć
+szukać|to look for|v impf · pf poszukać
+szyć|to sew|v impf · pf uszyć
+śmiać się|to laugh|v impf · pf zaśmiać się
+śnić|to dream (while asleep)|v impf
+śpiewać|to sing|v impf · pf zaśpiewać
+świętować|to celebrate|v impf
+tańczyć|to dance|v impf · pf zatańczyć
+tęsknić|to miss (someone)|v impf · pf zatęsknić
+tłumaczyć|to translate; to explain|v impf · pf przetłumaczyć
+trafiać|to hit (a target); to find the way|v impf · pf trafić
+trenować|to train|v impf · pf potrenować
+trzymać|to hold|v impf · pf potrzymać
+tracić|to lose; to waste|v impf · pf stracić
+tworzyć|to create|v impf · pf stworzyć
+uciekać|to run away|v impf · pf uciec
+uczyć|to teach|v impf · pf nauczyć
+uczyć się|to learn, study|v impf · pf nauczyć się
+udawać|to pretend|v impf · pf udać
+udawać się|to succeed (it works out)|v impf · pf udać się
+umawiać się|to arrange to meet|v impf · pf umówić się
+umierać|to die|v impf · pf umrzeć
+upadać|to fall|v impf · pf upaść
+uprawiać|to grow (plants); to do (a sport)|v impf
+uśmiechać się|to smile|v impf · pf uśmiechnąć się
+używać|to use|v impf · pf użyć
+uważać|to think; to be careful|v impf
+wąchać|to smell (sniff)|v impf · pf powąchać
+wchodzić|to enter; to go up|v impf · pf wejść
+wierzyć|to believe|v impf · pf uwierzyć
+wieszać|to hang (up)|v impf · pf powiesić
+widzieć|to see|v impf · pf zobaczyć
+wiedzieć|to know (a fact)|v impf
+wisieć|to hang (be hanging)|v impf
+witać|to greet|v impf · pf przywitać
+władać|to rule; to command (a language)|v impf
+włączać|to switch on|v impf · pf włączyć
+wybierać|to choose|v impf · pf wybrać
+wychodzić|to go out|v impf · pf wyjść
+wyglądać|to look (appear)|v impf
+wygrywać|to win|v impf · pf wygrać
+wyjaśniać|to explain|v impf · pf wyjaśnić
+wyjeżdżać|to leave (by vehicle)|v impf · pf wyjechać
+wyłączać|to switch off|v impf · pf wyłączyć
+wymagać|to require|v impf
+wymieniać|to exchange; to list|v impf · pf wymienić
+wynajmować|to rent|v impf · pf wynająć
+wyrzucać|to throw away|v impf · pf wyrzucić
+wysyłać|to send|v impf · pf wysłać
+wyobrażać sobie|to imagine|v impf · pf wyobrazić sobie
+wypełniać|to fill in|v impf · pf wypełnić
+wypoczywać|to rest, relax|v impf · pf wypocząć
+wyprowadzać się|to move out|v impf · pf wyprowadzić się
+wracać|to return|v impf · pf wrócić
+wstawać|to get up|v impf · pf wstać
+wydawać|to spend (money); to publish|v impf · pf wydać
+zaczynać|to begin|v impf · pf zacząć
+zajmować się|to deal with, take care of|v impf · pf zająć się
+zakładać|to put on; to set up|v impf · pf założyć
+zamawiać|to order|v impf · pf zamówić
+zamykać|to close|v impf · pf zamknąć
+zapisywać|to write down; to save|v impf · pf zapisać
+zapominać|to forget|v impf · pf zapomnieć
+zapraszać|to invite|v impf · pf zaprosić
+zarabiać|to earn|v impf · pf zarobić
+zasypiać|to fall asleep|v impf · pf zasnąć
+zatrzymywać się|to stop|v impf · pf zatrzymać się
+zauważać|to notice|v impf · pf zauważyć
+zbierać|to collect, gather|v impf · pf zebrać
+zdawać|to take (an exam)|v impf · pf zdać (to pass)
+zdejmować|to take off|v impf · pf zdjąć
+zgadzać się|to agree|v impf · pf zgodzić się
+zgłaszać|to report|v impf · pf zgłosić
+zmieniać|to change|v impf · pf zmienić
+znajdować|to find|v impf · pf znaleźć
+znać|to know (a person, a place)|v impf
+zostawać|to stay, remain|v impf · pf zostać
+zostawiać|to leave (behind)|v impf · pf zostawić
+żałować|to regret|v impf · pf pożałować
+żartować|to joke|v impf · pf zażartować
+żegnać się|to say goodbye|v impf · pf pożegnać się
+żenić się|to marry (of a man)|v impf · pf ożenić się
+żyć|to live|v impf · pf przeżyć
+wychodzić za mąż|to marry (of a woman)|v impf · pf wyjść za mąż
+brać ślub|to get married|v impf · pf wziąć ślub
+rozwodzić się|to get divorced|v impf · pf rozwieść się
+chrapać|to snore|v impf · pf zachrapać
+ziewać|to yawn|v impf · pf ziewnąć
+oddychać|to breathe|v impf · pf odetchnąć
+pocić się|to sweat|v impf · pf spocić się
+drżeć|to tremble|v impf · pf zadrżeć
+krwawić|to bleed|v impf
+kaszleć|to cough|v impf · pf zakaszleć
+wymiotować|to vomit|v impf · pf zwymiotować
+mdleć|to faint|v impf · pf zemdleć
+zdrowieć|to get better|v impf · pf wyzdrowieć
+chudnąć|to lose weight|v impf · pf schudnąć
+tyć|to put on weight|v impf · pf przytyć
+starzeć się|to grow old|v impf · pf zestarzeć się
+dorastać|to grow up|v impf · pf dorosnąć
+ćwiczyć|to exercise, practise|v impf · pf poćwiczyć
+wspinać się|to climb|v impf · pf wspiąć się
+jeździć na nartach|to ski|v impf
+jeździć na rowerze|to cycle|v impf
+łowić ryby|to fish|v impf · pf złowić
+nurkować|to dive|v impf · pf zanurkować
+żeglować|to sail|v impf · pf pożeglować
+kibicować|to support (a team)|v impf
+strzelać gola|to score a goal|v impf · pf strzelić gola
+remisować|to draw (a match)|v impf · pf zremisować
+fotografować|to photograph|v impf · pf sfotografować
+nagrywać|to record|v impf · pf nagrać
+filmować|to film|v impf · pf sfilmować
+drukować|to print|v impf · pf wydrukować
+kopiować|to copy|v impf · pf skopiować
+wklejać|to paste|v impf · pf wkleić
+usuwać|to delete, remove|v impf · pf usunąć
+logować się|to log in|v impf · pf zalogować się
+wylogować się|to log out|v pf · impf wylogowywać się
+klikać|to click|v impf · pf kliknąć
+instalować|to install|v impf · pf zainstalować
+ładować|to charge; to load|v impf · pf naładować
+udostępniać|to share (online)|v impf · pf udostępnić
+publikować|to publish|v impf · pf opublikować
+subskrybować|to subscribe|v impf · pf zasubskrybować
+googlować|to google|v impf · pf wygooglować
+pisać SMS-a|to text|v impf · pf napisać SMS-a
+budować dom|to build a house|v impf · pf zbudować dom
+sadzić|to plant|v impf · pf posadzić
+podlewać|to water (plants)|v impf · pf podlać
+kosić|to mow|v impf · pf skosić
+grabić|to rake|v impf · pf zgrabić
+karmić|to feed|v impf · pf nakarmić
+wyprowadzać psa|to walk the dog|v impf · pf wyprowadzić psa
+głaskać|to stroke, pet|v impf · pf pogłaskać
+gryźć|to bite|v impf · pf ugryźć
+szczekać|to bark|v impf · pf zaszczekać
+miauczeć|to miaow|v impf · pf zamiauczeć
+kroić chleb|to slice bread|v impf · pf pokroić chleb
+smażyć|to fry|v impf · pf usmażyć
+dusić|to stew; to strangle|v impf · pf udusić
+grillować|to grill|v impf · pf zgrillować
+nakrywać do stołu|to lay the table|v impf · pf nakryć do stołu
+zmywać|to wash up|v impf · pf zmyć
+odkurzać|to vacuum|v impf · pf odkurzyć
+wycierać|to wipe; to dry (dishes)|v impf · pf wytrzeć
+ścielić łóżko|to make the bed|v impf · pf pościelić łóżko
+wynosić śmieci|to take out the rubbish|v impf · pf wynieść śmieci
+segregować|to sort (rubbish)|v impf · pf posegregować
+remontować|to renovate|v impf · pf wyremontować
+wiercić|to drill|v impf · pf wywiercić
+przybijać|to nail|v impf · pf przybić
+dokręcać|to tighten|v impf · pf dokręcić
+mierzyć|to measure; to try on|v impf · pf zmierzyć
+przymierzać|to try on (clothes)|v impf · pf przymierzyć
+pasować|to fit, suit|v impf · pf dopasować
+ubierać się|to get dressed|v impf · pf ubrać się
+rozbierać się|to get undressed|v impf · pf rozebrać się
+golić się|to shave|v impf · pf ogolić się
+malować się|to put on make-up|v impf · pf umalować się
+obcinać|to cut (hair, nails)|v impf · pf obciąć
+płacić kartą|to pay by card|v impf · pf zapłacić kartą
+wypłacać|to withdraw (money)|v impf · pf wypłacić
+wpłacać|to pay in|v impf · pf wpłacić
+przelewać|to transfer (money); to pour|v impf · pf przelać
+oszczędzać na|to save up for|v impf · pf zaoszczędzić na
+inwestować|to invest|v impf · pf zainwestować
+pożyczać od|to borrow from|v impf · pf pożyczyć od
+zwracać|to return, give back|v impf · pf zwrócić
+reklamować|to complain about (a product); to advertise|v impf · pf zareklamować
+wymieniać pieniądze|to change money|v impf · pf wymienić pieniądze
+targować się|to haggle|v impf · pf potargować się
+wsiadać|to get on, in|v impf · pf wsiąść
+wysiadać|to get off, out|v impf · pf wysiąść
+przesiadać się|to change (trains)|v impf · pf przesiąść się
+kasować bilet|to validate a ticket|v impf · pf skasować bilet
+odjeżdżać|to depart|v impf · pf odjechać
+przylatywać|to arrive (by plane)|v impf · pf przylecieć
+odlatywać|to depart (by plane)|v impf · pf odlecieć
+lądować|to land|v impf · pf wylądować
+startować|to take off; to start|v impf · pf wystartować
+zwiedzać|to visit, tour|v impf · pf zwiedzić
+meldować się|to check in; to register|v impf · pf zameldować się
+gubić się|to get lost|v impf · pf zgubić się
+pytać o drogę|to ask the way|v impf · pf zapytać o drogę
+zawracać|to turn back|v impf · pf zawrócić
+wyprzedzać|to overtake|v impf · pf wyprzedzić
+tankować|to fill up (fuel)|v impf · pf zatankować
+holować|to tow|v impf · pf odholować
+zatrudniać|to employ|v impf · pf zatrudnić
+zwalniać|to dismiss; to slow down|v impf · pf zwolnić
+awansować|to promote; to be promoted|v
+negocjować|to negotiate|v impf · pf wynegocjować
+zarządzać|to manage|v impf
+prowadzić|to lead; to run (a business); to drive|v impf · pf poprowadzić
+kierować się|to head for; to be guided by|v impf · pf skierować się
+planować|to plan|v impf · pf zaplanować
+realizować|to carry out|v impf · pf zrealizować
+osiągać|to achieve|v impf · pf osiągnąć
+spełniać|to fulfil|v impf · pf spełnić
+składać|to submit; to fold; to assemble|v impf · pf złożyć
+wypisywać|to write out|v impf · pf wypisać
+wyliczać|to calculate; to list|v impf · pf wyliczyć
+obliczać|to calculate|v impf · pf obliczyć
+mnożyć|to multiply|v impf · pf pomnożyć
+odejmować|to subtract|v impf · pf odjąć
+dzielić przez|to divide by|v impf · pf podzielić przez
+ważyć|to weigh|v impf · pf zważyć
+rosnąć w siłę|to grow stronger|v impf
+spadać w cenie|to fall in price|v impf
+drożeć|to get more expensive|v impf · pf podrożeć
+tanieć|to get cheaper|v impf · pf potanieć
+ocieplać się|to get warmer|v impf · pf ocieplić się
+ochładzać się|to get colder|v impf · pf ochłodzić się
+padać|to fall; to rain|v impf · pf spaść
+wiać|to blow|v impf · pf zawiać
+świecić|to shine|v impf · pf zaświecić
+grzmieć|to thunder|v impf · pf zagrzmieć
+marznąć|to freeze; to be cold|v impf · pf zmarznąć
+topnieć|to melt|v impf · pf stopnieć
+płonąć|to burn (be on fire)|v impf · pf spłonąć
+gasić|to put out|v impf · pf zgasić
+zapalać|to light; to switch on|v impf · pf zapalić
+ratować|to rescue|v impf · pf uratować
+dzwonić na policję|to call the police|v impf · pf zadzwonić na policję
+zgłaszać kradzież|to report a theft|v impf · pf zgłosić kradzież
+napadać|to attack, mug|v impf · pf napaść
+włamywać się|to break in|v impf · pf włamać się
+aresztować|to arrest|v
+sądzić|to judge; to think|v impf · pf osądzić
+skarżyć się|to complain|v impf · pf poskarżyć się
+przyznawać się|to admit|v impf · pf przyznać się
+przebaczać|to forgive|v impf · pf przebaczyć
+wybaczać|to forgive|v impf · pf wybaczyć
+obrażać się|to take offence|v impf · pf obrazić się
+denerwować się|to get nervous, annoyed|v impf · pf zdenerwować się
+złościć się|to be angry|v impf · pf rozzłościć się
+wstydzić się|to be ashamed|v impf · pf zawstydzić się
+bać się o|to fear for|v impf
+ufać|to trust|v impf · pf zaufać
+podziwiać|to admire|v impf
+szanować|to respect|v impf · pf uszanować
+nienawidzić|to hate|v impf · pf znienawidzić
+zakochiwać się|to fall in love|v impf · pf zakochać się
+zrywać|to break up; to pick|v impf · pf zerwać
+całować się|to kiss (each other)|v impf · pf pocałować się
+przytulać|to hug|v impf · pf przytulić
+tęsknić za|to long for|v impf · pf zatęsknić za
+pocieszać się|to console oneself|v impf · pf pocieszyć się
+żegnać|to bid farewell|v impf · pf pożegnać
+gratulować|to congratulate|v impf · pf pogratulować
+życzyć|to wish|v impf · pf zażyczyć
+składać życzenia|to give one's best wishes|v impf · pf złożyć życzenia
+obdarowywać|to give presents|v impf · pf obdarować
+pakować prezent|to wrap a present|v impf · pf zapakować prezent
+dekorować|to decorate|v impf · pf udekorować
+świętować urodziny|to celebrate a birthday|v impf
+modlić się|to pray|v impf · pf pomodlić się
+pościć|to fast|v impf
+chrzcić|to baptise|v impf · pf ochrzcić
+dyskutować|to discuss|v impf · pf przedyskutować
+kłócić się o|to argue about|v impf · pf pokłócić się o
+twierdzić|to claim|v impf · pf stwierdzić
+zaprzeczać|to deny|v impf · pf zaprzeczyć
+potwierdzać|to confirm|v impf · pf potwierdzić
+wspominać|to mention; to remember|v impf · pf wspomnieć
+streszczać|to summarise|v impf · pf streścić
+cytować|to quote|v impf · pf zacytować
+ostrzegać|to warn|v impf · pf ostrzec
+informować|to inform|v impf · pf poinformować
+zawiadamiać|to notify|v impf · pf zawiadomić
+zgadywać|to guess|v impf · pf zgadnąć
+zastanawiać się|to wonder, think about|v impf · pf zastanowić się
+rozważać|to consider|v impf · pf rozważyć
+wątpić|to doubt|v impf · pf zwątpić
+mieć nadzieję|to hope|v impf
+spodziewać się|to expect|v impf
+oczekiwać|to expect, await|v impf
+obserwować|to observe|v impf · pf zaobserwować
+zauważać różnicę|to notice a difference|v impf · pf zauważyć różnicę
+odkrywać|to discover|v impf · pf odkryć
+wynajdywać|to invent|v impf · pf wynaleźć
+uczestniczyć|to take part|v impf
+brać udział|to take part|v impf · pf wziąć udział
+zapisywać się|to sign up|v impf · pf zapisać się
+powtarzać|to repeat; to revise|v impf · pf powtórzyć
+ściągać|to copy (cheat); to download|v impf · pf ściągnąć
+oblewać|to fail (an exam); to pour over|v impf · pf oblać
+oceniać|to assess, grade|v impf · pf ocenić
+kończyć studia|to graduate|v impf · pf skończyć studia
+wykładać|to lecture|v impf
+egzaminować|to examine|v impf · pf przeegzaminować
+literować|to spell|v impf · pf przeliterować
+wymawiać|to pronounce|v impf · pf wymówić
+odmieniać|to decline, conjugate|v impf · pf odmienić
+`;
+/* Dictionary, part 5: adjectives and adverbs. */
+const DICT_5 = `
+dobry|good|adj
+zły|bad; angry|adj
+duży|big|adj
+mały|small|adj
+wielki|great, huge|adj
+ogromny|enormous|adj
+malutki|tiny|adj
+długi|long|adj
+krótki|short|adj
+wysoki|tall, high|adj
+niski|short, low|adj
+szeroki|wide|adj
+wąski|narrow|adj
+gruby|thick; fat|adj
+cienki|thin|adj
+chudy|skinny|adj
+szczupły|slim|adj
+głęboki|deep|adj
+płytki|shallow|adj
+ciężki|heavy; hard|adj
+lekki|light (weight)|adj
+twardy|hard|adj
+miękki|soft|adj
+gładki|smooth|adj
+szorstki|rough|adj
+mokry|wet|adj
+suchy|dry|adj
+czysty|clean; pure|adj
+brudny|dirty|adj
+pusty|empty|adj
+pełny|full|adj
+otwarty|open|adj
+zamknięty|closed|adj
+wolny|free; slow|adj
+zajęty|busy, occupied|adj
+nowy|new|adj
+stary|old|adj
+młody|young|adj
+nowoczesny|modern|adj
+współczesny|contemporary|adj
+tradycyjny|traditional|adj
+zabytkowy|historic|adj
+dawny|former, old|adj
+obecny|current; present|adj
+przyszły|future; next|adj
+ostatni|last; latest|adj
+następny|next|adj
+poprzedni|previous|adj
+pierwszy|first|adj
+wczesny|early|adj
+późny|late|adj
+szybki|fast|adj
+powolny|slow|adj
+nagły|sudden|adj
+gorący|hot|adj
+ciepły|warm|adj
+chłodny|cool|adj
+zimny|cold|adj
+letni|lukewarm; summer|adj
+zimowy|winter|adj
+wiosenny|spring|adj
+jesienny|autumn|adj
+słoneczny|sunny|adj
+deszczowy|rainy|adj
+pochmurny|cloudy|adj
+wietrzny|windy|adj
+mroźny|frosty|adj
+piękny|beautiful|adj
+ładny|pretty, nice|adj
+brzydki|ugly|adj
+przystojny|handsome|adj
+atrakcyjny|attractive|adj
+uroczy|charming|adj
+śliczny|lovely|adj
+wspaniały|wonderful|adj
+cudowny|marvellous|adj
+niesamowity|amazing|adj
+świetny|great|adj
+doskonały|excellent, perfect|adj
+idealny|ideal|adj
+okropny|awful|adj
+straszny|terrible|adj
+fatalny|dreadful|adj
+przeciętny|average|adj
+zwykły|ordinary|adj
+normalny|normal|adj
+typowy|typical|adj
+dziwny|strange|adj
+niezwykły|unusual|adj
+wyjątkowy|exceptional|adj
+specjalny|special|adj
+szczególny|particular|adj
+ważny|important; valid|adj
+istotny|significant|adj
+główny|main|adj
+podstawowy|basic|adj
+konieczny|necessary|adj
+potrzebny|needed|adj
+niepotrzebny|unnecessary|adj
+możliwy|possible|adj
+niemożliwy|impossible|adj
+prawdopodobny|probable|adj
+pewny|sure, certain|adj
+niepewny|uncertain|adj
+jasny|clear; light|adj
+zrozumiały|understandable|adj
+prosty|simple; straight|adj
+łatwy|easy|adj
+trudny|difficult|adj
+skomplikowany|complicated|adj
+ciekawy|interesting; curious|adj
+interesujący|interesting|adj
+nudny|boring|adj
+zabawny|funny|adj
+śmieszny|funny, ridiculous|adj
+poważny|serious|adj
+smutny|sad|adj
+wesoły|cheerful|adj
+szczęśliwy|happy|adj
+nieszczęśliwy|unhappy|adj
+zadowolony|pleased, satisfied|adj
+niezadowolony|dissatisfied|adj
+zmęczony|tired|adj
+wypoczęty|rested|adj
+głodny|hungry|adj
+najedzony|full (after eating)|adj
+spragniony|thirsty|adj
+chory|ill|adj
+zdrowy|healthy|adj
+silny|strong|adj
+słaby|weak|adj
+żywy|alive; lively|adj
+martwy|dead|adj
+zdenerwowany|nervous, upset|adj
+spokojny|calm|adj
+cichy|quiet|adj
+głośny|loud|adj
+zły na kogoś|angry with someone|phr
+wściekły|furious|adj
+przestraszony|frightened|adj
+zaskoczony|surprised|adj
+zdziwiony|astonished|adj
+rozczarowany|disappointed|adj
+zakochany|in love|adj
+samotny|lonely; single|adj
+dumny|proud|adj
+zazdrosny|jealous|adj
+miły|nice, kind|adj
+sympatyczny|likeable|adj
+życzliwy|kind, friendly|adj
+uprzejmy|polite|adj
+grzeczny|polite; well-behaved|adj
+niegrzeczny|rude; naughty|adj
+przyjazny|friendly|adj
+otwarty na ludzi|outgoing|phr
+nieśmiały|shy|adj
+towarzyski|sociable|adj
+rozmowny|talkative|adj
+małomówny|quiet, of few words|adj
+mądry|wise, clever|adj
+inteligentny|intelligent|adj
+głupi|stupid|adj
+zdolny|talented, able|adj
+pracowity|hard-working|adj
+leniwy|lazy|adj
+ambitny|ambitious|adj
+odpowiedzialny|responsible|adj
+punktualny|punctual|adj
+cierpliwy|patient|adj
+niecierpliwy|impatient|adj
+uczciwy|honest|adj
+szczery|sincere|adj
+odważny|brave|adj
+tchórzliwy|cowardly|adj
+hojny|generous|adj
+skąpy|stingy|adj
+uparty|stubborn|adj
+wyrozumiały|understanding|adj
+zarozumiały|conceited|adj
+skromny|modest|adj
+pewny siebie|self-confident|adj
+spontaniczny|spontaneous|adj
+zorganizowany|organised|adj
+roztargniony|absent-minded|adj
+kreatywny|creative|adj
+energiczny|energetic|adj
+optymistyczny|optimistic|adj
+pesymistyczny|pessimistic|adj
+bogaty|rich|adj
+biedny|poor|adj
+drogi|expensive; dear|adj
+tani|cheap|adj
+darmowy|free (of charge)|adj
+bezpłatny|free of charge|adj
+płatny|paid|adj
+opłacalny|worthwhile, profitable|adj
+publiczny|public|adj
+prywatny|private|adj
+państwowy|state, national|adj
+miejski|urban, city|adj
+wiejski|rural, country|adj
+lokalny|local|adj
+międzynarodowy|international|adj
+światowy|world|adj
+narodowy|national|adj
+oficjalny|official|adj
+nieoficjalny|unofficial|adj
+formalny|formal|adj
+nieformalny|informal|adj
+legalny|legal|adj
+nielegalny|illegal|adj
+bezpieczny|safe|adj
+niebezpieczny|dangerous|adj
+ryzykowny|risky|adj
+sprawny|efficient; in working order|adj
+zepsuty|broken; spoiled|adj
+uszkodzony|damaged|adj
+cały|whole; unharmed|adj
+gotowy|ready|adj
+wolny od|free from|adj
+dostępny|available|adj
+niedostępny|unavailable|adj
+popularny|popular|adj
+znany|well-known|adj
+sławny|famous|adj
+nieznany|unknown|adj
+obcy|foreign, strange|adj
+własny|own|adj
+wspólny|common, shared|adj
+osobisty|personal|adj
+rodzinny|family|adj
+domowy|home, homemade|adj
+służbowy|business, work|adj
+zawodowy|professional|adj
+prawdziwy|real, true|adj
+fałszywy|false, fake|adj
+sztuczny|artificial|adj
+naturalny|natural|adj
+ekologiczny|organic; ecological|adj
+zdrowotny|health|adj
+medyczny|medical|adj
+szpitalny|hospital|adj
+pilny|urgent; diligent|adj
+nagły wypadek|emergency|m
+słuszny|right, justified|adj
+właściwy|proper, right|adj
+odpowiedni|suitable|adj
+niewłaściwy|improper|adj
+dokładny|exact, precise|adj
+ogólny|general|adj
+szczegółowy|detailed|adj
+krótkoterminowy|short-term|adj
+długoterminowy|long-term|adj
+stały|permanent, constant|adj
+tymczasowy|temporary|adj
+codzienny|daily, everyday|adj
+cotygodniowy|weekly|adj
+miesięczny|monthly|adj
+roczny|annual|adj
+dzienny|day, daily|adj
+nocny|night|adj
+poranny|morning|adj
+wieczorny|evening|adj
+weekendowy|weekend|adj
+świąteczny|holiday, festive|adj
+urodzinowy|birthday|adj
+ślubny|wedding|adj
+lewy|left|adj
+prawy|right|adj
+górny|upper|adj
+dolny|lower|adj
+przedni|front|adj
+tylny|back, rear|adj
+środkowy|middle|adj
+wewnętrzny|internal|adj
+zewnętrzny|external|adj
+bliski|close, near|adj
+daleki|far, distant|adj
+sąsiedni|neighbouring|adj
+centralny|central|adj
+północny|northern|adj
+południowy|southern|adj
+wschodni|eastern|adj
+zachodni|western|adj
+górski|mountain|adj
+morski|sea|adj
+leśny|forest|adj
+wodny|water|adj
+okrągły|round|adj
+kwadratowy|square|adj
+prostokątny|rectangular|adj
+płaski|flat|adj
+krzywy|crooked|adj
+równy|even, equal|adj
+ostry|sharp|adj
+tępy|blunt|adj
+jaskrawy|bright, vivid|adj
+blady|pale|adj
+opalony|tanned|adj
+kręcony|curly|adj
+łysy|bald|adj
+siwy|grey (hair)|adj
+jasnowłosy|fair-haired|adj
+ciemnowłosy|dark-haired|adj
+rudy|red-haired, ginger|adj
+niebieskooki|blue-eyed|adj
+wysportowany|athletic|adj
+elegancko|elegantly|adv
+dobrze|well|adv
+źle|badly|adv
+bardzo|very|adv
+trochę|a little|adv
+mało|little, not much|adv
+dużo|a lot|adv
+wiele|many, much|adv
+sporo|quite a lot|adv
+zbyt|too|adv
+za bardzo|too much|adv
+całkiem|quite|adv
+zupełnie|completely|adv
+całkowicie|totally|adv
+prawie|almost|adv
+niemal|nearly|adv
+ledwo|barely|adv
+tylko|only|adv
+jedynie|merely|adv
+także|also|adv
+też|too, also|adv
+również|as well|adv
+nawet|even|adv
+już|already|adv
+jeszcze|still; yet; more|adv
+wciąż|still|adv
+nadal|still, continue to|adv
+dopiero|only (not until)|adv
+zaraz|in a moment|adv
+natychmiast|immediately|adv
+od razu|at once|adv
+wkrótce|soon|adv
+niedługo|soon|adv
+później|later|adv
+wcześniej|earlier|adv
+potem|then, afterwards|adv
+najpierw|first|adv
+w końcu|finally|adv
+wreszcie|at last|adv
+nagle|suddenly|adv
+powoli|slowly|adv
+szybko|quickly|adv
+cicho|quietly|adv
+głośno|loudly|adv
+często|often|adv
+rzadko|rarely|adv
+czasem|sometimes|adv
+czasami|sometimes|adv
+zawsze|always|adv
+nigdy|never|adv
+zwykle|usually|adv
+zazwyczaj|usually|adv
+codziennie|every day|adv
+co tydzień|every week|phr
+co roku|every year|phr
+teraz|now|adv
+obecnie|currently|adv
+dzisiaj|today|adv
+wczoraj|yesterday|adv
+jutro|tomorrow|adv
+pojutrze|the day after tomorrow|adv
+przedwczoraj|the day before yesterday|adv
+rano|in the morning|adv
+wieczorem|in the evening|adv
+w nocy|at night|phr
+w południe|at noon|phr
+dawno|a long time ago|adv
+niedawno|recently|adv
+ostatnio|lately|adv
+kiedyś|once; some day|adv
+nigdzie|nowhere|adv
+wszędzie|everywhere|adv
+gdzieś|somewhere|adv
+gdziekolwiek|anywhere|adv
+tutaj|here|adv
+tam|there|adv
+blisko|near|adv
+daleko|far|adv
+obok|next to|adv
+naprzeciwko|opposite|adv
+wewnątrz|inside|adv
+na zewnątrz|outside|adv
+na górze|upstairs|phr
+na dole|downstairs|phr
+z przodu|in front|phr
+z tyłu|at the back|phr
+w środku|in the middle; inside|phr
+prosto|straight on|adv
+w lewo|to the left|phr
+w prawo|to the right|phr
+do góry|up|phr
+w dół|down|phr
+dokoła|around|adv
+razem|together|adv
+osobno|separately|adv
+sam|alone; (my)self|pron
+naprawdę|really|adv
+oczywiście|of course|adv
+na pewno|certainly|phr
+pewnie|probably; sure|adv
+chyba|probably, I think|part
+może|maybe|part
+raczej|rather|adv
+właściwie|actually|adv
+w ogóle|at all|phr
+przynajmniej|at least|adv
+co najmniej|at least|phr
+mniej więcej|more or less|phr
+około|about, approximately|prep
+dokładnie|exactly|adv
+specjalnie|on purpose; especially|adv
+przypadkiem|by accident|adv
+niestety|unfortunately|adv
+na szczęście|fortunately|phr
+szczęśliwie|happily|adv
+chętnie|gladly|adv
+niechętnie|reluctantly|adv
+łatwo|easily|adv
+trudno|it's hard|adv
+wygodnie|comfortably|adv
+ciepło|warmly|adv
+zimno|it's cold|adv
+gorąco|it's hot|adv
+duszno|it's stuffy|adv
+jasno|brightly; clearly|adv
+ciemno|it's dark|adv
+tanio|cheaply|adv
+drogo|expensively|adv
+wspólnie|jointly|adv
+osobiście|personally|adv
+publicznie|publicly|adv
+oficjalnie|officially|adv
+poważnie|seriously|adv
+grzecznie|politely|adv
+ostrożnie|carefully|adv
+uważnie|attentively|adv
+`;
+/* Dictionary, part 6: society, law, politics, economy, education, science, culture, media, sport, feelings and ideas. */
+const DICT_6 = `
+społeczeństwo|society|n
+społeczność|community|f
+naród|nation|m
+państwo|state, country|n
+ojczyzna|homeland|f
+władza|power, authority|f
+rząd|government; row|m
+premier|prime minister|m
+prezydent|president|m
+minister|minister|m
+ministerstwo|ministry|n
+parlament|parliament|m
+Sejm|Sejm (lower house)|m
+Senat|Senate|m
+poseł|MP, member of parliament|m
+senator|senator|m
+partia|party (political)|f
+opozycja|opposition|f
+koalicja|coalition|f
+wybory|elections|pl
+kampania|campaign|f
+kandydat|candidate|m
+wyborca|voter|m
+głosowanie|vote, voting|n
+referendum|referendum|n
+demokracja|democracy|f
+dyktatura|dictatorship|f
+monarchia|monarchy|f
+republika|republic|f
+król|king|m
+królowa|queen|f
+książę|prince|m
+księżniczka|princess|f
+konstytucja|constitution|f
+ustawa|act, statute|f
+prawo|law; right|n
+przepis|regulation; recipe|m
+zakaz|ban, prohibition|m
+nakaz|order, injunction|m
+pozwolenie|permit, permission|n
+zezwolenie|permit|n
+obowiązek|duty, obligation|m
+przywilej|privilege|m
+wolność|freedom|f
+równość|equality|f
+sprawiedliwość|justice|f
+niesprawiedliwość|injustice|f
+prawa człowieka|human rights|pl
+policja|police|f
+straż miejska|municipal police|f
+wojsko|army|n
+armia|army|f
+wojna|war|f
+pokój|peace; room|m
+konflikt|conflict|m
+atak|attack|m
+broń|weapon|f
+bezpieczeństwo|safety, security|n
+przestępstwo|crime|n
+przestępca|criminal|m
+kradzież|theft|f
+złodziej|thief|m
+włamanie|burglary|n
+napad|robbery, assault|m
+oszustwo|fraud|n
+morderstwo|murder|n
+ofiara|victim; sacrifice|f
+świadek|witness|m
+dowód|proof, evidence; ID card|m
+śledztwo|investigation|n
+proces|trial; process|m
+wyrok|sentence, verdict|m
+kara|punishment, penalty|f
+grzywna|fine|f
+adwokat|lawyer|m
+prokurator|prosecutor|m
+oskarżony|defendant|m
+winny|guilty|adj
+niewinny|innocent|adj
+skarga|complaint|f
+pozew|lawsuit|m
+gospodarka|economy|f
+ekonomia|economics|f
+rynek pracy|job market|m
+handel|trade|m
+eksport|export|m
+import|import|m
+przemysł|industry|m
+rolnictwo|agriculture|n
+usługi|services|pl
+inflacja|inflation|f
+kryzys|crisis|m
+recesja|recession|f
+wzrost|growth; height|m
+spadek|fall, decline; inheritance|m
+konkurencja|competition|f
+klientela|clientele|f
+reklama|advert, advertising|f
+marketing|marketing|m
+inwestycja|investment|f
+inwestor|investor|m
+akcja|share; action; campaign|f
+giełda|stock exchange|f
+majątek|property, wealth|m
+nieruchomość|property (real estate)|f
+własność|ownership, property|f
+umowa kupna|purchase agreement|f
+nauka|science; learning|f
+szkolnictwo|education system|n
+edukacja|education|f
+wykształcenie|education (level)|n
+przedszkole|nursery school|n
+szkoła podstawowa|primary school|f
+liceum|secondary school (grammar)|n
+technikum|technical school|n
+uczelnia|university, college|f
+uniwersytet|university|m
+politechnika|technical university|f
+wydział|faculty|m
+instytut|institute|m
+katedra|department (university)|f
+rektor|rector|m
+dziekan|dean|m
+semestr|semester|m
+sesja|exam session|f
+wykład|lecture|m
+ćwiczenia|classes, seminar|pl
+seminarium|seminar|n
+zajęcia|classes|pl
+przedmiot|subject; object|m
+matematyka|maths|f
+fizyka|physics|f
+chemia|chemistry|f
+biologia|biology|f
+geografia|geography|f
+historia|history; story|f
+informatyka|computer science|f
+plastyka|art (school subject)|f
+wychowanie fizyczne|PE|n
+religia|religion|f
+filozofia|philosophy|f
+psychologia|psychology|f
+socjologia|sociology|f
+medycyna|medicine (science)|f
+prawoznawstwo|jurisprudence|n
+literatura|literature|f
+językoznawstwo|linguistics|n
+ocena|mark, grade; assessment|f
+stopień naukowy|academic degree|m
+licencjat|bachelor's degree|m
+magister|master's degree|m
+doktorat|doctorate|m
+dyplom|diploma|m
+świadectwo|school certificate|n
+matura|secondary-school final exam|f
+egzamin wstępny|entrance exam|m
+stypendium|scholarship|n
+indeks|student record book; index|m
+legitymacja|ID card (student)|f
+akademik|student hall|m
+biblioteka|library|f
+czytelnia|reading room|f
+podręcznik|textbook|m
+słownik|dictionary|m
+encyklopedia|encyclopedia|f
+ćwiczenie|exercise|n
+zadanie domowe|homework|n
+wypracowanie|essay (school)|n
+dyktando|dictation|n
+kartkówka|short quiz|f
+klasówka|class test|f
+sprawdzian|test|m
+błąd|mistake|m
+odpowiedź|answer|f
+pytanie|question|n
+temat|topic, subject|m
+teoria|theory|f
+praktyka|practice|f
+badania|research|pl
+doświadczenie|experiment; experience|n
+eksperyment|experiment|m
+odkrycie|discovery|n
+wynalazek|invention|m
+metoda|method|f
+hipoteza|hypothesis|f
+dowód naukowy|scientific evidence|m
+laboratorium|laboratory|n
+technologia|technology|f
+technika|technique; technology|f
+urządzenie|device|n
+maszyna|machine|f
+robot|robot|m
+sztuczna inteligencja|artificial intelligence|f
+liczba|number|f
+cyfra|digit|f
+suma|sum|f
+różnica|difference|f
+procent|percent|m
+połowa|half|f
+ćwierć|quarter|f
+wzór|formula; pattern|m
+równanie|equation|n
+wykres|graph, chart|m
+tabela|table (chart)|f
+kultura|culture|f
+sztuka|art; play|f
+dzieło|work (of art)|n
+arcydzieło|masterpiece|n
+artysta|artist|m
+wystawa|exhibition|f
+muzeum|museum|n
+galeria sztuki|art gallery|f
+obraz|painting, picture|m
+rzeźba|sculpture|f
+portret|portrait|m
+pejzaż|landscape (painting)|m
+fotografia|photography; photograph|f
+architektura|architecture|f
+teatr|theatre|m
+spektakl|performance, show|m
+przedstawienie|performance|n
+scena|stage; scene|f
+widownia|audience; auditorium|f
+widz|viewer, spectator|m
+premiera|premiere|f
+opera|opera|f
+balet|ballet|m
+kabaret|cabaret|m
+musical|musical|m
+koncert|concert|m
+festiwal|festival|m
+filharmonia|concert hall; philharmonic|f
+orkiestra|orchestra|f
+dyrygent|conductor (music)|m
+chór|choir|m
+muzyka|music|f
+muzyka klasyczna|classical music|f
+muzyka ludowa|folk music|f
+piosenka|song|f
+melodia|melody|f
+rytm|rhythm|m
+tekst|text; lyrics|m
+płyta|record, CD|f
+album|album|m
+instrument|instrument|m
+fortepian|piano|m
+pianino|upright piano|n
+gitara|guitar|f
+skrzypce|violin|pl
+perkusja|drums|f
+trąbka|trumpet|f
+flet|flute|m
+akordeon|accordion|m
+kino|cinema|n
+film|film|m
+film dokumentalny|documentary|m
+komedia|comedy|f
+dramat|drama|m
+horror|horror film|m
+thriller|thriller|m
+kreskówka|cartoon|f
+serial|TV series|m
+odcinek|episode; section|m
+bohater|hero, character|m
+postać|character, figure|f
+fabuła|plot|f
+zakończenie|ending|n
+książka|book|f
+powieść|novel|f
+opowiadanie|short story|n
+wiersz|poem; line|m
+poezja|poetry|f
+bajka|fairy tale; cartoon|f
+baśń|fairy tale|f
+legenda|legend|f
+kryminał|crime novel|m
+biografia|biography|f
+autor|author|m
+czytelnik|reader|m
+rozdział|chapter|m
+strona|page; side|f
+okładka|cover|f
+tytuł|title|m
+wydawnictwo|publisher|n
+media|media|pl
+prasa|press|f
+gazeta|newspaper|f
+dziennik|daily paper; diary|m
+tygodnik|weekly magazine|m
+miesięcznik|monthly magazine|m
+czasopismo|magazine, journal|n
+artykuł|article|m
+nagłówek|headline|m
+wywiad|interview|m
+reportaż|report, feature|m
+felieton|column (in a paper)|m
+wiadomości|the news|pl
+informacja|information|f
+telewizja|television|f
+kanał|channel; canal|m
+program telewizyjny|TV programme|m
+transmisja|broadcast|f
+radio|radio|n
+stacja radiowa|radio station|f
+audycja|radio programme|f
+słuchacz|listener|m
+prezenter|presenter|m
+spiker|announcer|m
+reklama telewizyjna|TV advert|f
+sport|sport|m
+piłka nożna|football|f
+siatkówka|volleyball|f
+koszykówka|basketball|f
+piłka ręczna|handball|f
+tenis|tennis|m
+tenis stołowy|table tennis|m
+pływanie|swimming|n
+bieganie|running|n
+kolarstwo|cycling|n
+narciarstwo|skiing|n
+łyżwiarstwo|ice skating|n
+hokej|ice hockey|m
+boks|boxing|m
+judo|judo|n
+lekkoatletyka|athletics|f
+gimnastyka|gymnastics|f
+joga|yoga|f
+fitness|fitness|m
+siłownia|gym|f
+basen|swimming pool|m
+stadion|stadium|m
+boisko|pitch, playing field|n
+kort|court (tennis)|m
+hala sportowa|sports hall|f
+lodowisko|ice rink|n
+mecz|match|m
+turniej|tournament|m
+mistrzostwa|championships|pl
+olimpiada|Olympics|f
+zawody|competition|pl
+wyścig|race|m
+drużyna|team|f
+zawodnik|player, competitor|m
+kibic|fan, supporter|m
+bramkarz|goalkeeper|m
+gol|goal|m
+wynik meczu|score|m
+remis|draw|m
+zwycięstwo|victory|n
+porażka|defeat|f
+zwycięzca|winner|m
+mistrz|champion; master|m
+medal|medal|m
+puchar|cup, trophy|m
+rekord|record|m
+trening|training|m
+kontuzja|injury|f
+piłka|ball|f
+rakieta|racket; rocket|f
+narty|skis|pl
+łyżwy|skates|pl
+hobby|hobby|n
+zainteresowanie|interest|n
+czas wolny|free time|m
+rozrywka|entertainment|f
+gra|game|f
+gra planszowa|board game|f
+gra komputerowa|computer game|f
+szachy|chess|pl
+karty|playing cards|pl
+puzzle|jigsaw puzzle|pl
+krzyżówka|crossword|f
+kolekcja|collection|f
+wędkarstwo|angling|n
+ogrodnictwo|gardening|n
+majsterkowanie|DIY|n
+taniec|dance|m
+spacer|walk|m
+wycieczka rowerowa|bike ride|f
+piknik|picnic|m
+ognisko|campfire|n
+grill|barbecue|m
+impreza|party|f
+przyjęcie|reception, party|n
+urodziny|birthday|pl
+imieniny|name day|pl
+rocznica|anniversary|f
+ślub|wedding (ceremony)|m
+wesele|wedding reception|n
+chrzciny|christening|pl
+pogrzeb|funeral|m
+święto|holiday, feast|n
+Boże Narodzenie|Christmas|n
+Wigilia|Christmas Eve|f
+Wielkanoc|Easter|f
+Nowy Rok|New Year|m
+Sylwester|New Year's Eve|m
+Wszystkich Świętych|All Saints' Day|n
+dzień wolny|day off|m
+prezent|present|m
+życzenia|wishes|pl
+tradycja|tradition|f
+zwyczaj|custom|m
+obyczaj|custom, manners|m
+wiara|faith|f
+Bóg|God|m
+modlitwa|prayer|f
+msza|mass|f
+grzech|sin|m
+dusza|soul|f
+uczucie|feeling|n
+emocja|emotion|f
+miłość|love|f
+nienawiść|hatred|f
+przyjaźń|friendship|f
+radość|joy|f
+szczęście|happiness; luck|n
+smutek|sadness|m
+żal|regret, sorrow|m
+złość|anger|f
+gniew|anger|m
+strach|fear|m
+lęk|anxiety|m
+wstyd|shame|m
+duma|pride|f
+zazdrość|jealousy|f
+nadzieja|hope|f
+rozpacz|despair|f
+tęsknota|longing|f
+zaufanie|trust|n
+szacunek|respect|m
+cierpliwość|patience|f
+odwaga|courage|f
+samotność|loneliness|f
+spokój|peace, calm|m
+nuda|boredom|f
+ciekawość|curiosity|f
+zdziwienie|surprise|n
+niespodzianka|surprise (gift, event)|f
+rozczarowanie|disappointment|n
+zadowolenie|satisfaction|n
+humor|humour; mood|m
+nastrój|mood|m
+charakter|character, nature|m
+osobowość|personality|f
+zaleta|advantage, virtue|f
+wada|flaw, disadvantage|f
+cecha|feature, trait|f
+zachowanie|behaviour|n
+nawyk|habit|m
+przyzwyczajenie|habit|n
+myśl|thought|f
+pomysł|idea|m
+idea|idea, concept|f
+opinia|opinion|f
+zdanie|opinion; sentence|n
+pogląd|view|m
+przekonanie|belief, conviction|n
+argument|argument|m
+racja|point, right (to be right)|f
+prawda|truth|f
+kłamstwo|lie|n
+wątpliwość|doubt|f
+pewność|certainty|f
+decyzja|decision|f
+wybór|choice|m
+możliwość|possibility|f
+szansa|chance|f
+ryzyko|risk|n
+problem|problem|m
+kłopot|trouble|m
+trudność|difficulty|f
+rozwiązanie|solution|n
+sukces|success|m
+cel|aim, goal|m
+plan|plan|m
+marzenie|dream (wish)|n
+sen|sleep; dream|m
+wspomnienie|memory, recollection|n
+pamięć|memory|f
+doświadczenie życiowe|life experience|n
+wiedza|knowledge|f
+mądrość|wisdom|f
+inteligencja|intelligence|f
+talent|talent|m
+zdolność|ability|f
+wysiłek|effort|m
+praca zespołowa|teamwork|f
+pomoc|help|f
+rada|advice; council|f
+wsparcie|support|n
+współpraca|cooperation|f
+porozumienie|agreement, understanding|n
+kompromis|compromise|m
+kłótnia|quarrel|f
+spór|dispute|m
+nieporozumienie|misunderstanding|n
+przeprosiny|apology|pl
+podziękowanie|thanks|n
+zaproszenie|invitation|n
+propozycja|proposal, offer|f
+prośba|request|f
+obietnica|promise|f
+ostrzeżenie|warning|n
+groźba|threat|f
+żart|joke|m
+plotka|gossip, rumour|f
+tajemnica|secret; mystery|f
+życie|life|n
+śmierć|death|f
+narodziny|birth|pl
+dzieciństwo|childhood|n
+młodość|youth|f
+dorosłość|adulthood|f
+starość|old age|f
+pokolenie|generation|n
+przyszłość|future|f
+przeszłość|past|f
+teraźniejszość|present (time)|f
+czas|time; tense|m
+chwila|moment|f
+moment|moment|m
+okres|period|m
+epoka|era|f
+wiek|century; age|m
+stulecie|century|n
+tysiąclecie|millennium|n
+dekada|decade|f
+rok szkolny|school year|m
+kwartał|quarter (of a year)|m
+doba|24 hours, day|f
+godzina szczytu|rush hour|f
+sekunda|second|f
+minuta|minute|f
+kwadrans|quarter of an hour|m
+północ|midnight; north|f
+południe|noon; south|n
+świt|dawn|m
+zmierzch|dusk|m
+przedpołudnie|late morning|n
+popołudnie|afternoon|n
+weekend|weekend|m
+dzień roboczy|working day|m
+święto państwowe|public holiday|n
+data|date|f
+termin ważności|expiry date|m
+`;
+/* Dictionary, part 7: more verbs, everyday things, function words, numbers and useful phrases. */
+const DICT_7 = `
+bronić|to defend|v impf · pf obronić
+budzić podziw|to inspire admiration|v impf · pf wzbudzić podziw
+cierpieć|to suffer|v impf · pf ucierpieć
+cofać|to reverse; to withdraw|v impf · pf cofnąć
+cytować z pamięci|to quote from memory|v impf
+częstować|to offer (food)|v impf · pf poczęstować
+dawać radę|to manage, cope|v impf · pf dać radę
+dbać o zdrowie|to look after one's health|v impf · pf zadbać o zdrowie
+dmuchać|to blow|v impf · pf dmuchnąć
+dokładać|to add (more)|v impf · pf dołożyć
+dopisywać|to add (in writing)|v impf · pf dopisać
+dorabiać|to earn extra|v impf · pf dorobić
+dostosowywać|to adapt|v impf · pf dostosować
+doświadczać|to experience|v impf · pf doświadczyć
+dowozić|to deliver (by vehicle)|v impf · pf dowieźć
+dręczyć|to torment|v impf · pf zadręczyć
+dzielić się|to share|v impf · pf podzielić się
+gnić|to rot|v impf · pf zgnić
+goić się|to heal|v impf · pf zagoić się
+gonić|to chase|v impf · pf dogonić
+gromadzić|to gather, accumulate|v impf · pf zgromadzić
+gwizdać|to whistle|v impf · pf gwizdnąć
+hodować|to breed, grow|v impf · pf wyhodować
+ignorować|to ignore|v impf · pf zignorować
+irytować|to irritate|v impf · pf zirytować
+kłaść się|to lie down|v impf · pf położyć się
+kojarzyć|to associate; to ring a bell|v impf · pf skojarzyć
+komentować|to comment|v impf · pf skomentować
+kontaktować się|to get in touch|v impf · pf skontaktować się
+kontynuować|to continue|v
+krytykować|to criticise|v impf · pf skrytykować
+kręcić|to turn, twist; to film|v impf · pf pokręcić
+kupować na raty|to buy in instalments|v impf · pf kupić na raty
+lać|to pour|v impf · pf nalać
+lekceważyć|to disregard|v impf · pf zlekceważyć
+lizać|to lick|v impf · pf polizać
+marnować|to waste|v impf · pf zmarnować
+męczyć|to tire; to torment|v impf · pf zmęczyć
+mieszkać na stałe|to live permanently|v impf
+mrugać|to blink, wink|v impf · pf mrugnąć
+nadużywać|to abuse, overuse|v impf · pf nadużyć
+nalewać|to pour (into)|v impf · pf nalać
+namawiać|to persuade|v impf · pf namówić
+naśladować|to imitate|v impf
+nawiązywać|to establish; to refer to|v impf · pf nawiązać
+nazywać|to name, call|v impf · pf nazwać
+niepokoić się|to be anxious|v impf · pf zaniepokoić się
+obawiać się o|to be worried about|v impf
+obcinać włosy|to cut hair|v impf · pf obciąć włosy
+obejmować|to embrace; to include|v impf · pf objąć
+obniżać|to lower|v impf · pf obniżyć
+obracać|to rotate|v impf · pf obrócić
+obsługiwać|to serve; to operate|v impf · pf obsłużyć
+odbywać się|to take place|v impf · pf odbyć się
+odchodzić|to walk away; to leave|v impf · pf odejść
+odczuwać|to feel|v impf · pf odczuć
+oddawać|to give back|v impf · pf oddać
+odkładać|to put aside; to postpone|v impf · pf odłożyć
+odmawiać|to refuse|v impf · pf odmówić
+odnosić sukces|to be successful|v impf · pf odnieść sukces
+odprowadzać|to walk someone (home)|v impf · pf odprowadzić
+odróżniać|to distinguish|v impf · pf odróżnić
+odwracać|to turn round|v impf · pf odwrócić
+ograniczać się|to limit oneself|v impf · pf ograniczyć się
+okłamywać|to lie to|v impf · pf okłamać
+omawiać|to discuss|v impf · pf omówić
+opalać się|to sunbathe|v impf · pf opalić się
+opuszczać|to leave; to miss|v impf · pf opuścić
+osiedlać się|to settle|v impf · pf osiedlić się
+otrzymywać|to receive|v impf · pf otrzymać
+pachnieć|to smell (nice)|v impf · pf zapachnieć
+padać deszcz|to rain|v impf
+pilnować|to guard, watch|v impf · pf przypilnować
+plotkować|to gossip|v impf · pf poplotkować
+pobudzać|to stimulate|v impf · pf pobudzić
+pochodzić z|to come from|v impf
+poddawać się|to give up|v impf · pf poddać się
+podejrzewać|to suspect|v impf
+podkreślać|to underline, stress|v impf · pf podkreślić
+podnosić się|to get up; to rise|v impf · pf podnieść się
+podsumowywać|to sum up|v impf · pf podsumować
+pojawiać się|to appear|v impf · pf pojawić się
+pokonywać|to overcome; to defeat|v impf · pf pokonać
+polegać na|to rely on; to consist in|v impf
+popierać|to support|v impf · pf poprzeć
+popełniać|to commit (a mistake)|v impf · pf popełnić
+porządkować|to put in order|v impf · pf uporządkować
+posiadać|to own|v impf
+poszerzać|to widen|v impf · pf poszerzyć
+powodować|to cause|v impf · pf spowodować
+powstawać|to arise, be created|v impf · pf powstać
+pozbywać się|to get rid of|v impf · pf pozbyć się
+pozwalać|to allow|v impf · pf pozwolić
+pozostawać|to remain|v impf · pf pozostać
+przeczuwać|to have a hunch|v impf · pf przeczuć
+przedłużać|to extend|v impf · pf przedłużyć
+przedstawiać|to present; to introduce|v impf · pf przedstawić
+przedstawiać się|to introduce oneself|v impf · pf przedstawić się
+przekazywać|to pass on|v impf · pf przekazać
+przekraczać|to cross; to exceed|v impf · pf przekroczyć
+przeprowadzać się|to move (house)|v impf · pf przeprowadzić się
+przerywać|to interrupt|v impf · pf przerwać
+przesadzać|to exaggerate|v impf · pf przesadzić
+przestawać|to stop (doing)|v impf · pf przestać
+przesuwać|to move, shift|v impf · pf przesunąć
+przewidywać|to predict|v impf · pf przewidzieć
+przeżywać|to experience; to survive|v impf · pf przeżyć
+przyciągać|to attract|v impf · pf przyciągnąć
+przydawać się|to be useful|v impf · pf przydać się
+przygotowywać się|to get ready|v impf · pf przygotować się
+przyglądać się|to look closely|v impf · pf przyjrzeć się
+przykrywać|to cover|v impf · pf przykryć
+przypisywać|to attribute|v impf · pf przypisać
+przyspieszać|to speed up|v impf · pf przyspieszyć
+puszczać|to let go|v impf · pf puścić
+reagować|to react|v impf · pf zareagować
+rodzić|to give birth|v impf · pf urodzić
+rozbijać|to break, smash|v impf · pf rozbić
+rozdawać|to hand out|v impf · pf rozdać
+rozglądać się|to look around|v impf · pf rozejrzeć się
+rozpakowywać|to unpack|v impf · pf rozpakować
+rozpoczynać|to start|v impf · pf rozpocząć
+rozpoznawać|to recognise|v impf · pf rozpoznać
+rozstawać się|to part, split up|v impf · pf rozstać się
+rozwiązywać problem|to solve a problem|v impf · pf rozwiązać problem
+ruszać|to move; to set off|v impf · pf ruszyć
+ruszać się|to move (oneself)|v impf · pf ruszyć się
+rzucać palenie|to quit smoking|v impf · pf rzucić palenie
+skracać|to shorten|v impf · pf skrócić
+skupiać się|to concentrate|v impf · pf skupić się
+słabnąć|to weaken|v impf · pf osłabnąć
+spełniać się|to come true|v impf · pf spełnić się
+spodziewać się dziecka|to be expecting a baby|v impf
+spoglądać|to glance|v impf · pf spojrzeć
+sprawiać|to cause, give (pleasure)|v impf · pf sprawić
+sprzeciwiać się|to oppose|v impf · pf sprzeciwić się
+stosować|to apply, use|v impf · pf zastosować
+straszyć|to frighten|v impf · pf przestraszyć
+szkodzić|to harm|v impf · pf zaszkodzić
+szykować|to prepare|v impf · pf przyszykować
+ściskać|to squeeze|v impf · pf ścisnąć
+śledzić|to follow, track|v impf
+tłumić|to suppress|v impf · pf stłumić
+trwać|to last|v impf · pf potrwać
+twierdzić, że|to claim that|v impf
+tworzyć się|to form|v impf · pf utworzyć się
+ubierać|to dress (someone)|v impf · pf ubrać
+ucinać|to cut off|v impf · pf uciąć
+uczęszczać|to attend|v impf
+udowadniać|to prove|v impf · pf udowodnić
+układać|to arrange|v impf · pf ułożyć
+ukrywać|to hide|v impf · pf ukryć
+ulepszać|to improve|v impf · pf ulepszyć
+umożliwiać|to enable|v impf · pf umożliwić
+unikać|to avoid|v impf · pf uniknąć
+upewniać się|to make sure|v impf · pf upewnić się
+upierać się|to insist|v impf · pf uprzeć się
+uspokajać się|to calm down|v impf · pf uspokoić się
+ustalać|to establish, agree|v impf · pf ustalić
+uszkadzać|to damage|v impf · pf uszkodzić
+utrzymywać|to maintain; to support|v impf · pf utrzymać
+uzależniać się|to become addicted|v impf · pf uzależnić się
+uzasadniać|to justify|v impf · pf uzasadnić
+uzupełniać|to complete, fill in|v impf · pf uzupełnić
+uznawać|to recognise, consider|v impf · pf uznać
+wahać się|to hesitate|v impf · pf zawahać się
+walczyć|to fight|v impf · pf zawalczyć
+wierzyć w|to believe in|v impf · pf uwierzyć w
+wkładać|to put in|v impf · pf włożyć
+wpadać|to fall in; to drop by|v impf · pf wpaść
+wpływać|to influence|v impf · pf wpłynąć
+wprowadzać|to introduce; to bring in|v impf · pf wprowadzić
+wspierać|to support|v impf · pf wesprzeć
+wstrzymywać|to hold back, suspend|v impf · pf wstrzymać
+wybuchać|to explode, break out|v impf · pf wybuchnąć
+wychowywać|to bring up|v impf · pf wychować
+wyciągać|to pull out|v impf · pf wyciągnąć
+wydarzać się|to happen|v impf · pf wydarzyć się
+wygrywać los|to win the lottery|v impf · pf wygrać los
+wykonywać|to perform, carry out|v impf · pf wykonać
+wykorzystywać|to use, exploit|v impf · pf wykorzystać
+wymyślać|to make up, invent|v impf · pf wymyślić
+wynosić|to amount to; to carry out|v impf · pf wynieść
+wypadać|to fall out; to be appropriate|v impf · pf wypaść
+wypożyczać|to rent; to borrow (from a library)|v impf · pf wypożyczyć
+wyrażać|to express|v impf · pf wyrazić
+wyróżniać się|to stand out|v impf · pf wyróżnić się
+wystarczać|to be enough|v impf · pf wystarczyć
+wysyłać list|to post a letter|v impf · pf wysłać list
+wyszukiwać|to search for|v impf · pf wyszukać
+wytrzymywać|to endure|v impf · pf wytrzymać
+wywoływać|to cause; to call out|v impf · pf wywołać
+zabierać|to take (away, along)|v impf · pf zabrać
+zachęcać|to encourage|v impf · pf zachęcić
+zachowywać się|to behave|v impf · pf zachować się
+zachwycać się|to be delighted|v impf · pf zachwycić się
+zajmować|to occupy, take up|v impf · pf zająć
+zakazywać|to forbid|v impf · pf zakazać
+załatwiać|to sort out, arrange|v impf · pf załatwić
+zamieniać|to swap|v impf · pf zamienić
+zanikać|to disappear, fade|v impf · pf zaniknąć
+zapalać światło|to turn on the light|v impf · pf zapalić światło
+zarażać|to infect|v impf · pf zarazić
+zasługiwać|to deserve|v impf · pf zasłużyć
+zastępować|to replace|v impf · pf zastąpić
+zatrzymywać|to stop, detain|v impf · pf zatrzymać
+zawierać|to contain|v impf
+zbliżać się|to approach|v impf · pf zbliżyć się
+zdarzać się|to happen|v impf · pf zdarzyć się
+zdobywać|to win, conquer, gain|v impf · pf zdobyć
+zgłaszać się|to report (to), come forward|v impf · pf zgłosić się
+zmniejszać|to reduce|v impf · pf zmniejszyć
+zmuszać|to force|v impf · pf zmusić
+zniechęcać się|to get discouraged|v impf · pf zniechęcić się
+znikać|to disappear|v impf · pf zniknąć
+zwiększać|to increase|v impf · pf zwiększyć
+zwracać uwagę|to pay attention|v impf · pf zwrócić uwagę
+żądać|to demand|v impf · pf zażądać
+przedmiot codziennego użytku|everyday object|m
+rzecz|thing|f
+sprawa|matter, case|f
+kwestia|issue, question|f
+sytuacja|situation|f
+przypadek|case; chance|m
+wydarzenie|event|n
+zdarzenie|incident|n
+zjawisko|phenomenon|n
+powód|reason|m
+przyczyna|cause|f
+skutek|effect|m
+wpływ|influence|m
+znaczenie|meaning; importance|n
+sens|sense, point|m
+cel podróży|destination|m
+sposób|way, manner|m
+rodzaj|kind, type; gender|m
+typ|type|m
+wersja|version|f
+część|part|f
+całość|the whole|f
+reszta|the rest|f
+brak|lack|m
+nadmiar|excess|m
+ilość|quantity|f
+jakość|quality|f
+poziom|level|m
+stopień trudności|degree of difficulty|m
+środek|middle; means|m
+koniec|end|m
+początek|beginning|m
+kierunek|direction|m
+strona świata|cardinal direction|f
+miejsce|place; seat|n
+przestrzeń|space|f
+otoczenie|surroundings|n
+okolica|area, neighbourhood|f
+teren|area, grounds|m
+obszar|area, region|m
+region|region|m
+województwo|province (voivodeship)|n
+powiat|county|m
+gmina|municipality|f
+adres|address|m
+numer|number|m
+nazwa|name (of a thing)|f
+nazwisko|surname|n
+znak|sign, mark|m
+symbol|symbol|m
+napis|sign, inscription|m
+etykieta|label; etiquette|f
+instrukcja|instructions|f
+lista|list|f
+spis|list, register|m
+kolejność|order (sequence)|f
+porządek|order, tidiness|m
+bałagan|mess|m
+hałas|noise|m
+cisza|silence|f
+dźwięk|sound|m
+światło|light|n
+cień|shadow, shade|m
+zapach|smell|m
+smród|stink|m
+widok|view|m
+krajobraz miejski|cityscape|m
+pudło|large box|n
+skrzynka|box, crate|f
+koszyk na zakupy|shopping basket|m
+klucz do drzwi|door key|m
+breloczek|key ring|m
+okulary przeciwsłoneczne|sunglasses|pl
+portmonetka|purse|f
+wizytówka|business card|f
+długopis żelowy|gel pen|m
+notatka|note|f
+notatnik|notebook|m
+książeczka|booklet|f
+ulotka|leaflet|f
+plakat|poster|m
+obrazek|picture (small)|m
+zdjęcie|photo|n
+ramka|frame|f
+wazon|vase|m
+doniczka|flowerpot|f
+zegar|clock|m
+budzik|alarm clock|m
+radio samochodowe|car radio|n
+pilot|remote control; pilot|m
+telewizor|television set|m
+odtwarzacz|player|m
+gra wideo|video game|f
+zabawka|toy|f
+lalka|doll|f
+miś|teddy bear|m
+klocki|building blocks|pl
+piłka plażowa|beach ball|f
+huśtawka|swing|f
+zjeżdżalnia|slide|f
+piaskownica|sandpit|f
+plac zabaw|playground|m
+wózek dziecięcy|pram|m
+fotelik|child car seat|m
+smoczek|dummy, pacifier|m
+butelka dla dziecka|baby bottle|f
+kołyska|cradle|f
+bez|without|prep +G
+dla|for|prep +G
+do|to; into; until|prep +G
+od|from; since|prep +G
+z|from (+G); with (+I)|prep
+u|at (someone's place)|prep +G
+koło|near, by|prep +G
+obok|next to|prep +G
+blisko|close to|prep +G
+naprzeciwko|opposite|prep +G
+wokół|around|prep +G
+podczas|during|prep +G
+według|according to|prep +G
+zamiast|instead of|prep +G
+oprócz|apart from|prep +G
+dzięki|thanks to|prep +D
+przeciw|against|prep +D
+wbrew|contrary to|prep +D
+mimo|despite|prep +G
+na|on; at; to|prep +A/+L
+w|in; at|prep +L/+A
+o|about; at (time)|prep +L/+A
+po|after; along; for (to fetch)|prep +L/+A
+przy|by, at, near|prep +L
+przez|through; across; for (time)|prep +A
+za|behind; for; in (time)|prep +I/+A
+przed|in front of; before|prep +I
+nad|above; by (a lake, the sea)|prep +I
+pod|under|prep +I/+A
+między|between|prep +I
+poza|outside, beyond|prep +I
+i|and|conj
+a|and, whereas|conj
+ale|but|conj
+lecz|but (formal)|conj
+albo|or|conj
+lub|or|conj
+czy|or (in questions); whether|conj
+ani|nor|conj
+bo|because|conj
+ponieważ|because|conj
+więc|so|conj
+dlatego|that's why|conj
+dlatego że|because|conj
+żeby|in order to; that|conj
+aby|in order to|conj
+że|that|conj
+jeśli|if|conj
+jeżeli|if|conj
+gdyby|if (would)|conj
+chociaż|although|conj
+choć|although|conj
+mimo że|even though|conj
+kiedy|when|conj
+gdy|when|conj
+zanim|before|conj
+dopóki|as long as|conj
+odkąd|since|conj
+jak tylko|as soon as|conj
+natomiast|whereas, however|conj
+jednak|however|conj
+zatem|therefore|conj
+czyli|that is, i.e.|conj
+jakby|as if|conj
+niż|than|conj
+ja|I|pron
+ty|you (singular)|pron
+on|he|pron
+ona|she|pron
+ono|it|pron
+my|we|pron
+wy|you (plural)|pron
+oni|they (with men)|pron
+one|they (no men)|pron
+siebie|oneself|pron
+się|oneself (reflexive)|pron
+ktoś|someone|pron
+nikt|nobody|pron
+coś|something|pron
+nic|nothing|pron
+każdy|every, each|pron
+wszyscy|everybody|pron
+wszystko|everything|pron
+żaden|none, no|pron
+inny|other, different|pron
+ten sam|the same|pron
+taki|such|pron
+jaki|what kind|pron
+który|which, who|pron
+czyj|whose|pron
+ile|how much, how many|pron
+tyle|so much, so many|pron
+kilka|several|num
+kilkanaście|a dozen or so|num
+kilkadziesiąt|several dozen|num
+parę|a couple, a few|num
+oba|both|num
+obie|both (f)|num
+oboje|both (mixed)|num
+zero|zero|num
+sto|one hundred|num
+dwieście|two hundred|num
+trzysta|three hundred|num
+czterysta|four hundred|num
+pięćset|five hundred|num
+sześćset|six hundred|num
+siedemset|seven hundred|num
+osiemset|eight hundred|num
+dziewięćset|nine hundred|num
+tysiąc|one thousand|num
+dwa tysiące|two thousand|num
+pięć tysięcy|five thousand|num
+milion|million|num
+miliard|billion|num
+pół|half|num
+półtora|one and a half|num
+dwa razy|twice|phr
+raz|once; one time|m
+pierwszy raz|for the first time|phr
+ostatni raz|for the last time|phr
+setny|hundredth|num
+tysięczny|thousandth|num
+podwójny|double|adj
+pojedynczy|single|adj
+Na zdrowie!|Cheers! / Bless you!|phr
+Smacznego!|Enjoy your meal!|phr
+Wszystkiego najlepszego!|All the best!|phr
+Sto lat!|Happy birthday! (lit. a hundred years)|phr
+Powodzenia!|Good luck!|phr
+Gratulacje!|Congratulations!|phr
+Szczęśliwej podróży!|Have a good trip!|phr
+Dobranoc!|Good night!|phr
+Do zobaczenia!|See you!|phr
+Do jutra!|See you tomorrow!|phr
+Na razie!|Bye for now!|phr
+Trzymaj się!|Take care!|phr
+Nie ma za co.|You're welcome.|phr
+Nie szkodzi.|It doesn't matter.|phr
+Bez problemu.|No problem.|phr
+Jasne!|Sure!|phr
+Oczywiście!|Of course!|phr
+Zgoda!|Agreed!|phr
+Racja.|That's right.|phr
+Może być.|That'll do.|phr
+Nie ma mowy!|No way!|phr
+Szkoda!|What a pity!|phr
+Brawo!|Well done!|phr
+Uwaga!|Watch out!|phr
+Pomocy!|Help!|phr
+Ratunku!|Help! (emergency)|phr
+Pali się!|Fire!|phr
+Zaraz wracam.|I'll be right back.|phr
+Chwileczkę.|Just a moment.|phr
+Nie mam pojęcia.|I have no idea.|phr
+Wszystko jedno.|It's all the same to me.|phr
+Co słychać?|What's new?|phr
+Co u ciebie?|How are things with you?|phr
+Jak leci?|How's it going?|phr
+Co się stało?|What happened?|phr
+Ile to kosztuje?|How much is it?|phr
+Która godzina?|What time is it?|phr
+Gdzie jest toaleta?|Where is the toilet?|phr
+Czy mówi pan po angielsku?|Do you speak English? (to a man)|phr
+Czy mówi pani po angielsku?|Do you speak English? (to a woman)|phr
+Mów wolniej, proszę.|Speak more slowly, please.|phr
+Jak to się mówi po polsku?|How do you say that in Polish?|phr
+Co to znaczy?|What does it mean?|phr
+Zgubiłem się.|I'm lost. (man)|phr
+Zgubiłam się.|I'm lost. (woman)|phr
+Potrzebuję lekarza.|I need a doctor.|phr
+Źle się czuję.|I feel unwell.|phr
+Mam alergię na…|I'm allergic to…|phr
+Proszę wezwać karetkę!|Please call an ambulance!|phr
+Mam pytanie.|I have a question.|phr
+Mam prośbę.|I have a favour to ask.|phr
+Nie przeszkadzaj!|Don't disturb me!|phr
+Daj spokój!|Come on! / Leave it!|phr
+Nie przejmuj się.|Don't worry about it.|phr
+Głowa do góry!|Chin up!|phr
+To nie moja sprawa.|It's none of my business.|phr
+Mam to gdzieś.|I couldn't care less.|phr
+Kto pyta, nie błądzi.|Ask and you won't get lost (proverb).|phr
+Lepiej późno niż wcale.|Better late than never.|phr
+Nie ma tego złego, co by na dobre nie wyszło.|Every cloud has a silver lining.|phr
+`;
+/* Dictionary, part 8: more everyday nouns, adjectives and ideas. */
+const DICT_8 = `
+bezpieczeństwo pracy|health and safety at work|n
+bieda|poverty|f
+bogactwo|wealth|n
+dobrobyt|prosperity|m
+głód|hunger|m
+pragnienie|thirst; desire|n
+zmartwienie|worry|n
+ulga|relief|f
+tęsknota za domem|homesickness|f
+wdzięczność|gratitude|f
+uprzejmość|kindness, politeness|f
+grzeczność|politeness|f
+lenistwo|laziness|n
+pracowitość|diligence|f
+uczciwość|honesty|f
+szczerość|sincerity|f
+hojność|generosity|f
+skromność|modesty|f
+zarozumiałość|conceit|f
+upór|stubbornness|m
+pewność siebie|self-confidence|f
+nieśmiałość|shyness|f
+samodzielność|independence|f
+niezależność|independence|f
+odpowiedzialność|responsibility|f
+punktualność|punctuality|f
+dokładność|accuracy|f
+szybkość|speed|f
+siła|strength, force|f
+słabość|weakness|f
+zdolności językowe|language skills|pl
+znajomość|knowledge (of); acquaintance|f
+obecność|presence; attendance|f
+nieobecność|absence|f
+rzeczywistość|reality|f
+codzienność|everyday life|f
+różnorodność|diversity|f
+podobieństwo|similarity|n
+różnica zdań|disagreement|f
+zależność|dependence|f
+potrzeba|need|f
+wymaganie|requirement|n
+warunek|condition|m
+zasada|rule, principle|f
+wyjątek|exception|m
+przykład|example|m
+dowód osobisty|ID card|m
+legitymacja studencka|student ID|f
+karta pobytu|residence card|f
+zameldowanie na pobyt stały|permanent residence registration|n
+numer PESEL|Polish ID number (PESEL)|m
+NIP|tax ID number|m
+akt urodzenia|birth certificate|m
+akt małżeństwa|marriage certificate|m
+pełnomocnictwo|power of attorney|n
+tłumaczenie przysięgłe|certified translation|n
+okienko|counter window; small window|n
+numerek|queue ticket|m
+sprawa urzędowa|official matter|f
+opłata skarbowa|stamp duty|f
+deklaracja|declaration|f
+zeznanie podatkowe|tax return|n
+ankieta|questionnaire, survey|f
+skrzynka odbiorcza|inbox|f
+spam|spam|m
+hasło dostępu|access password|n
+konto bankowe|bank account|n
+numer konta|account number|m
+saldo|balance|n
+wyciąg|bank statement; ski lift|m
+lokata|savings deposit|f
+rata|instalment|f
+hipoteka|mortgage|f
+kredyt hipoteczny|mortgage loan|m
+odsetki karne|late payment interest|pl
+zaliczka|advance payment|f
+napiwek|tip|m
+rachunek|bill; account|m
+cennik|price list|m
+kurs walut|exchange rate|m
+bilet okresowy|season ticket|m
+karta miejska|city transport card|f
+przystanek na żądanie|request stop|m
+pętla|terminus; loop|f
+zajezdnia|depot|f
+kierunek jazdy|direction of travel|m
+miejsce siedzące|seat|n
+miejsce stojące|standing room|n
+ulica jednokierunkowa|one-way street|f
+pierwszeństwo|right of way|n
+pieszy|pedestrian|m
+rowerzysta|cyclist|m
+ścieżka rowerowa|cycle path|f
+kask|helmet|m
+kamizelka odblaskowa|high-visibility vest|f
+apteczka|first-aid kit|f
+gaśnica|fire extinguisher|f
+trójkąt ostrzegawczy|warning triangle|m
+koło zapasowe|spare wheel|n
+wycieraczka|windscreen wiper; doormat|f
+lusterko|mirror (small, car)|n
+reflektor|headlight|m
+kierunkowskaz|indicator|m
+pasy|zebra crossing (colloquial)|pl
+fotoradar|speed camera|m
+kolejka górska|mountain railway; roller coaster|f
+wyciąg narciarski|ski lift|m
+schronisko górskie|mountain hostel|n
+szlak turystyczny|hiking trail|m
+plecak turystyczny|rucksack|m
+śpiwór|sleeping bag|m
+karimata|sleeping mat|f
+kompas|compass|m
+lornetka|binoculars|f
+krem z filtrem|sunscreen|m
+kostium kąpielowy|swimsuit|m
+ręcznik plażowy|beach towel|m
+leżak|deckchair|m
+parasol plażowy|beach umbrella|m
+molo|pier|n
+port|port, harbour|m
+latarnia morska|lighthouse|f
+rejs|cruise, voyage|m
+kajak|kayak|m
+rower wodny|pedalo|m
+spływ kajakowy|kayak trip|m
+agroturystyka|farm stay holidays|f
+uzdrowisko|spa town|n
+sanatorium|sanatorium|n
+basen kryty|indoor pool|m
+aquapark|water park|m
+zoo|zoo|n
+ogród botaniczny|botanical garden|m
+skansen|open-air museum|m
+planetarium|planetarium|n
+wesołe miasteczko|funfair|n
+cyrk|circus|m
+kino plenerowe|open-air cinema|n
+bilet wstępu|entrance ticket|m
+wstęp wolny|free admission|m
+godziny otwarcia|opening hours|pl
+nieczynne|closed|adj
+czynne|open|adj
+przerwa|break|f
+przerwa obiadowa|lunch break|f
+stołówka|canteen|f
+bufet|buffet; snack bar|m
+bar mleczny|milk bar (cheap canteen)|m
+pizzeria|pizzeria|f
+kawiarnia|café|f
+herbaciarnia|tea room|f
+winiarnia|wine bar|f
+pub|pub|m
+lokal|venue; premises|m
+karta dań|menu|f
+danie dnia|dish of the day|n
+zestaw|set meal; set|m
+dodatki|side dishes|pl
+surówka|raw vegetable salad|f
+mizeria|cucumber salad|f
+sałatka|salad|f
+placki ziemniaczane|potato pancakes|pl
+kluski|dumplings, noodles|pl
+kopytka|potato dumplings|pl
+krokiet|croquette|m
+zapiekanka|baked open sandwich; casserole|f
+naleśniki z serem|pancakes with curd cheese|pl
+racuchy|apple fritters|pl
+kisiel|fruit jelly drink|m
+budyń|pudding|m
+galaretka|jelly|f
+makowiec|poppy-seed cake|m
+piernik|gingerbread|m
+faworki|angel wings (fried pastry)|pl
+obwarzanek|Kraków bagel|m
+oscypek|smoked sheep's cheese|m
+grzane wino|mulled wine|n
+woda z kranu|tap water|f
+kostka lodu|ice cube|f
+słomka|straw|f
+wykałaczka|toothpick|f
+resztki|leftovers|pl
+przepis kulinarny|recipe|m
+książka kucharska|cookbook|f
+fartuch|apron|m
+rękawica kuchenna|oven glove|f
+waga kuchenna|kitchen scales|f
+miarka|measuring cup|f
+foremka|baking tin|f
+wałek|rolling pin; roller|m
+trzepaczka|whisk|f
+sitko|sieve|n
+pokrywka|lid|f
+rondel|saucepan|m
+brytfanna|roasting tin|f
+termos|thermos flask|m
+pojemnik|container|m
+folia aluminiowa|tin foil|f
+papier do pieczenia|baking paper|m
+ściereczka|tea towel|f
+zmywak|scouring pad|m
+detergent|detergent|m
+płyn do mycia|cleaning liquid|m
+odplamiacz|stain remover|m
+płyn do płukania|fabric softener|m
+wieszak|hanger; coat rack|m
+suszarka na pranie|clothes horse|f
+klamerka|clothes peg|f
+kosz na pranie|laundry basket|m
+skrzynka z narzędziami|toolbox|f
+piwnica na wino|wine cellar|f
+spiżarnia|pantry|f
+schowek|storage space; glove box|m
+pralnia w bloku|communal laundry|f
+zsyp|rubbish chute|m
+administracja budynku|building management|f
+spółdzielnia mieszkaniowa|housing cooperative|f
+wspólnota mieszkaniowa|residents' association|f
+dozorca|caretaker|m
+portier|porter|m
+ochroniarz|security guard|m
+monitoring|CCTV|m
+alarm|alarm|m
+sejf|safe|m
+zamek do drzwi|door lock|m
+wizjer|peephole|m
+wycieraczka pod drzwiami|doormat|f
+skrzynka na listy|letterbox|f
+ogrzewanie centralne|central heating|n
+ogrzewanie podłogowe|underfloor heating|n
+termostat|thermostat|m
+licznik|meter|m
+bezpiecznik|fuse|m
+rura|pipe|f
+przeciek|leak|m
+zalanie|flooding (of a flat)|n
+pleśń|mould|f
+wilgoć|damp|f
+izolacja|insulation|f
+okno plastikowe|uPVC window|n
+balkon francuski|Juliet balcony|m
+ogródek działkowy|allotment|m
+działka|plot of land; allotment|f
+grządka|flower bed, vegetable bed|f
+szklarnia|greenhouse|f
+konewka|watering can|f
+wąż ogrodowy|garden hose|m
+kosiarka|lawnmower|f
+grabie|rake|pl
+łopata|shovel|f
+taczka|wheelbarrow|f
+kompost|compost|m
+nawóz|fertiliser|m
+trawnik|lawn|m
+żywopłot|hedge|m
+altana|summerhouse, gazebo|f
+huśtawka ogrodowa|garden swing|f
+budka dla ptaków|birdhouse|f
+buda|kennel|f
+smycz|lead, leash|f
+obroża|collar (for a dog)|f
+kaganiec|muzzle|m
+karma|pet food|f
+kuweta|litter tray|f
+klatka|cage|f
+akwarium|aquarium|n
+weterynaria|veterinary medicine|f
+schronisko dla zwierząt|animal shelter|n
+adopcja|adoption|f
+gatunek|species; kind|m
+rasa|breed; race|f
+samiec|male (animal)|m
+samica|female (animal)|f
+młode|young (of an animal)|n
+stado|herd, flock|n
+ul|beehive|m
+pajęczyna|cobweb|f
+kokon|cocoon|m
+gąsienica|caterpillar|f
+konik polny|grasshopper|m
+świerszcz|cricket|m
+chrabąszcz|cockchafer|m
+ważka|dragonfly|f
+trzmiel|bumblebee|m
+szerszeń|hornet|m
+pchła|flea|f
+wesz|louse|f
+kuna|marten|f
+ryś|lynx|m
+żbik|wildcat|m
+foka|seal|f
+delfin|dolphin|m
+wieloryb|whale|m
+rekin|shark|m
+meduza|jellyfish|f
+krab|crab|m
+ośmiornica|octopus|f
+pingwin|penguin|m
+kangur|kangaroo|m
+koala|koala|f
+panda|panda|f
+hipopotam|hippopotamus|m
+nosorożec|rhinoceros|m
+gepard|cheetah|m
+lampart|leopard|m
+goryl|gorilla|m
+struś|ostrich|m
+flaming|flamingo|m
+paw|peacock|m
+żuraw|crane|m
+czapla|heron|f
+jastrząb|hawk|m
+sokół|falcon|m
+sęp|vulture|m
+kos|blackbird|m
+szpak|starling|m
+sikorka|tit (bird)|f
+słowik|nightingale|m
+skowronek|lark|m
+gil|bullfinch|m
+dzięcioł zielony|green woodpecker|m
+zając szarak|brown hare|m
+kłos|ear (of grain)|m
+słoma|straw|f
+siano|hay|n
+żniwa|harvest|pl
+plon|crop, yield|m
+sad|orchard|m
+winnica|vineyard|f
+pszczelarz|beekeeper|m
+gospodarstwo|farm; household|n
+stodoła|barn|f
+obora|cowshed|f
+chlew|pigsty|m
+kurnik|henhouse|m
+traktor|tractor|m
+kombajn|combine harvester|m
+pług|plough|m
+narzędzia rolnicze|farm tools|pl
+wiatrak|windmill|m
+młyn|mill|m
+elektrownia|power station|f
+elektrownia wiatrowa|wind farm|f
+panel słoneczny|solar panel|m
+energia odnawialna|renewable energy|f
+węgiel|coal; carbon|m
+ropa naftowa|crude oil|f
+gaz ziemny|natural gas|m
+paliwo|fuel|n
+odpady|waste|pl
+segregacja śmieci|waste sorting|f
+pojemnik na szkło|glass bin|m
+butelka zwrotna|returnable bottle|f
+torba wielokrotnego użytku|reusable bag|f
+zmiany klimatu|climate change|pl
+globalne ocieplenie|global warming|n
+efekt cieplarniany|greenhouse effect|m
+dziura ozonowa|ozone hole|f
+wycinka lasów|deforestation|f
+gatunek zagrożony|endangered species|m
+klęska żywiołowa|natural disaster|f
+trzęsienie ziemi|earthquake|n
+lawina|avalanche|f
+pożar|fire (disaster)|m
+tornado|tornado|n
+tsunami|tsunami|n
+ewakuacja|evacuation|f
+ratunek|rescue|m
+schron|shelter|m
+pierwsza pomoc|first aid|f
+sztuczne oddychanie|artificial respiration|n
+numer alarmowy|emergency number|m
+straż graniczna|border guard|f
+celnik|customs officer|m
+kontrola paszportowa|passport control|f
+strefa Schengen|Schengen area|f
+wymiana studencka|student exchange|f
+Erasmus|Erasmus|m
+kurs językowy|language course|m
+szkoła językowa|language school|f
+lektor|language teacher|m
+poziom zaawansowania|level (of language)|m
+początkujący|beginner|m
+średniozaawansowany|intermediate|adj
+zaawansowany|advanced|adj
+certyfikat|certificate|m
+egzamin certyfikatowy|certificate exam|m
+część pisemna|written part|f
+część ustna|oral part|f
+rozumienie ze słuchu|listening comprehension|n
+rozumienie tekstów pisanych|reading comprehension|n
+poprawność gramatyczna|grammatical accuracy|f
+pisanie|writing|n
+mówienie|speaking|n
+czytanie|reading|n
+słuchanie|listening|n
+wymowa|pronunciation|f
+akcent|accent; stress|m
+intonacja|intonation|f
+pisownia|spelling|f
+ortografia|orthography|f
+interpunkcja|punctuation|f
+przecinek|comma|m
+kropka|full stop; dot|f
+znak zapytania|question mark|m
+wykrzyknik|exclamation mark|m
+cudzysłów|quotation marks|m
+nawias|bracket|m
+myślnik|dash|m
+litera|letter (of the alphabet)|f
+wielka litera|capital letter|f
+mała litera|small letter|f
+samogłoska|vowel|f
+spółgłoska|consonant|f
+sylaba|syllable|f
+wyraz|word|m
+zdanie złożone|complex sentence|n
+gramatyka|grammar|f
+słownictwo|vocabulary|n
+rzeczownik|noun|m
+czasownik|verb|m
+przymiotnik|adjective|m
+przysłówek|adverb|m
+zaimek|pronoun|m
+liczebnik|numeral|m
+przyimek|preposition|m
+spójnik|conjunction|m
+partykuła|particle|f
+przypadek gramatyczny|grammatical case|m
+liczba pojedyncza|singular|f
+liczba mnoga|plural|f
+rodzaj męski|masculine|m
+rodzaj żeński|feminine|m
+rodzaj nijaki|neuter|m
+aspekt dokonany|perfective aspect|m
+aspekt niedokonany|imperfective aspect|m
+tryb rozkazujący|imperative|m
+tryb przypuszczający|conditional|m
+czas teraźniejszy|present tense|m
+czas przeszły|past tense|m
+czas przyszły|future tense|m
+bezokolicznik|infinitive|m
+końcówka|ending|f
+odmiana|declension, conjugation|f
+synonim|synonym|m
+antonim|antonym|m
+skrót|abbreviation; shortcut|m
+zdrobnienie|diminutive|n
+przysłowie|proverb|n
+idiom|idiom|m
+dialekt|dialect|m
+gwara|local dialect|f
+slang|slang|m
+język ojczysty|mother tongue|m
+język obcy|foreign language|m
+dwujęzyczny|bilingual|adj
+tłumaczenie|translation|n
+przekład|translation (literary)|m
+znaczenie dosłowne|literal meaning|n
+`;
+const DICT_RAW = [DICT_1, DICT_2, DICT_3, DICT_4, DICT_5, DICT_6, DICT_7, DICT_8].join("\n");
 NEW_UNITS_A1.concat(NEW_UNITS_A2, NEW_UNITS_A1B, NEW_UNITS_A2B).forEach(u => { UNITS[u.id] = u; });
 /* word lists are only ever appended to, so existing card ids stay the same */
 for (const [id, words] of Object.entries(EXTRA_VOCAB)) UNITS[id].vocab.push(...words);
@@ -4526,6 +8715,9 @@ REF.push(...NEW_REF, ...NEW_REF_2, {
   note: "Polish words that look like Serbian ones but mean something else.",
   tables: [{ head: ["polski", "means", "srpski", "which in Polish is"], pl: [0], rows: FALSE_FRIENDS }]
 });
+/* full 7-case tables go right after the plural endings; the letter-change list replaces the old softening table */
+REF.splice(REF.findIndex(r => r.id === "nouns-pl") + 1, 0, ...CASE_REF);
+Object.assign(REF.find(r => r.id === "softening"), LETTER_CHANGES);
 for (const [rid, ids] of Object.entries(REF_EXTRA_UNITS)) { const r = REF.find(x => x.id === rid); if (r) r.units.push(...ids); }
 const COURSE = COURSE_ORDER.map(id => UNITS[id]);   /* units in course order */
 const POS = {};                                      /* unit id -> position in the course */
@@ -4674,6 +8866,7 @@ function mergeSrs(local, incoming) {
     const o = m.cards[id];
     if (!o || (c.t || 0) > (o.t || 0) || (!c.t && !o.t && (c.n || 0) > (o.n || 0))) m.cards[id] = c;
   }
+  reindexSrs(m);
   return m;
 }
 
@@ -4823,7 +9016,7 @@ function readLocal() {
   try {
     const p = localStorage.getItem("pc.progress"), s = localStorage.getItem("pc.srs");
     if (p) S.progress = normalizeProgress(JSON.parse(p));
-    if (s) S.srs = Object.assign(DEFAULT_SRS(), JSON.parse(s));
+    if (s) { S.srs = Object.assign(DEFAULT_SRS(), JSON.parse(s)); if (reindexSrs(S.srs)) writeLocal("srs"); }
   } catch (e) {}
 }
 function writeLocal(key) { try { localStorage.setItem("pc." + key, JSON.stringify(S[key])); } catch (e) {} }
@@ -4983,7 +9176,7 @@ function dueCards() { const t = TODAY(); return introduced().filter(c => S.srs.c
 function newCardsForToday() {
   const u = curUnit();
   const t0 = new Date(); t0.setHours(0, 0, 0, 0);
-  const today = Object.values(S.srs.cards).filter(c => c.f >= t0.getTime()).length;
+  const today = Object.values(S.srs.cards).filter(c => c.f >= t0.getTime() && !c.x).length;
   const left = Math.max(0, (+settings().newPerDay || 10) - today);
   /* words of units waiting for their check-back test first (they're needed to finish those units),
      then this unit's words, then words added to units already finished */
@@ -5120,6 +9313,7 @@ function render() {
   else if (view === "cards") renderCards();
   else if (view === "course") renderCourse();
   else if (view === "unit") renderUnitPage();
+  else if (view === "dict") renderDict();
   else if (view === "tables") renderTables();
   else if (view === "progress") renderProgress();
   else if (view === "exam") renderExam();
@@ -5335,7 +9529,7 @@ function runReview(body, opts = {}) {
   if (opts.practiceAll) queue = pick(introduced(), 20).map(c => ({ c, isNew: false }));
   else if (session && session.revisit) queue = shuffle(allCards().filter(c => c.unit === session.opts.unit)).map(c => ({ c, isNew: !S.srs.cards[c.id] }));
   else {
-    const due = dueCards().slice(0, 60).map(c => ({ c, isNew: false }));
+    const due = dueCards().slice(0, 60).map(c => ({ c, isNew: !S.srs.cards[c.id].n }));
     const fresh = opts.noNew ? [] : newCardsForToday().map(c => ({ c, isNew: true }));
     queue = fresh.concat(shuffle(due));
   }
@@ -5658,7 +9852,7 @@ function showDialogue(holder, dl, body) {
   const nw = dl.newWords && dl.newWords.length ? h("div", { class: "stack" },
     h("h3", null, "New words in this dialogue"),
     h("div", { class: "row" }, dl.newWords.map(w => {
-      const id = "c-" + strip(norm(w.pl)).replace(/[^a-z0-9]+/g, "_").slice(0, 40);
+      const id = customIdFor(w.pl);
       const have = !!(S.srs.custom[id]);
       const b = h("button", { class: "btn sm" + (have ? " ghost" : ""), disabled: have, onclick: () => {
         S.srs.custom[id] = { pl: w.pl, en: w.en, unit: dl.unit ?? curUnit().id };
@@ -6116,8 +10310,180 @@ const PL_COLLATOR = new Intl.Collator("pl", { sensitivity: "base" });
 const PL_ALPHABET = "AĄBCĆDEĘFGHIJKLŁMNŃOÓPQRSŚTUVWXYZŹŻ".split("");
 const firstLetter = t => { const m = String(t).toLocaleLowerCase("pl").match(/\p{L}/u); return m ? m[0].toLocaleUpperCase("pl") : "#"; };
 const sortKey = t => String(t).replace(/^[^\p{L}]+/u, "");
+/* ================================================================
+   DICTIONARY (Słownik): every course word plus about 2,800 more.
+   A course word keeps its lesson card id (unit-index). Any other word becomes
+   a custom card ("c-" + slug, the same ids as words saved from dialogues).
+   Cards you add yourself carry x: 1, so they don't use up a lesson's new words.
+   If a lesson teaches a word you added (now, or in a later content update),
+   reindexSrs moves the card to the lesson's id and keeps its review history.
+   ================================================================ */
+const dictKey = t => norm(String(t).replace(/…/g, " "));
+const customIdFor = pl => "c-" + strip(norm(pl)).replace(/[^a-z0-9]+/g, "_").slice(0, 40);
+let _courseIdx = null;
+/* every form a lesson teaches → its card id (first lesson wins); "wnuk / wnuczka" also indexes each half */
+function courseIndex() {
+  if (_courseIdx) return _courseIdx;
+  const m = new Map();
+  COURSE.forEach(u => u.vocab.forEach((v, i) => {
+    [v[0], ...String(v[0]).split(" / ")].forEach(f => { const k = dictKey(f); if (k && !m.has(k)) m.set(k, u.id + "-" + i); });
+  }));
+  return (_courseIdx = m);
+}
+function reindexSrs(srs) {
+  let moved = 0;
+  if (!srs || !srs.custom) return 0;
+  for (const [id, c] of Object.entries(srs.custom)) {
+    const cid = c && courseIndex().get(dictKey(c.pl));
+    if (!cid) continue;
+    const a = srs.cards[id], b = srs.cards[cid];
+    if (a && (!b || (a.t || 0) > (b.t || 0))) srs.cards[cid] = a;
+    delete srs.cards[id]; delete srs.custom[id]; moved++;
+  }
+  return moved;
+}
+/* "My words": cards you added that no lesson you've reached teaches yet */
+function isMine(c) {
+  const st = S.srs.cards[c.id];
+  if (c.custom) return c.unit < 0 && !!(st && st.x);
+  return c.unit >= 0 && !reached(c.unit);
+}
+const GRAM = { m: "masc.", f: "fem.", n: "neut.", pl: "plural noun", adj: "adj.", adv: "adv.", prep: "prep.", conj: "conj.", pron: "pron.", num: "number", part: "particle", phr: "phrase", v: "verb" };
+const CASE_ABBR = { G: "genitive", D: "dative", A: "accusative", I: "instrumental", L: "locative" };
+function fmtGram(g) {
+  if (!g) return "";
+  const [head, ...rest] = String(g).split(" ");
+  let tail = rest.join(" ")
+    .replace(/^impf · pf (.+)$/, "imperfective · perfective: $1").replace(/^pf · impf (.+)$/, "perfective · imperfective: $1")
+    .replace(/^impf$/, "imperfective").replace(/^pf$/, "perfective")
+    .replace(/\+([GDAIL])(?:\/\+([GDAIL]))?/, (_, a, b) => "+ " + CASE_ABBR[a] + (b ? " / " + CASE_ABBR[b] : ""));
+  return [GRAM[head] || head, tail].filter(Boolean).join(" · ");
+}
+let _dict = null;
+function dictionary() {
+  if (_dict) return _dict;
+  const out = [], byKey = new Map(), byId = new Map(), slugs = new Map();
+  COURSE.forEach(u => u.vocab.forEach((v, i) => {
+    const k = dictKey(v[0]);
+    if (byKey.has(k)) return;  /* a word taught twice: keep its first lesson */
+    const e = { pl: v[0], en: v[1], note: v[2] || "", g: "", id: u.id + "-" + i, unit: u.id };
+    byKey.set(k, e); byId.set(e.id, e); out.push(e);
+  }));
+  for (const line of DICT_RAW.split("\n")) {
+    const [pl, en, g = ""] = line.split("|");
+    if (!pl || !en) continue;
+    const k = dictKey(pl), cid = courseIndex().get(k);
+    const hit = byKey.get(k) || (cid && byId.get(cid));
+    if (hit) {
+      if (!hit.g && (hit.id ? dictKey(hit.pl) === k : true)) hit.g = g;
+      if (!hit.id && !hit.en.split("; ").includes(en)) hit.en += "; " + en;
+      continue;
+    }
+    /* two different words with the same slug (kat, kąt) get different card ids */
+    let id = customIdFor(pl);
+    if (slugs.has(id)) id += "-" + slugs.size;
+    slugs.set(id, pl);
+    const e = { pl, en, note: "", g, id: null, cid: id, unit: -1 };
+    byKey.set(k, e); out.push(e);
+  }
+  for (const e of out) {
+    const partner = (String(e.g).match(/\b(?:pf|impf) ([^·]+)$/) || [])[1] || "";
+    e.letter = firstLetter(e.pl);
+    e.sp = strip(dictKey(e.pl + " " + partner));
+    e.se = norm(e.en);
+  }
+  out.sort((a, b) => PL_COLLATOR.compare(sortKey(a.pl), sortKey(b.pl)) || PL_COLLATOR.compare(a.pl, b.pl));
+  return (_dict = out);
+}
+const dictCardId = e => e.id || e.cid;
+function inDeck(e) { const id = dictCardId(e); return !!S.srs.cards[id] && (!!e.id || !!S.srs.custom[id]); }
+function addFromDict(e) {
+  const id = dictCardId(e);
+  if (!e.id) S.srs.custom[id] = { pl: e.pl, en: e.en, note: fmtGram(e.g), unit: -1 };
+  if (!S.srs.cards[id]) S.srs.cards[id] = { b: 0, due: TODAY(), l: 0, n: 0, t: Date.now(), x: 1 };
+  persist("srs");
+}
+function removeFromDict(e) {
+  const id = dictCardId(e), st = S.srs.cards[id];
+  if (!st || !st.x || st.n) return false;  /* only an unreviewed card you added can be taken back */
+  delete S.srs.cards[id];
+  if (!e.id) delete S.srs.custom[id];
+  persist("srs");
+  return true;
+}
+/* best matches first: the exact word (or one of its forms), an exact English meaning,
+   then words starting with the search, then anything containing it */
+function dictSearch(q) {
+  const s = strip(dictKey(q)), en = norm(q), bare = en.replace(/^to /, "");
+  if (!s) return [];
+  const score = e => {
+    const forms = [e.pl, ...String(e.pl).split(" / ")].map(f => strip(dictKey(f)));
+    if (forms.includes(s)) return 0;
+    if (e.sp.split(" ").includes(s) && e.g && /\bpf\b/.test(e.g) && e.sp.endsWith(s)) return 0.5;  /* the aspect partner */
+    const glosses = e.en.toLowerCase().replace(/\([^)]*\)/g, "").split(/[;,/]/).map(x => norm(x).replace(/^to /, ""));
+    if (glosses.includes(bare)) return 0.6;
+    if (forms.some(f => f.startsWith(s))) return 1;
+    if (e.se.split(" ").includes(bare)) return 2;
+    if (e.sp.includes(s)) return 2.5;
+    if (e.se.includes(en)) return 3;
+    return 9;
+  };
+  return dictionary().map(e => [score(e), e]).filter(([n]) => n < 9).sort((a, b) => a[0] - b[0] || a[1].pl.length - b[1].pl.length).map(([, e]) => e);
+}
+let dictLetter = "A", dictFilter = "all";
+function renderDict() {
+  const all = dictionary();
+  const q = h("input", { type: "text", id: "dict-search", placeholder: "Search in Polish or English (no Polish letters needed)", "aria-label": "Search the dictionary", autocomplete: "off" });
+  const letters = h("div", { class: "row letter-bar", role: "group", "aria-label": "Jump to a letter" });
+  const filterBar = h("div", { class: "seg", role: "group", "aria-label": "Show" });
+  const list = h("div", { class: "dict-list" });
+  const count = h("span", { class: "small muted", "aria-live": "polite" });
+  let limit = 120;
+  const present = new Set(all.map(e => e.letter));
+  const statusOf = e => inDeck(e) ? "deck" : e.id ? "course" : "extra";
+  function row(e) {
+    const act = h("div", { class: "act" });
+    const drawAct = () => {
+      const st = S.srs.cards[dictCardId(e)];
+      act.replaceChildren(inDeck(e)
+        ? (st && st.x && !st.n
+          ? h("button", { class: "btn ghost sm", title: "Not reviewed yet: tap to take it out again", onclick: () => { removeFromDict(e); drawAct(); } }, "✓ Added")
+          : h("span", { class: "chip green" }, "✓ In flashcards"))
+        : h("button", { class: "btn sm", "aria-label": "Add " + e.pl + " to flashcards", onclick: () => { addFromDict(e); drawAct(); } }, "+ Add"));
+    };
+    drawAct();
+    const where = e.id ? h("span", { class: "chip" + (reached(e.unit) ? " green" : ""), title: reached(e.unit) ? "Taught in a unit you've reached" : "A lesson teaches this later" }, "unit " + unitNo(e.unit)) : null;
+    return h("div", { class: "dict-row" },
+      h("div", { class: "hw" }, h("b", { class: "pl" }, e.pl), sayBtn(e.pl) || "", e.g ? h("span", { class: "gram" }, fmtGram(e.g)) : null, where),
+      h("div", { class: "gl" }, e.en, e.note ? h("span", { class: "muted" }, " · " + e.note) : null),
+      act);
+  }
+  function draw() {
+    const s = q.value.trim();
+    let rows = s ? dictSearch(s) : all.filter(e => e.letter === dictLetter);
+    if (dictFilter !== "all") rows = rows.filter(e => dictFilter === "deck" ? statusOf(e) === "deck" : !!e.id);
+    letters.hidden = !!s;
+    letters.replaceChildren(...PL_ALPHABET.filter(L => present.has(L)).map(L =>
+      h("button", { class: "letter" + (dictLetter === L ? " on" : ""), "aria-pressed": dictLetter === L ? "true" : "false", onclick: () => { dictLetter = L; limit = 120; draw(); } }, L)));
+    filterBar.replaceChildren(...[["all", "All words"], ["course", "Course words"], ["deck", "In my flashcards"]].map(([k, l]) =>
+      h("button", { class: dictFilter === k ? "on" : "", "aria-pressed": dictFilter === k ? "true" : "false", onclick: () => { dictFilter = k; limit = 120; draw(); } }, l)));
+    count.textContent = s ? `${rows.length} match${rows.length === 1 ? "" : "es"}` : `${rows.length} word${rows.length === 1 ? "" : "s"} under ${dictLetter}`;
+    const shown = rows.slice(0, limit);
+    list.replaceChildren(...(shown.length ? shown.map(row) : [h("p", { class: "muted" }, s ? "No words match. Try the English meaning, or fewer letters." : "No words here yet.")]),
+      ...(rows.length > limit ? [h("button", { class: "btn ghost sm", style: "justify-self:start;margin-top:10px", onclick: () => { limit += 200; draw(); } }, `Show more (${rows.length - limit} left)`)] : []));
+  }
+  let tmr = null;
+  q.addEventListener("input", () => { clearTimeout(tmr); tmr = setTimeout(() => { limit = 120; draw(); }, 120); });
+  const nCourse = all.filter(e => e.id).length;
+  app.replaceChildren(h("div", { class: "stack-lg" },
+    h("div", { class: "stack" }, h("span", { class: "eyebrow" }, "Polish – English"), h("h1", { class: "pl" }, "Słownik")),
+    h("p", { class: "muted" }, `${all.length.toLocaleString("en")} words: the ${nCourse.toLocaleString("en")} the course teaches, and ${(all.length - nCourse).toLocaleString("en")} more everyday words. Tap + Add to put a word in your flashcards. It goes into “My words”, and if a lesson teaches it later, it moves into that lesson and keeps its progress.`),
+    h("div", { class: "stack" }, q, h("div", { class: "spread" }, filterBar, count), letters),
+    list));
+  draw();
+}
 let deckSort = "az", deckLetter = null;
-try { deckSort = localStorage.getItem("pc.deckSort") === "unit" ? "unit" : "az"; } catch (e) {}
+try { const v = localStorage.getItem("pc.deckSort"); deckSort = v === "unit" || v === "mine" ? v : "az"; } catch (e) {}
 function renderCards() {
   const intro = introduced();
   const due = dueCards();
@@ -6129,19 +10495,21 @@ function renderCards() {
   const letters = h("div", { class: "row letter-bar", role: "group", "aria-label": "Filter by first letter" });
   const sortBar = h("div", { class: "seg", role: "group", "aria-label": "Sort words" });
   const unitRank = c => c.unit >= 0 && c.unit in POS ? POS[c.unit] : COURSE.length;
+  const mine = intro.filter(isMine);
   const drawList = () => {
     const s = strip(norm(q.value));
-    let rows = intro.filter(c => !s || strip(norm(c.pl)).includes(s) || norm(c.en).includes(s));
+    let rows = (deckSort === "mine" ? mine : deckSort === "unit" ? intro.filter(c => !isMine(c)) : intro)
+      .filter(c => !s || strip(norm(c.pl)).includes(s) || norm(c.en).includes(s));
     const present = new Set(rows.map(c => firstLetter(c.pl)));
     if (deckLetter && !present.has(deckLetter)) deckLetter = null;
-    sortBar.replaceChildren(...[["az", "A–Z"], ["unit", "By course"]].map(([k, l]) =>
+    sortBar.replaceChildren(...[["az", "A–Z"], ["unit", "By lesson"], ["mine", `My words (${mine.length})`]].map(([k, l]) =>
       h("button", { class: deckSort === k ? "on" : "", "aria-pressed": deckSort === k ? "true" : "false", onclick: () => { deckSort = k; try { localStorage.setItem("pc.deckSort", k); } catch (e) {} drawList(); } }, l)));
-    letters.hidden = deckSort !== "az" || !rows.length;
+    letters.hidden = deckSort === "unit" || !rows.length;
     letters.replaceChildren(h("button", { class: "letter" + (deckLetter ? "" : " on"), onclick: () => { deckLetter = null; drawList(); } }, "All"),
       ...PL_ALPHABET.filter(L => present.has(L)).concat(present.has("#") ? ["#"] : []).map(L =>
         h("button", { class: "letter" + (deckLetter === L ? " on" : ""), "aria-pressed": deckLetter === L ? "true" : "false", onclick: () => { deckLetter = deckLetter === L ? null : L; drawList(); } }, L)));
     let groupOf;
-    if (deckSort === "az") {
+    if (deckSort !== "unit") {
       if (deckLetter) rows = rows.filter(c => firstLetter(c.pl) === deckLetter);
       rows.sort((a, b) => PL_COLLATOR.compare(sortKey(a.pl), sortKey(b.pl)));
       groupOf = c => firstLetter(c.pl);
@@ -6150,14 +10518,19 @@ function renderCards() {
       groupOf = c => c.unit >= 0 && UNITS[c.unit] ? `Unit ${unitNo(c.unit)} · ${UNITS[c.unit].pl}` : "Other words you added";
     }
     count.textContent = rows.length === intro.length ? "" : `Showing ${rows.length} of ${intro.length}`;
+    const tip = deckSort === "mine" ? h("p", { class: "small muted", style: "grid-column:1/-1;margin:0 0 4px" }, mine.length
+      ? "Words you added from the dictionary or the word of the day. When a lesson teaches one of them, it moves into that lesson's list and keeps its progress."
+      : "No words of your own yet. Add any word from the Słownik (dictionary) tab and it will show up here.") : null;
     const out = []; let last = null;
+    if (tip) out.push(tip);
     for (const c of rows) {
       const g = groupOf(c);
       if (g !== last) { out.push(h("h4", { class: "grp" }, g)); last = g; }
+      const later = deckSort === "mine" && c.unit >= 0 && !c.custom ? h("span", { class: "chip", title: "A lesson teaches this word later. It moves there when you reach it." }, "unit " + unitNo(c.unit)) : null;
       out.push(h("div", null, h("span", { class: "row", style: "gap:6px;flex-wrap:nowrap;min-width:0" }, h("span", { class: "pl" }, c.pl), sayBtn(c.pl)),
-        h("span", { class: "muted small", style: "text-align:right" }, c.en, " ", h("span", { class: "chip", title: "Memory box (0 = new, 6 = long-term)" }, String(S.srs.cards[c.id].b)))));
+        h("span", { class: "muted small", style: "text-align:right" }, c.en, " ", ...[later, h("span", { class: "chip", title: "Memory box (0 = new, 6 = long-term)" }, String(S.srs.cards[c.id].b))].filter(Boolean))));
     }
-    list.replaceChildren(...(out.length ? out : [h("p", { class: "muted small grp" }, "No words match.")]));
+    list.replaceChildren(...(rows.length || tip ? out : [h("p", { class: "muted small grp" }, "No words match.")]));
   };
   q.addEventListener("input", drawList);
   app.replaceChildren(h("div", { class: "stack-lg" },
@@ -6231,8 +10604,14 @@ function tableEl(t) {
   return h("div", { class: "tbl-wrap" }, h("table", null,
     t.caption ? h("caption", null, t.caption) : null,
     t.head.some(x => x) ? h("thead", null, h("tr", null, t.head.map(x => h("th", null, x)))) : null,
-    h("tbody", null, t.rows.map(r => h("tr", null, r.map((c, i) => h("td", { class: plCols.includes(i) && r[0] !== "meaning" ? "pl" : "" }, c)))))));
+    h("tbody", null, t.rows.map(r => h("tr", null, r.map((c, i) => h("td", { class: plCols.includes(i) && r[0] !== "meaning" ? "pl" : "" }, ...markChanges(c))))))));
 }
+/* "rę[c]e" → rę<mark>c</mark>e: letters that change in the stem */
+function markChanges(c) {
+  if (typeof c !== "string" || !c.includes("[")) return [c];
+  return c.split(/\[([^\]]*)\]/).map((x, i) => i % 2 ? h("mark", { class: "chg" }, x) : x).filter(x => x !== "");
+}
+const unmark = s => String(s).replace(/[\[\]]/g, "");
 const relatedRefs = uid => REF.filter(r => r.units.includes(uid));
 function refBody(sec) {
   return h("div", { class: "stack" },
@@ -6752,7 +11131,7 @@ function renderTables() {
   const q = h("input", { type: "text", id: "ref-search", placeholder: "Search: jestem, genitive, idę, dobrego…", "aria-label": "Search the tables" });
   const list = h("div", { class: "stack-lg" });
   const index = h("div", { class: "row ref-index" });
-  const secText = REF.map(r => strip(norm([r.pl, r.en, r.note || "", r.foot || "", ...r.tables.flatMap(t => [t.caption || "", ...t.head, ...t.rows.flat()])].join(" "))));
+  const secText = REF.map(r => strip(norm([r.pl, r.en, r.note || "", r.foot || "", ...r.tables.flatMap(t => [t.caption || "", ...t.head, ...t.rows.flat()])].map(unmark).join(" "))));
   function draw() {
     const s = strip(norm(q.value));
     const shown = REF.filter((r, i) => !s || secText[i].includes(s));
@@ -7086,7 +11465,7 @@ function wordOfDay() {
 function dailyCards() {
   const w = wordOfDay(), note = CULTURE[TODAY() % CULTURE.length];
   const known = w && S.srs.cards[w.id];
-  const add = w && !known ? h("button", { class: "btn ghost sm", onclick: e => { S.srs.cards[w.id] = { b: 0, due: TODAY() + 1, l: 0, n: 0, t: Date.now(), f: Date.now() }; persist("srs"); e.currentTarget.replaceWith(h("span", { class: "chip green" }, "✓ in your flashcards")); } }, "+ Add to flashcards") : null;
+  const add = w && !known ? h("button", { class: "btn ghost sm", onclick: e => { S.srs.cards[w.id] = { b: 0, due: TODAY(), l: 0, n: 0, t: Date.now(), x: 1 }; persist("srs"); e.currentTarget.replaceWith(h("span", { class: "chip green" }, "✓ in your flashcards")); } }, "+ Add to flashcards") : null;
   return h("div", { class: "daily" },
     w ? h("section", { class: "card stack" }, h("span", { class: "eyebrow" }, "Słowo dnia · word of the day"),
       h("div", { class: "row", style: "flex-wrap:nowrap" }, h("div", { class: "pl", style: "font-size:1.5rem;min-width:0;overflow-wrap:anywhere" }, w.pl), sayBtn(w.pl)),
