@@ -140,7 +140,7 @@ piec|to bake|v impf · pf upiec
 pisać|to write|v impf · pf napisać
 płacić|to pay|v impf · pf zapłacić
 płakać|to cry|v impf · pf zapłakać
-pływać|to swim|v impf · pf popływać
+pływać|to swim (often, about)|v impf
 płynąć|to swim, sail (now)|v impf · pf popłynąć
 pobierać|to download; to collect|v impf · pf pobrać
 pocieszać|to comfort|v impf · pf pocieszyć
@@ -214,7 +214,7 @@ spóźniać się|to be late|v impf · pf spóźnić się
 sprawdzać|to check|v impf · pf sprawdzić
 sprzątać|to tidy up|v impf · pf posprzątać
 sprzedawać|to sell|v impf · pf sprzedać
-stać|to stand|v impf · pf postać
+stać|to stand, be standing|v impf
 starać się|to try, make an effort|v impf · pf postarać się
 stawać się|to become|v impf · pf stać się
 stawiać|to put (standing)|v impf · pf postawić
@@ -231,7 +231,7 @@ tańczyć|to dance|v impf · pf zatańczyć
 tęsknić|to miss (someone)|v impf · pf zatęsknić
 tłumaczyć|to translate; to explain|v impf · pf przetłumaczyć
 trafiać|to hit (a target); to find the way|v impf · pf trafić
-trenować|to train|v impf · pf potrenować
+trenować|to train|v impf
 trzymać|to hold|v impf · pf potrzymać
 tracić|to lose; to waste|v impf · pf stracić
 tworzyć|to create|v impf · pf stworzyć
@@ -306,13 +306,13 @@ zostawiać|to leave (behind)|v impf · pf zostawić
 wychodzić za mąż|to marry (of a woman)|v impf · pf wyjść za mąż
 brać ślub|to get married|v impf · pf wziąć ślub
 rozwodzić się|to get divorced|v impf · pf rozwieść się
-chrapać|to snore|v impf · pf zachrapać
+chrapać|to snore|v impf
 ziewać|to yawn|v impf · pf ziewnąć
 oddychać|to breathe|v impf · pf odetchnąć
 pocić się|to sweat|v impf · pf spocić się
 drżeć|to tremble|v impf · pf zadrżeć
 krwawić|to bleed|v impf
-kaszleć|to cough|v impf · pf zakaszleć
+kaszleć|to cough|v impf
 wymiotować|to vomit|v impf · pf zwymiotować
 mdleć|to faint|v impf · pf zemdleć
 zdrowieć|to get better|v impf · pf wyzdrowieć
@@ -356,8 +356,8 @@ karmić|to feed|v impf · pf nakarmić
 wyprowadzać psa|to walk the dog|v impf · pf wyprowadzić psa
 głaskać|to stroke, pet|v impf · pf pogłaskać
 gryźć|to bite|v impf · pf ugryźć
-szczekać|to bark|v impf · pf zaszczekać
-miauczeć|to miaow|v impf · pf zamiauczeć
+szczekać|to bark|v impf
+miauczeć|to miaow|v impf
 kroić chleb|to slice bread|v impf · pf pokroić chleb
 smażyć|to fry|v impf · pf usmażyć
 dusić|to stew; to strangle|v impf · pf udusić
@@ -434,8 +434,8 @@ drożeć|to get more expensive|v impf · pf podrożeć
 tanieć|to get cheaper|v impf · pf potanieć
 ocieplać się|to get warmer|v impf · pf ocieplić się
 ochładzać się|to get colder|v impf · pf ochłodzić się
-padać|to fall; to rain|v impf · pf spaść
-wiać|to blow|v impf · pf zawiać
+padać|to fall; to rain, snow|v impf · pf paść
+wiać|to blow (of the wind)|v impf
 świecić|to shine|v impf · pf zaświecić
 grzmieć|to thunder|v impf · pf zagrzmieć
 marznąć|to freeze; to be cold|v impf · pf zmarznąć

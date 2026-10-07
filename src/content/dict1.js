@@ -93,7 +93,8 @@ skaleczenie|cut (on the skin)|n
 siniak|bruise|m
 oparzenie|burn (injury)|n
 złamanie|fracture|n
-zwichnięcie|sprain|n
+zwichnięcie|dislocation (of a joint)|n
+skręcenie|sprain (e.g. an ankle)|n
 blizna|scar|f
 wysypka|rash|f
 swędzenie|itching|n
@@ -190,7 +191,7 @@ zupa|soup|f
 deser|dessert|m
 pieczywo|bread products|n
 bułka|bread roll|f
-rogal|croissant|m
+rogal|crescent roll, croissant|m
 chleb razowy|wholemeal bread|m
 kromka|slice of bread|f
 tost|toast|m

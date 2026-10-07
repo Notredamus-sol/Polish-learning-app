@@ -243,7 +243,7 @@ smog|smog|m
 ekologia|ecology|f
 ochrona środowiska|environmental protection|f
 energia|energy|f
-klimatyczny|climate-related|adj
+klimatyczny|climatic; atmospheric, cosy|adj
 Polska|Poland|f
 Serbia|Serbia|f
 Chorwacja|Croatia|f

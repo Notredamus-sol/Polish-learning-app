@@ -29,13 +29,13 @@ kłaść się|to lie down|v impf · pf położyć się
 kojarzyć|to associate; to ring a bell|v impf · pf skojarzyć
 komentować|to comment|v impf · pf skomentować
 kontaktować się|to get in touch|v impf · pf skontaktować się
-kontynuować|to continue|v
+kontynuować|to continue|v impf
 krytykować|to criticise|v impf · pf skrytykować
 kręcić|to turn, twist; to film|v impf · pf pokręcić
 kupować na raty|to buy in instalments|v impf · pf kupić na raty
 lać|to pour|v impf · pf nalać
 lekceważyć|to disregard|v impf · pf zlekceważyć
-lizać|to lick|v impf · pf polizać
+lizać|to lick|v impf
 marnować|to waste|v impf · pf zmarnować
 męczyć|to tire; to torment|v impf · pf zmęczyć
 mieszkać na stałe|to live permanently|v impf

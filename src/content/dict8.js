@@ -141,8 +141,8 @@ kino plenerowe|open-air cinema|n
 bilet wstępu|entrance ticket|m
 wstęp wolny|free admission|m
 godziny otwarcia|opening hours|pl
-nieczynne|closed|adj
-czynne|open|adj
+nieczynny|closed (shop, office); out of order|adj
+czynny|open (shop, office); active|adj
 przerwa|break|f
 przerwa obiadowa|lunch break|f
 stołówka|canteen|f
@@ -188,7 +188,7 @@ fartuch|apron|m
 rękawica kuchenna|oven glove|f
 waga kuchenna|kitchen scales|f
 miarka|measuring cup|f
-foremka|baking tin|f
+foremka|baking mould; cookie cutter|f
 wałek|rolling pin; roller|m
 trzepaczka|whisk|f
 sitko|sieve|n
@@ -199,7 +199,7 @@ termos|thermos flask|m
 pojemnik|container|m
 folia aluminiowa|tin foil|f
 papier do pieczenia|baking paper|m
-ściereczka|tea towel|f
+ściereczka|small cloth; tea towel|f
 zmywak|scouring pad|m
 detergent|detergent|m
 płyn do mycia|cleaning liquid|m
@@ -443,7 +443,7 @@ czas przeszły|past tense|m
 czas przyszły|future tense|m
 bezokolicznik|infinitive|m
 końcówka|ending|f
-odmiana|declension, conjugation|f
+odmiana|variety, kind; declension, conjugation (grammar)|f
 synonim|synonym|m
 antonim|antonym|m
 skrót|abbreviation; shortcut|m
