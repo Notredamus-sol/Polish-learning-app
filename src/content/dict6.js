@@ -397,7 +397,7 @@ Wigilia|Christmas Eve|f
 Wielkanoc|Easter|f
 Nowy Rok|New Year|m
 Sylwester|New Year's Eve|m
-Wszystkich Świętych|All Saints' Day|n
+Dzień Wszystkich Świętych|All Saints' Day (1 November)|m
 dzień wolny|day off|m
 prezent|present|m
 życzenia|wishes|pl

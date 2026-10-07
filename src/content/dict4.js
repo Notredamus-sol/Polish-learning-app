@@ -110,7 +110,7 @@ niszczyć|to destroy|v impf · pf zniszczyć
 nosić|to carry; to wear|v impf
 nudzić się|to be bored|v impf · pf znudzić się
 obawiać się|to fear|v impf
-obchodzić|to celebrate; to go round|v impf · pf obejść
+obchodzić|to celebrate (a holiday)|v impf
 obiecywać|to promise|v impf · pf obiecać
 obierać|to peel|v impf · pf obrać
 oglądać|to watch|v impf · pf obejrzeć
@@ -375,7 +375,7 @@ przybijać|to nail|v impf · pf przybić
 dokręcać|to tighten|v impf · pf dokręcić
 mierzyć|to measure; to try on|v impf · pf zmierzyć
 przymierzać|to try on (clothes)|v impf · pf przymierzyć
-pasować|to fit, suit|v impf · pf dopasować
+pasować|to fit, suit|v impf
 ubierać się|to get dressed|v impf · pf ubrać się
 rozbierać się|to get undressed|v impf · pf rozebrać się
 golić się|to shave|v impf · pf ogolić się
