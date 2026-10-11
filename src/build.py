@@ -43,6 +43,7 @@ open("docs/manifest.webmanifest", "w").write(json.dumps({
   "name": "Polski Codziennie", "short_name": "Polski", "description": "Daily Polish course, A1 to A2. Works offline.",
   "id": "./", "start_url": "./", "scope": "./", "display": "standalone", "orientation": "any",
   "background_color": "#EDF0F4", "theme_color": "#1B2233", "lang": "en", "categories": ["education"],
+  "share_target": {"action": "./", "method": "GET", "params": {"title": "share_title", "text": "share_text", "url": "share_url"}},
   "icons": [
     {"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
     {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"},

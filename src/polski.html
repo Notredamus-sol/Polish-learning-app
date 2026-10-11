@@ -342,6 +342,23 @@ ul.cando li::before { content: "✓"; position: absolute; left: 0; color: var(--
 .vocab-list .grp { grid-column: 1 / -1; display: block; border: 0; margin: 10px 0 0; padding: 0 0 2px; font-family: var(--display); font-size: 0.85rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
 .vocab-list .grp:first-child { margin-top: 0; }
 .letter-bar { gap: 4px; }
+.flash:has(.tagline) { padding-top: 46px; }
+.type-row { display: flex; gap: 8px; width: 100%; max-width: 420px; }
+.type-in { flex: 1; min-width: 0; font-size: 1.15rem; text-align: center; }
+.typed-res { font-weight: 700; } .typed-res.good { color: var(--good); } .typed-res.warn { color: var(--warn); } .typed-res.bad { color: var(--accent); }
+.flash .keys { justify-content: center; }
+.glosses { display: grid; gap: 2px; font-size: 0.92rem; }
+.mine-btn { border: 0; background: transparent; color: var(--muted); font-size: 0.85rem; padding: 0 4px; margin-left: 2px; cursor: pointer; vertical-align: baseline; border-radius: 6px; }
+.mine-btn:hover, .mine-btn:focus-visible { color: var(--accent); background: var(--accent-soft); }
+.mine-toks { gap: 6px; }
+.tok { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 4px 9px; font-size: 1rem; }
+.tok.on { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); font-weight: 700; }
+.mine-word { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.mine-mean { flex: 1 1 180px; min-width: 0; }
+#mine-pl, #mine-en { width: 100%; font: inherit; }
+.mined-list { display: grid; gap: 10px; }
+.mined { display: grid; gap: 4px; border-top: 1px solid var(--line); padding-top: 10px; }
+.mined .ctx-pl { font-size: 1.02rem; text-align: left; display: inline; }
 .dict-list { display: grid; }
 .dict-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); }
 .dict-row .hw { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
@@ -1643,6 +1660,8 @@ const PLANS = {
 /*@include content/dict6.js*/
 /*@include content/dict7.js*/
 /*@include content/dict8.js*/
+/*@include content/forms.js*/
+/*@include content/examples.js*/
 const DICT_RAW = [DICT_1, DICT_2, DICT_3, DICT_4, DICT_5, DICT_6, DICT_7, DICT_8].join("\n");
 NEW_UNITS_A1.concat(NEW_UNITS_A2, NEW_UNITS_A1B, NEW_UNITS_A2B).forEach(u => { UNITS[u.id] = u; });
 /* word lists are only ever appended to, so existing card ids stay the same */
@@ -1730,7 +1749,7 @@ const DEFAULT_PROGRESS = () => ({
   writings: [],    // texts written without AI, waiting for / holding feedback
   epoch: 0         // set on reset, so a reset wins over older synced copies
 });
-const DEFAULT_SRS = () => ({ v: 1, cards: {}, custom: {}, epoch: 0 });
+const DEFAULT_SRS = () => ({ v: 1, cards: {}, custom: {}, ex: {}, mined: {}, epoch: 0 });
 const S = { progress: DEFAULT_PROGRESS(), srs: DEFAULT_SRS() };
 
 /* ================================================================
@@ -1811,11 +1830,14 @@ function mergeProgress(local, incoming) {
 function mergeSrs(local, incoming) {
   const a = Object.assign(DEFAULT_SRS(), clone(local || {})), b = Object.assign(DEFAULT_SRS(), clone(incoming || {}));
   if ((a.epoch || 0) !== (b.epoch || 0)) return (b.epoch || 0) > (a.epoch || 0) ? b : a;
-  const m = { v: 1, epoch: a.epoch || 0, cards: Object.assign({}, a.cards), custom: Object.assign({}, a.custom, b.custom), _t: Math.max(a._t || 0, b._t || 0) };
+  const m = { v: 1, epoch: a.epoch || 0, cards: Object.assign({}, a.cards), custom: Object.assign({}, a.custom, b.custom), ex: Object.assign({}, a.ex, b.ex), mined: Object.assign({}, a.mined), _t: Math.max(a._t || 0, b._t || 0) };
+  /* sentences: the newer edit wins, and a deletion (tombstone) removes the card everywhere */
+  for (const [id, x] of Object.entries(b.mined || {})) { const o = m.mined[id]; if (!o || (x.t || 0) > (o.t || 0)) m.mined[id] = x; }
   for (const [id, c] of Object.entries(b.cards)) {
     const o = m.cards[id];
     if (!o || (c.t || 0) > (o.t || 0) || (!c.t && !o.t && (c.n || 0) > (o.n || 0))) m.cards[id] = c;
   }
+  for (const [id, x] of Object.entries(m.mined)) if (x && x.del) delete m.cards[id];
   reindexSrs(m);
   return m;
 }
@@ -2118,6 +2140,7 @@ function allCards() {
   const out = [];
   COURSE.forEach(u => u.vocab.forEach((v, i) => out.push({ id: u.id + "-" + i, pl: v[0], en: v[1], note: v[2] || "", unit: u.id })));
   for (const [id, c] of Object.entries(S.srs.custom || {})) out.push({ id, pl: c.pl, en: c.en, note: c.note || "", unit: c.unit ?? -1, custom: true });
+  for (const [id, m] of Object.entries(S.srs.mined || {})) if (m && !m.del) out.push({ id, pl: m.pl, en: m.en || "", note: m.src || "", unit: -2, mined: true, words: m.words || [] });
   return out;
 }
 const cardById = id => allCards().find(c => c.id === id);
@@ -2474,9 +2497,103 @@ function contextFor(c) {
 }
 
 /* ---------- Step 1: Flashcard review ---------- */
+/* ---------- Example sentences for a card ----------
+   Course dialogues first (familiar), then sentences Claude wrote for you, then Tatoeba.
+   A sentence counts only if it holds a form of the word that no other word shares
+   (so "lub" = "or" never stands in for lubić). */
+let _exIdx = null, _exSent = null, _dictWords = null;
+function exData() {
+  if (!_exIdx) {
+    _exSent = EX_SENT.split("\n").map(l => { const [pl, en, tid] = l.split("\t"); return { pl, en, tid }; });
+    _exIdx = new Map(EX_IDX.split("\n").map(l => { const [k, lem, ids] = l.split("|"); return [k, { lem, ids: ids.split(",").map(Number) }]; }));
+  }
+  return _exIdx;
+}
+const cardHead = c => String(c.pl).split(" / ")[0].replace(/[.!?…]+$/, "").trim();
+function dictWords() {
+  if (!_dictWords) { _dictWords = new Set(); dictionary().forEach(e => String(e.pl).split(" / ").forEach(p => { const w = p.replace(/[.!?…]+$/, "").trim().toLocaleLowerCase("pl"); if (w && !/\s/.test(w)) _dictWords.add(w); })); }
+  return _dictWords;
+}
+/* the token in this sentence that is a form of `head` and of nothing else */
+function findToken(pl, head) {
+  const forms = formsOf(head), h0 = head.toLocaleLowerCase("pl");
+  for (const t of String(pl).match(/\p{L}+/gu) || []) {
+    const lt = t.toLocaleLowerCase("pl");
+    if (!forms.has(lt)) continue;
+    if (lemmasOf(lt).some(([l]) => l.toLocaleLowerCase("pl") !== h0)) continue;
+    if (lt !== h0 && dictWords().has(lt)) continue;
+    return t;
+  }
+  return null;
+}
+function examplesFor(c) {
+  if (c.mined) return [{ pl: c.pl, en: c.en, tok: null, src: "you" }];
+  const head = cardHead(c), out = [], seen = new Set();
+  const push = (s, src) => { if (s && s.tok && !seen.has(s.pl)) { seen.add(s.pl); out.push(Object.assign({ src }, s)); } };
+  if (/\s/.test(head)) {
+    /* a phrase is its own context; course lines that use it come first */
+    const ph = head.toLocaleLowerCase("pl");
+    for (const s of sentencePool()) { const i = s.pl.toLocaleLowerCase("pl").indexOf(ph); if (i >= 0 && s.pl.length > ph.length + 3) push({ pl: s.pl, en: s.en, tok: s.pl.substr(i, ph.length) }, "course"); if (out.length >= 3) break; }
+    return out;
+  }
+  for (const s of sentencePool()) { push({ pl: s.pl, en: s.en, tok: findToken(s.pl, head) }, "course"); if (out.length >= 3) break; }
+  ((S.srs.ex || {})[c.id] || []).forEach(s => push({ pl: s.pl, en: s.en, tok: findToken(s.pl, head) || (String(s.pl).includes(s.tok) ? s.tok : null) }, "claude"));
+  const ix = exData().get(String(c.pl).toLocaleLowerCase("pl")) || exData().get(head.toLocaleLowerCase("pl"));
+  if (ix) ix.ids.forEach(i => { const s = _exSent[i]; push({ pl: s.pl, en: s.en, tid: s.tid, tok: findToken(s.pl, ix.lem) }, "tatoeba"); });
+  return out;
+}
+/* online: Claude writes two sentences for words that have none, saved on the card for offline use */
+async function fillExamples(cards) {
+  if (!aiOn()) return;
+  const need = cards.filter(c => !c.mined && !/\s/.test(cardHead(c)) && !examplesFor(c).length).slice(0, 12);
+  if (!need.length) return;
+  const known = shuffle(introduced().filter(c => !c.mined).map(c => cardHead(c))).slice(0, 150).join(", ");
+  try {
+    const r = await sample.json(`You write example sentences for a Polish learner (level ${levelOf(curUnit())}, a native Serbian speaker who studies in English).
+For each word below write 2 short, natural Polish sentences (4–9 words) that use the word in a common meaning, ideally in different grammatical forms, with an English translation.
+Use simple vocabulary; prefer words the learner knows: ${known}.
+Words:
+${need.map(c => `- ${c.pl} = ${c.en}`).join("\n")}
+Reply with only JSON: {"items":[{"word":"…","sentences":[{"pl":"…","en":"…"}]}]}`, { cache: false, modelTier: "quick" });
+    S.srs.ex = S.srs.ex || {};
+    for (const it of (r && r.items) || []) {
+      const c = need.find(x => x.pl === it.word || cardHead(x) === it.word);
+      if (!c) continue;
+      const ok = (it.sentences || []).filter(s => s && s.pl && s.en && findToken(s.pl, cardHead(c))).slice(0, 3).map(s => ({ pl: String(s.pl), en: String(s.en) }));
+      if (ok.length) S.srs.ex[c.id] = ok;
+    }
+    persist("srs");
+  } catch (e) {}
+}
+/* "psa" → pies, accusative / genitive */
+function formNote(tok, head) {
+  if (!tok || tok.toLocaleLowerCase("pl") === head.toLocaleLowerCase("pl")) return null;
+  const hit = lemmasOf(tok).find(([l]) => l.toLocaleLowerCase("pl") === head.toLocaleLowerCase("pl"));
+  return hit && hit[1] ? `${tok} = ${describeForm(hit[1])} of ${head}` : `${tok} is a form of ${head}`;
+}
+function sentenceEl(ex, mode, words) {
+  /* mode: "show" highlights the word; "gap" hides it */
+  const marks = words ? words.map(w => w.tok) : ex.tok ? [ex.tok] : [];
+  if (!marks.length) return h("div", { class: "pl ctx-pl" }, ex.pl);
+  const re = new RegExp("(" + marks.map(m => m.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")", "u");
+  return h("div", { class: "pl ctx-pl" }, ex.pl.split(re).map((part, i) => i % 2 ? (mode === "gap" && part === ex.tok ? h("span", { class: "blank" }, "____") : h("b", { class: "ctx-word" }, part)) : part));
+}
+const exSource = ex => ex.src === "tatoeba" ? h("a", { class: "small muted", href: "https://tatoeba.org/sentences/show/" + ex.tid, target: "_blank", rel: "noopener" }, "Tatoeba #" + ex.tid) : ex.src === "claude" ? h("span", { class: "small muted" }, "written for you by Claude") : null;
+/* typed answers: exact, only the Polish letters missing, the right word in the wrong form, or wrong */
+function checkTyped(input, answer, head) {
+  const a = norm(input), b = norm(answer);
+  if (!a) return "empty";
+  if (a === b) return "ok";
+  if (strip(a) === strip(b)) return "accents";
+  if (head && (a === norm(head) || lemmasOf(a).some(([l]) => l.toLocaleLowerCase("pl") === head.toLocaleLowerCase("pl")))) return "form";
+  return "wrong";
+}
+
 function runReview(body, opts = {}) {
   let queue;
-  if (opts.practiceAll) queue = pick(introduced(), 20).map(c => ({ c, isNew: false }));
+  const words = c => !c.mined;
+  if (opts.mined) queue = shuffle(dueCards().filter(c => c.mined)).map(c => ({ c, isNew: !S.srs.cards[c.id].n }));
+  else if (opts.practiceAll) queue = pick(introduced().filter(words), 20).map(c => ({ c, isNew: false }));
   else if (session && session.revisit) queue = shuffle(allCards().filter(c => c.unit === session.opts.unit)).map(c => ({ c, isNew: !S.srs.cards[c.id] }));
   else {
     const due = dueCards().slice(0, 60).map(c => ({ c, isNew: !S.srs.cards[c.id].n }));
@@ -2486,49 +2603,114 @@ function runReview(body, opts = {}) {
   const total = queue.length;
   let done = 0, again = {};
   if (!total) {
-    body.append(h("div", { class: "card stack" }, h("p", null, "No cards are due right now, and all the words from this unit have been introduced."), h("p", { class: "muted small" }, "Cards come back when they're due. Your next review builds up as you learn.")));
-    if (!opts.practiceAll) finishStep("review", body);
+    body.append(h("div", { class: "card stack" }, h("p", null, opts.mined ? "No sentences are due right now." : "No cards are due right now, and all the words from this unit have been introduced."), h("p", { class: "muted small" }, "Cards come back when they're due. Your next review builds up as you learn.")));
+    if (!opts.practiceAll && !opts.mined) finishStep("review", body);
     return;
   }
+  fillExamples(queue.map(x => x.c));
   const stage = h("div", { class: "stack" });
   body.append(stage);
   function next() {
     if (!queue.length) {
       stage.replaceChildren();
       addXP(done * 2);
-      if (opts.practiceAll || opts.freeReview) { stage.append(h("div", { class: "card stack" }, h("h2", null, "Koniec!"), h("p", null, `You reviewed ${done} cards.`), h("button", { class: "btn primary", onclick: () => setView("cards") }, "Back to flashcards"))); return; }
+      if (opts.practiceAll || opts.freeReview || opts.mined) { stage.append(h("div", { class: "card stack" }, h("h2", null, "Koniec!"), h("p", null, `You reviewed ${done} cards.`), h("button", { class: "btn primary", onclick: () => setView("cards") }, "Back to flashcards"))); return; }
       finishStep("review", body, `You reviewed ${done} cards. They'll come back as they fall due.`);
       return;
     }
     const { c, isNew } = queue.shift();
-    let flip;
     const st = S.srs.cards[c.id];
-    const reverse = !isNew && st && st.b >= 2;
-    /* known words are sometimes shown inside a course sentence instead */
-    const ctx = reverse && Math.random() < 0.5 ? contextFor(c) : null;
-    let flipped = isNew;
+    const head = c.mined ? null : cardHead(c);
+    const exs = examplesFor(c);
+    const ex = exs.length ? exs[((st && st.n) || 0) % exs.length] : null;
+    const typedOn = settings().recall !== "flip";
+    /* the stage: new → recognition (Polish in a sentence → meaning) → recall (type the word into the sentence) */
+    let mode;
+    let target = null;   /* for recall: { tok, head, en } */
+    if (isNew) mode = "new";
+    else if (c.mined) {
+      const ws = c.words || [];
+      if (st && st.b >= 3 && ws.length && typedOn) { const w = ws[(st.n || 0) % ws.length]; target = { tok: w.tok, head: w.lemma || w.tok, en: w.en }; mode = "recall"; }
+      else mode = "recog";
+    } else if (st && st.b >= 3) {
+      if (typedOn && !/\s/.test(head)) { mode = "recall"; target = { tok: ex ? ex.tok : head, head, en: c.en }; }
+      else mode = "flipRecall";
+    } else mode = "recog";
+    let flipped = mode === "new", result = null;
     const card = h("div", { class: "card flash" });
     const grades = h("div", { class: "grades" });
+    const input = h("input", { type: "text", class: "type-in", autocomplete: "off", autocapitalize: "off", spellcheck: "false", "aria-label": "Type the missing word" });
+    const recallEx = c.mined ? { pl: c.pl, en: c.en, tok: target && target.tok } : ex;
+    function check() {
+      if (flipped) return;
+      result = checkTyped(input.value, target.tok, target.head);
+      if (result === "empty") return;
+      flip();
+    }
+    input.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); if (!flipped) check(); else rate(result === "ok" || result === "accents" ? "good" : result === "form" ? "hard" : "again"); } });
     function draw() {
-      card.replaceChildren(...[
-        h("span", { class: "tagline" }, isNew ? h("span", { class: "chip green" }, "new word") : reverse ? h("span", { class: "chip" }, ctx ? "Word in a sentence" : "English → Polish") : h("span", { class: "chip" }, "Polish → English")),
-        h("span", { class: "count" }, `${Math.min(done + 1, total)} / ${total}`),
-        ctx ? h("div", { class: "ctx" },
-          h("div", { class: "pl ctx-pl" }, ctx.pl.split(ctx.tok).flatMap((part, i, a) => i < a.length - 1 ? [part, flipped ? h("b", { class: "ctx-word" }, ctx.tok) : h("span", { class: "blank" }, "____")] : [part]), flipped ? sayBtn(ctx.pl) : null),
-          h("div", { class: "muted small" }, ctx.en),
-          !flipped ? h("div", { class: "small" }, "Missing word: ", h("b", null, c.en)) : null)
-        : reverse && !flipped ? h("div", { class: "word" }, c.en) : h("div", { class: "row", style: "justify-content:center" }, h("div", { class: "word" }, c.pl), sayBtn(c.pl)),
-        flipped ? h("div", { class: "answer" }, reverse ? h("span", { class: "pl" }, c.pl) : c.en) : h("p", { class: "muted small" }, ctx ? "Say the missing word in the right form, then flip the card." : reverse ? "Say it in Polish, then flip the card." : "What does it mean? Flip the card to check."),
-        flipped && reverse ? h("div", { class: "muted" }, c.en) : null,
-        flipped && c.note ? h("div", { class: "note" }, c.note) : null
-      ].filter(Boolean));
+      const tag = mode === "new" ? h("span", { class: "chip green" }, c.mined ? "new sentence" : "new word")
+        : mode === "recall" ? h("span", { class: "chip" }, "Type the word") : mode === "flipRecall" ? h("span", { class: "chip" }, "English → Polish")
+        : h("span", { class: "chip" }, c.mined ? "Your sentence" : ex ? "Word in a sentence" : "Polish → English");
+      const parts = [h("span", { class: "tagline" }, tag), h("span", { class: "count" }, `${Math.min(done + 1, total)} / ${total}`)];
+      const wordInfo = () => [h("div", { class: "row", style: "justify-content:center" }, h("div", { class: "word" }, c.pl), sayBtn(c.pl)), h("div", { class: "answer" }, c.en), c.note ? h("div", { class: "note" }, c.note) : null];
+      const glosses = () => (c.words || []).length ? h("div", { class: "glosses" }, c.words.map(w => h("div", null, h("b", { class: "pl" }, w.tok), w.lemma && w.lemma !== w.tok ? " (" + w.lemma + ")" : "", " = ", w.en || "?"))) : null;
+      if (mode === "new") {
+        if (c.mined) parts.push(h("div", { class: "ctx" }, sentenceEl({ pl: c.pl }, "show", c.words), sayBtn(c.pl), h("div", { class: "muted" }, c.en || "No translation yet")), glosses());
+        else {
+          parts.push(...wordInfo());
+          if (ex) parts.push(h("div", { class: "ctx" }, h("div", { class: "row", style: "justify-content:center;flex-wrap:nowrap" }, sentenceEl(ex, "show"), sayBtn(ex.pl)), h("div", { class: "muted small" }, ex.en), formNote(ex.tok, head) ? h("div", { class: "small" }, formNote(ex.tok, head)) : null, exSource(ex)));
+        }
+      } else if (mode === "recog") {
+        if (c.mined) {
+          parts.push(h("div", { class: "ctx" }, sentenceEl({ pl: c.pl }, "show", c.words), flipped ? sayBtn(c.pl) : null));
+          if (!flipped) parts.push(h("p", { class: "muted small" }, "Do you understand the whole sentence? Say it out loud, then flip."));
+          else parts.push(h("div", { class: "answer" }, c.en || "No translation yet"), glosses(), c.note ? h("div", { class: "note" }, c.note) : null);
+        } else if (ex) {
+          parts.push(h("div", { class: "ctx" }, h("div", { class: "row", style: "justify-content:center;flex-wrap:nowrap" }, sentenceEl(ex, "show"), flipped ? sayBtn(ex.pl) : null)));
+          if (!flipped) parts.push(h("p", { class: "muted small" }, "What does the highlighted word mean? Flip the card to check."));
+          else parts.push(h("div", { class: "answer" }, c.en), h("div", { class: "muted small" }, ex.en),
+            h("div", { class: "row small", style: "justify-content:center" }, h("span", { class: "pl" }, c.pl), sayBtn(c.pl)), formNote(ex.tok, head) ? h("div", { class: "small" }, formNote(ex.tok, head)) : null, c.note ? h("div", { class: "note" }, c.note) : null, exSource(ex));
+        } else {
+          parts.push(h("div", { class: "row", style: "justify-content:center" }, h("div", { class: "word" }, c.pl), sayBtn(c.pl)));
+          parts.push(flipped ? h("div", { class: "answer" }, c.en) : h("p", { class: "muted small" }, "What does it mean? Flip the card to check."));
+          if (flipped && c.note) parts.push(h("div", { class: "note" }, c.note));
+        }
+      } else if (mode === "flipRecall") {
+        parts.push(h("div", { class: "word" }, c.en));
+        if (ex) parts.push(h("div", { class: "ctx" }, flipped ? sentenceEl(ex, "show") : h("div", { class: "muted" }, ex.en)));
+        parts.push(flipped ? h("div", { class: "row", style: "justify-content:center" }, h("div", { class: "answer pl" }, c.pl), sayBtn(c.pl)) : h("p", { class: "muted small" }, "Say it in Polish, then flip the card."));
+        if (flipped && c.note) parts.push(h("div", { class: "note" }, c.note));
+      } else {
+        /* typed recall */
+        const has = recallEx && recallEx.tok;
+        if (has) parts.push(h("div", { class: "ctx" }, h("div", { class: "muted" }, recallEx.en || ""), sentenceEl(recallEx, flipped ? "show" : "gap", c.mined ? [{ tok: target.tok }] : null), flipped ? sayBtn(recallEx.pl) : null));
+        else parts.push(h("div", { class: "word" }, target.en));
+        parts.push(h("div", { class: "small" }, has ? ["Missing word: ", h("b", null, target.en || "?")] : "Type it in Polish"));
+        if (!flipped) {
+          const hintBtn = h("button", { class: "btn ghost sm", onclick: e => { e.currentTarget.replaceWith(h("span", { class: "small muted" }, "Base form: ", h("b", { class: "pl" }, target.head))); input.focus(); } }, "Hint: base form");
+          parts.push(h("div", { class: "type-row" }, input, h("button", { class: "btn primary", onclick: check }, "Check")), keypad(input), has && target.tok.toLocaleLowerCase("pl") !== target.head.toLocaleLowerCase("pl") ? hintBtn : null);
+        } else {
+          const msg = { ok: ["good", "✓ Correct"], accents: ["good", "✓ Correct, but mind the Polish letters"], form: ["warn", "Right word, wrong form"], wrong: ["bad", "Not quite"] }[result];
+          parts.push(h("div", { class: "typed-res " + msg[0] }, msg[1], result !== "ok" ? [": ", h("b", { class: "pl" }, target.tok)] : "", result !== "ok" && input.value ? h("span", { class: "muted" }, ` (you wrote ${input.value})`) : ""),
+            !c.mined && formNote(target.tok, target.head) ? h("div", { class: "small" }, formNote(target.tok, target.head)) : null, c.mined && c.en ? h("div", { class: "muted small" }, c.en) : null);
+        }
+      }
+      card.replaceChildren(...parts.filter(Boolean));
       grades.replaceChildren();
-      if (!flipped) grades.append(h("button", { class: "btn primary", style: "grid-column:1/-1;justify-content:center", onclick: () => flip() }, "Show answer"));
-      else if (isNew) grades.append(h("button", { class: "btn primary", style: "grid-column:1/-1;justify-content:center", onclick: () => rate("good") }, "Got it, next →"));
-      else [["again", "Again"], ["hard", "Hard"], ["good", "Good"], ["easy", "Easy"]].forEach(([g, l]) => {
-        const n = previewDays(c, g);
-        grades.append(h("button", { class: "btn g-" + g, onclick: () => rate(g) }, l, h("small", null, n <= 0 ? "now" : n === 1 ? "1 day" : n < 60 ? n + " days" : Math.round(n / 30) + " months")));
-      });
+      if (!flipped) {
+        if (mode !== "recall") grades.append(h("button", { class: "btn primary", style: "grid-column:1/-1;justify-content:center", onclick: () => flip() }, "Show answer"));
+        else grades.append(h("button", { class: "btn ghost", style: "grid-column:1/-1;justify-content:center", onclick: () => { result = "wrong"; flip(); } }, "I don't know"));
+      } else if (mode === "new") grades.append(h("button", { class: "btn primary", style: "grid-column:1/-1;justify-content:center", onclick: () => rate("good") }, "Got it, next →"));
+      else {
+        /* after typing, only the grades that fit the answer are offered */
+        const allowed = mode !== "recall" ? ["again", "hard", "good", "easy"] : result === "ok" || result === "accents" ? ["hard", "good", "easy"] : result === "form" ? ["again", "hard"] : ["again", "hard"];
+        allowed.forEach(g => {
+          const n = previewDays(c, g), l = { again: "Again", hard: mode === "recall" && result === "wrong" ? "Typo, I knew it" : "Hard", good: "Good", easy: "Easy" }[g];
+          grades.append(h("button", { class: "btn g-" + g, onclick: () => rate(g) }, l, h("small", null, n <= 0 ? "now" : n === 1 ? "1 day" : n < 60 ? n + " days" : Math.round(n / 30) + " months")));
+        });
+      }
+      if (mode === "recall" && !flipped) setTimeout(() => input.focus(), 30);
     }
     function rate(g) {
       grade(c, g);
@@ -2537,17 +2719,19 @@ function runReview(body, opts = {}) {
       next();
     }
     if (isNew) speak(c.pl);
-    flip = () => { flipped = true; if (reverse) speak(ctx ? ctx.pl : c.pl); draw(); };
+    function flip() { flipped = true; if (mode !== "new") speak(c.mined ? c.pl : ex && mode !== "flipRecall" ? ex.pl : c.pl); draw(); }
     keyHandler = (k, typing) => {
       if (typing) return;
-      if (!flipped) { if (k === " " || k === "Enter") { flip(); return true; } return; }
-      if (isNew) { if (k === " " || k === "Enter" || k === "ArrowRight") { rate("good"); return true; } return; }
-      const g = { "1": "again", "2": "hard", "3": "good", "4": "easy", "ArrowLeft": "again", "ArrowRight": "good", " ": "good", "Enter": "good" }[k];
+      if (!flipped) { if (mode !== "recall" && (k === " " || k === "Enter")) { flip(); return true; } return; }
+      if (mode === "new") { if (k === " " || k === "Enter" || k === "ArrowRight") { rate("good"); return true; } return; }
+      const fit = mode !== "recall" ? "good" : result === "ok" || result === "accents" ? "good" : result === "form" ? "hard" : "again";
+      let g = { "1": "again", "2": "hard", "3": "good", "4": "easy", "ArrowLeft": "again", "ArrowRight": fit, " ": fit, "Enter": fit }[k];
+      if (g && mode === "recall" && !grades.querySelector(".g-" + g)) g = null;
       if (g) { rate(g); return true; }
     };
-    addSwipe(card, () => { if (!flipped) flip(); else rate(isNew ? "good" : "again"); }, () => { if (!flipped) flip(); else rate("good"); });
+    if (mode !== "recall") addSwipe(card, () => { if (!flipped) flip(); else rate(mode === "new" ? "good" : "again"); }, () => { if (!flipped) flip(); else rate("good"); });
     stage.replaceChildren(card, grades, h("div", { class: "meter" }, h("span", { style: `width:${(done / total) * 100}%` })),
-      h("p", { class: "small muted center" }, hoverDevice() ? "Keys: Space flips · 1 Again · 2 Hard · 3 Good · 4 Easy" : "Tip: swipe the card right for Good, left for Again"));
+      h("p", { class: "small muted center" }, mode === "recall" ? "Type the word and press Enter. Enter again moves on." : hoverDevice() ? "Keys: Space flips · 1 Again · 2 Hard · 3 Good · 4 Easy" : "Tip: swipe the card right for Good, left for Again"));
     draw();
   }
   next();
@@ -2794,7 +2978,7 @@ function showDialogue(holder, dl, body) {
     list.replaceChildren(...dl.lines.map(l => {
       const en = h("div", { class: "en" + (reveal ? "" : " hid"), title: "Tap to reveal" }, l.en);
       en.addEventListener("click", () => en.classList.remove("hid"));
-      return h("div", { class: "line" }, h("div", { class: "who" }, l.speaker), h("div", { class: "txt" }, h("div", { class: "pl" }, l.pl), en), sayBtn(l.pl) || h("span"));
+      return h("div", { class: "line" }, h("div", { class: "who" }, l.speaker), h("div", { class: "txt" }, h("div", { class: "pl" }, l.pl, mineBtn(l.pl, l.en, dl.title)), en), sayBtn(l.pl) || h("span"));
     }));
   }
   draw();
@@ -3040,7 +3224,7 @@ function readText(r) {
       h("tbody", null, rows.map(cells => h("tr", null, cells.map(c => h("td", { class: "pl" }, c)))))));
   } else if (r.kind === "form") {
     inner = h("dl", { class: "read-form" }, r.body.map(l => { const i = l.indexOf(":"); return i > 0 ? [h("dt", null, l.slice(0, i)), h("dd", { class: "pl" }, l.slice(i + 1).trim())] : [h("dd", { class: "pl" }, l)]; }).flat());
-  } else inner = h("div", { class: "read-lines pl" }, r.body.map(l => h("p", null, l)));
+  } else inner = h("div", { class: "read-lines pl" }, r.body.map(l => h("p", null, splitSentences(l).map(x => h("span", null, x, mineBtn(x, "", r.title), " ")))));
   return h("div", { class: "read-doc rd-" + r.kind }, h("div", { class: "read-title pl" }, r.title), inner);
 }
 function clozeParts(text) {
@@ -3131,7 +3315,7 @@ function runStory(body) {
     holder.replaceChildren(h("section", { class: "card stack" },
       h("span", { class: "eyebrow" }, st.ai ? "Czytanka · today's story" : `Czytanka · read again: a text from unit ${unitNo(st.unit)}`),
       st.ai ? h("h2", { class: "pl" }, st.title) : null,
-      st.ai ? h("div", { class: "stack story pl" }, st.paras.map(p => h("p", null, p))) : readText(st.read),
+      st.ai ? h("div", { class: "stack story pl" }, st.paras.map(p => h("p", null, splitSentences(p).map(x => h("span", null, x, mineBtn(x, "", st.title || "Czytanka"), " "))))) : readText(st.read),
       st.ai ? h("div", { class: "row" }, sayBtn(st.paras.join(" ")) || "", h("span", { class: "small muted" }, "Read it once for the gist, then again for the details.")) : null,
       st.glossary && st.glossary.length ? h("details", { class: "ref" }, h("summary", null, `New words (${st.glossary.length})`),
         h("div", { class: "vocab-list" }, st.glossary.map(g => h("div", null, h("span", { class: "pl" }, g.pl), h("span", { class: "muted small", style: "text-align:right" }, g.en))))) : null),
@@ -3260,6 +3444,40 @@ const PL_COLLATOR = new Intl.Collator("pl", { sensitivity: "base" });
 const PL_ALPHABET = "AĄBCĆDEĘFGHIJKLŁMNŃOÓPQRSŚTUVWXYZŹŻ".split("");
 const firstLetter = t => { const m = String(t).toLocaleLowerCase("pl").match(/\p{L}/u); return m ? m[0].toLocaleUpperCase("pl") : "#"; };
 const sortKey = t => String(t).replace(/^[^\p{L}]+/u, "");
+/* ---------- Word forms (Wiktionary): psa → pies, Genitive/Accusative singular ---------- */
+let _forms = null, _formsOf = null;
+function formsIndex() {
+  if (_forms) return _forms;
+  _forms = new Map(); _formsOf = new Map();
+  const add = (f, lemma, codes) => { const k = f.toLocaleLowerCase("pl"); let a = _forms.get(k); if (!a) _forms.set(k, a = []); a.push([lemma, codes]); };
+  for (const line of FORMS_RAW.split("\n")) {
+    const bar = line.indexOf("|"); if (bar < 0) continue;
+    const lemma = line.slice(0, bar), set = new Set([lemma.toLocaleLowerCase("pl")]);
+    add(lemma, lemma, "");
+    for (const part of line.slice(bar + 1).split(";")) {
+      const m = /^(\d+)([^=]*)=(.*)$/.exec(part); if (!m) continue;
+      const f = lemma.slice(0, lemma.length - +m[1]) + m[2];
+      add(f, lemma, m[3]); set.add(f.toLocaleLowerCase("pl"));
+    }
+    _formsOf.set(lemma, set);
+  }
+  return _forms;
+}
+/* every lemma a token could be a form of, e.g. "psa" → [["pies", "As/Gs"]] */
+const lemmasOf = tok => formsIndex().get(String(tok).toLocaleLowerCase("pl")) || [];
+const formsOf = lemma => (formsIndex(), _formsOf.get(lemma) || new Set([String(lemma).toLocaleLowerCase("pl")]));
+const CASE_NAMES = { N: "nominative", G: "genitive", D: "dative", A: "accusative", I: "instrumental", L: "locative", V: "vocative" };
+function describeForm(code) {
+  let codes = String(code).split("/");
+  /* the vocative only matters when it is the only reading (Aniu!) */
+  if (codes.some(c => !/^V/.test(c))) codes = codes.filter(c => !/^V/.test(c));
+  return codes.map(c => {
+    let m;
+    if ((m = /^([NGDAILV])([sp])$/.exec(c))) return CASE_NAMES[m[1]] + (m[2] === "p" ? " plural" : "");
+    if ((m = /^(f?)([123])([sp])$/.exec(c))) return (m[1] ? "future, " : "") + ["", "I", "you", "he/she"][+m[2]].replace(/.*/, x => m[3] === "p" ? ["", "we", "you (pl.)", "they"][+m[2]] : x) + " form";
+    return { past: "past tense", cond: "conditional", imp: "command", inf: "infinitive", vn: "verbal noun", ppas: "passive participle", pact: "active participle", padv: "adverbial participle", cmp: "comparative", sup: "superlative", imps: "impersonal" }[c] || c;
+  }).filter((x, i, a) => a.indexOf(x) === i).join(" / ");
+}
 /* ================================================================
    DICTIONARY (Słownik): every course word plus about 2,800 more.
    A course word keeps its lesson card id (unit-index). Any other word becomes
@@ -3429,13 +3647,245 @@ function renderDict() {
     h("div", { class: "stack" }, h("span", { class: "eyebrow" }, "Polish – English"), h("h1", { class: "pl" }, "Słownik")),
     h("p", { class: "muted" }, `${all.length.toLocaleString("en")} words: the ${nCourse.toLocaleString("en")} the course teaches, and ${(all.length - nCourse).toLocaleString("en")} more everyday words. Tap + Add to put a word in your flashcards. It goes into “My words”, and if a lesson teaches it later, it moves into that lesson and keeps its progress.`),
     h("div", { class: "stack" }, q, h("div", { class: "spread" }, filterBar, count), letters),
-    list));
+    list,
+    h("p", { class: "small muted" }, "Sources: word forms and checks from ", h("a", { href: "https://en.wiktionary.org/", target: "_blank", rel: "noopener" }, "Wiktionary"), " (CC BY-SA 4.0, via kaikki.org); example sentences from ", h("a", { href: "https://tatoeba.org/", target: "_blank", rel: "noopener" }, "Tatoeba"), " (CC BY 2.0 FR); offline translation by Mozilla's Bergamot (MPL 2.0).")));
   draw();
+}
+/* ================================================================
+   SENTENCE MINING (Zdania): sentences you collect yourself
+   S.srs.mined[id] = { pl, en, enBy: "you"|"bergamot"|"claude"|"", words: [{ tok, lemma, en }], src, t, del? }
+   Each sentence is a card "s-…" with its own FSRS state. Sentences without a translation
+   wait in a queue and are translated on the device (Bergamot, installed app) or by Claude
+   when you're online.
+   ================================================================ */
+let _dictByWord = null;
+function dictByWord() {
+  if (!_dictByWord) { _dictByWord = new Map(); dictionary().forEach(e => String(e.pl).split(" / ").forEach(p => { const k = p.replace(/[.!?…]+$/, "").trim().toLocaleLowerCase("pl"); if (k && !_dictByWord.has(k)) _dictByWord.set(k, e); })); }
+  return _dictByWord;
+}
+/* a word as it appears in a sentence → its dictionary entry, base form and grammar */
+function lookupWord(tok) {
+  const lt = String(tok).toLocaleLowerCase("pl");
+  const out = [];
+  for (const [lemma, code] of lemmasOf(lt)) {
+    const e = dictByWord().get(lemma.toLocaleLowerCase("pl"));
+    if (e && !out.some(x => x.entry === e)) out.push({ lemma, entry: e, en: e.en, form: code ? describeForm(code) : "" });
+  }
+  const direct = dictByWord().get(lt);
+  if (direct && !out.some(x => x.entry === direct)) out.unshift({ lemma: direct.pl, entry: direct, en: direct.en, form: "" });
+  return out;
+}
+const minedList = () => Object.entries(S.srs.mined || {}).filter(([, m]) => m && !m.del).sort((a, b) => (b[1].t || 0) - (a[1].t || 0));
+function saveMined(m, id) {
+  S.srs.mined = S.srs.mined || {};
+  id = id || "s-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  S.srs.mined[id] = Object.assign({}, S.srs.mined[id] || {}, m, { t: Date.now() });
+  if (!S.srs.cards[id]) S.srs.cards[id] = { b: 0, due: TODAY(), l: 0, n: 0, t: Date.now(), x: 1 };
+  persist("srs");
+  queueTranslations();
+  return id;
+}
+function deleteMined(id) {
+  if (!S.srs.mined || !S.srs.mined[id]) return;
+  S.srs.mined[id] = { del: true, t: Date.now() };   /* a tombstone, so other devices drop it too */
+  delete S.srs.cards[id];
+  persist("srs");
+}
+
+/* ---------- offline translation (installed app): Bergamot, Firefox's on-device engine ---------- */
+let _mt = null, _mtState = null;
+const mtState = () => { if (_mtState === null) { try { _mtState = localStorage.getItem("pc.mt") || "off"; } catch (e) { _mtState = "off"; } } return _mtState; };
+function setMtState(v) { _mtState = v; try { localStorage.setItem("pc.mt", v); } catch (e) {} }
+const mtAvailable = () => IS_APP && "serviceWorker" in navigator && typeof Worker === "function" && typeof WebAssembly === "object";
+async function mtTranslator() {
+  if (!_mt) {
+    const mod = await import(new URL("bergamot/translator.js", location.href).href);
+    _mt = new mod.LatencyOptimisedTranslator({ registryUrl: new URL("bergamot/registry.json", location.href).href, pivotLanguage: null, downloadTimeout: 0 });
+  }
+  return _mt;
+}
+async function mtTranslate(text) {
+  const t = await mtTranslator();
+  const r = await t.translate({ from: "pl", to: "en", text, html: false });
+  return r && r.target ? String(r.target.text).trim() : "";
+}
+/* turning it on downloads the engine and model once (about 28 MB), then works with no internet */
+async function mtEnable(onProgress) {
+  setMtState("loading"); onProgress && onProgress();
+  try {
+    const en = await mtTranslate("Dzień dobry, jak się masz?");
+    if (!en) throw new Error("empty");
+    setMtState("ready");
+  } catch (e) { setMtState("off"); _mt = null; throw e; }
+  finally { onProgress && onProgress(); }
+  queueTranslations();
+}
+async function mtDisable() {
+  try { if (_mt) _mt.delete(); } catch (e) {}
+  _mt = null; setMtState("off");
+  try { await caches.delete("pc-bergamot"); } catch (e) {}
+}
+function mtPanel() {
+  if (!mtAvailable()) return null;
+  const box = h("div", { class: "stack" });
+  const draw = () => {
+    const s = mtState();
+    box.replaceChildren(h("div", { class: "spread" },
+      h("div", null, h("b", null, "Offline translation"), h("div", { class: "small muted" }, s === "ready" ? "On: your sentences are translated on this device, with no internet." : s === "loading" ? "Downloading the translator (about 28 MB)…" : "Translate your own sentences from Polish to English on this device. One download of about 28 MB.")),
+      s === "ready" ? h("button", { class: "btn ghost sm", onclick: async () => { await mtDisable(); draw(); } }, "Turn off")
+        : h("button", { class: "btn sm", disabled: s === "loading", onclick: async () => { try { await mtEnable(draw); } catch (e) { box.append(h("p", { class: "small", style: "color:var(--accent)" }, "The download didn't finish. Check the connection and try again.")); } } }, s === "loading" ? "Downloading…" : "Download")));
+  };
+  draw();
+  return box;
+}
+
+/* ---------- the translation queue ---------- */
+let _translating = false;
+async function translateText(pl, words) {
+  if (mtState() === "ready" && mtAvailable()) { try { const en = await mtTranslate(pl); if (en) return { en, by: "bergamot" }; } catch (e) {} }
+  if (aiOn()) {
+    try {
+      const r = await sample.json(`Translate this Polish sentence into natural English for a learner, and give a short English meaning for each listed word as it is used in the sentence.
+Sentence: ${pl}
+Words: ${(words || []).map(w => w.tok).join(", ") || "(none)"}
+Reply with only JSON: {"en":"…","words":[{"tok":"…","lemma":"base form","en":"meaning"}]}`, { cache: false, modelTier: "quick" });
+      if (r && r.en) return { en: String(r.en), by: "claude", words: r.words };
+    } catch (e) {}
+  }
+  return null;
+}
+async function queueTranslations() {
+  if (_translating) return;
+  _translating = true;
+  try {
+    for (const [id, m] of minedList()) {
+      const needWord = (m.words || []).some(w => !w.en);
+      if (m.en && !needWord) continue;
+      const r = await translateText(m.pl, m.words);
+      if (!r) break;   /* nothing can translate right now: try again later */
+      const cur = S.srs.mined[id];
+      if (!cur || cur.del) continue;
+      if (!cur.en) { cur.en = r.en; cur.enBy = r.by; }
+      if (r.words) (cur.words || []).forEach(w => { if (!w.en) { const x = r.words.find(y => y && y.tok === w.tok); if (x) { w.en = String(x.en || ""); w.lemma = w.lemma || String(x.lemma || w.tok); } } });
+      cur.t = Date.now();
+      persist("srs");
+    }
+  } finally { _translating = false; }
+  if (view === "cards" && !inSession) renderCards();
+}
+window.addEventListener("online", () => setTimeout(queueTranslations, 1500));
+
+/* ---------- the sentence editor ---------- */
+function openMiner(pre = {}, editId = null) {
+  const old = editId ? S.srs.mined[editId] : null;
+  const ta = h("textarea", { id: "mine-pl", rows: 3, placeholder: "A Polish sentence you met: in a book, a series, a chat…", "aria-label": "Polish sentence" });
+  ta.value = (old && old.pl) || pre.pl || "";
+  const tr = h("textarea", { id: "mine-en", rows: 2, placeholder: "English translation (optional: leave empty and it's translated for you)", "aria-label": "English translation" });
+  tr.value = (old && old.en) || pre.en || "";
+  const src = h("input", { type: "text", id: "mine-src", placeholder: "Where it's from (optional)", "aria-label": "Source" });
+  src.value = (old && old.src) || pre.src || "";
+  const marked = new Map(((old && old.words) || []).map(w => [w.tok, Object.assign({}, w)]));
+  const chips = h("div", { class: "row mine-toks" });
+  const info = h("div", { class: "stack", style: "gap:6px" });
+  const warn = h("p", { class: "small muted" });
+  const trStatus = h("span", { class: "small muted" });
+  const addWords = h("input", { type: "checkbox", id: "mine-addwords", checked: true });
+  function drawToks() {
+    const toks = [...new Set(ta.value.match(/\p{L}+/gu) || [])];
+    for (const k of [...marked.keys()]) if (!toks.includes(k)) marked.delete(k);
+    chips.replaceChildren(...toks.map(t => h("button", { type: "button", class: "tok" + (marked.has(t) ? " on" : ""), "aria-pressed": marked.has(t) ? "true" : "false", onclick: () => {
+      if (marked.has(t)) marked.delete(t);
+      else { const hit = lookupWord(t)[0]; marked.set(t, { tok: t, lemma: hit ? hit.lemma : "", en: hit ? hit.en : "", form: hit ? hit.form : "", entry: hit ? hit.entry : null }); }
+      drawToks();
+    } }, t)));
+    info.replaceChildren(...[...marked.values()].map(w => {
+      const meaning = h("input", { type: "text", class: "mine-mean", value: w.en || "", placeholder: aiOn() || mtState() === "ready" ? "meaning (filled in when translated)" : "meaning", "aria-label": "Meaning of " + w.tok, oninput: e => { w.en = e.target.value; } });
+      return h("div", { class: "mine-word" }, h("b", { class: "pl" }, w.tok),
+        w.lemma && w.lemma.toLocaleLowerCase("pl") !== w.tok.toLocaleLowerCase("pl") ? h("span", { class: "small muted" }, ` → ${w.lemma}${w.form ? ", " + w.form : ""}`) : w.form ? h("span", { class: "small muted" }, " · " + w.form) : null,
+        meaning, !w.entry ? h("span", { class: "small muted" }, "not in the dictionary") : null);
+    }));
+    warn.textContent = marked.size > 2 ? "Tip: sentences with one or two new words stick best. Consider a simpler sentence." : toks.length ? "Tap the words you don't know yet." : "";
+  }
+  ta.addEventListener("input", drawToks);
+  const canTr = () => (mtState() === "ready" && mtAvailable()) || aiOn();
+  const trBtn = h("button", { type: "button", class: "btn ghost sm", onclick: async () => {
+    if (!ta.value.trim()) return;
+    trStatus.textContent = "Translating…";
+    const r = await translateText(ta.value.trim(), [...marked.values()]);
+    if (!r) { trStatus.textContent = "No translator right now. It'll be translated later."; return; }
+    tr.value = r.en;
+    trStatus.textContent = r.by === "bergamot" ? "Translated on this device" : "Translated by Claude";
+    if (r.words) r.words.forEach(x => { const w = marked.get(x && x.tok); if (w && !w.en) { w.en = String(x.en || ""); w.lemma = w.lemma || String(x.lemma || ""); } });
+    drawToks();
+  } }, "Translate");
+  const save = h("button", { class: "btn primary", onclick: () => {
+    const pl = ta.value.trim().replace(/\s+/g, " ");
+    if (!pl) { ta.focus(); return; }
+    const ws = [...marked.values()].map(w => ({ tok: w.tok, lemma: w.lemma || "", en: (w.en || "").trim() }));
+    const en = tr.value.trim();
+    saveMined({ pl, en, enBy: en ? (old && old.en === en ? old.enBy : (trStatus.textContent.includes("device") ? "bergamot" : trStatus.textContent.includes("Claude") ? "claude" : "you")) : "", words: ws, src: src.value.trim() }, editId);
+    if (addWords.checked) [...marked.values()].forEach(w => { if (w.entry && !inDeck(w.entry)) addFromDict(w.entry); });
+    close();
+    showToast("Zdania", editId ? "Sentence saved." : "Sentence added. It will come back as a flashcard.", "✓");
+    if (view === "cards" && !inSession) renderCards();
+  } }, editId ? "Save changes" : "Save sentence");
+  const content = h("div", { class: "stack" },
+    h("label", { class: "small", for: "mine-pl" }, "Polish sentence"), ta,
+    chips, warn, info,
+    h("label", { class: "small", for: "mine-en" }, "Translation"), tr,
+    h("div", { class: "row" }, canTr() ? trBtn : null, trStatus),
+    src,
+    h("label", { class: "row small" }, addWords, " Also add the words I marked to My words"),
+    h("div", { class: "row" }, save));
+  const close = openSheet(editId ? "Edit sentence" : "Zdanie · save a sentence", content);
+  drawToks();
+  if (!ta.value) setTimeout(() => ta.focus(), 50);
+}
+/* a small "save this sentence" button for texts inside the app */
+function mineBtn(pl, en, src) {
+  return h("button", { type: "button", class: "mine-btn", title: "Save this sentence to Zdania", "aria-label": "Save this sentence", onclick: e => { e.stopPropagation(); openMiner({ pl, en, src }); } }, "＋");
+}
+/* split a paragraph into sentences for the save buttons */
+const splitSentences = t => String(t).match(/[^.!?…]+[.!?…]+["”»]?|[^.!?…]+$/g)?.map(s => s.trim()).filter(Boolean) || [];
+
+/* ---------- the Zdania section on the Flashcards page ---------- */
+function minedSection() {
+  const list = minedList();
+  const due = dueCards().filter(c => c.mined).length;
+  const waiting = list.filter(([, m]) => !m.en).length;
+  return h("section", { class: "card stack", id: "zdania" },
+    h("div", { class: "spread" },
+      h("div", null, h("span", { class: "eyebrow" }, "Sentence mining"), h("h3", { class: "pl", style: "margin:2px 0 0" }, `Zdania (${list.length})`)),
+      h("div", { class: "row" },
+        h("button", { class: "btn sm", onclick: () => openMiner() }, "+ Add a sentence"),
+        h("button", { class: "btn primary sm", disabled: !due, onclick: () => startFree({ mined: true }) }, due ? `Review ${due}` : "Nothing due"))),
+    h("p", { class: "small muted" }, "Collect sentences you meet in real life, or tap ＋ next to any sentence in the app. Mark the words you don't know; the sentence comes back as a flashcard, and later you type the missing words.",
+      waiting ? ` ${waiting} waiting for a translation${aiOn() || mtState() === "ready" ? "…" : " (they'll be translated when you're online" + (mtAvailable() ? " or turn on offline translation" : "") + ")."}` : ""),
+    mtPanel(),
+    list.length ? h("div", { class: "mined-list" }, list.slice(0, 50).map(([id, m]) => {
+      const st = S.srs.cards[id];
+      return h("div", { class: "mined" },
+        h("div", { class: "pl" }, sentenceEl({ pl: m.pl }, "show", m.words || []), " ", sayBtn(m.pl) || ""),
+        h("div", { class: "small muted" }, m.en || "Waiting for a translation", m.src ? " · " + m.src : "", st ? ` · box ${st.b}` : ""),
+        h("div", { class: "row" }, h("button", { class: "btn ghost sm", onclick: () => openMiner({}, id) }, "Edit"),
+          h("button", { class: "btn ghost sm", onclick: e => { const b = e.currentTarget; if (b.dataset.sure) { deleteMined(id); renderCards(); } else { b.dataset.sure = "1"; b.textContent = "Tap again to delete"; } } }, "Delete")));
+    })) : null);
+}
+/* the installed app appears in Android's share menu: shared text opens the sentence editor */
+function handleShare() {
+  try {
+    const q = new URLSearchParams(location.search);
+    const text = [q.get("share_text"), q.get("share_title")].filter(Boolean).join(" ").replace(/https?:\/\/\S+/g, "").trim();
+    if (!text) return;
+    history.replaceState(null, "", location.pathname);
+    setView("cards");
+    setTimeout(() => openMiner({ pl: text.slice(0, 400), src: q.get("share_url") || "" }), 200);
+  } catch (e) {}
 }
 let deckSort = "az", deckLetter = null;
 try { const v = localStorage.getItem("pc.deckSort"); deckSort = v === "unit" || v === "mine" ? v : "az"; } catch (e) {}
 function renderCards() {
-  const intro = introduced();
+  const intro = introduced().filter(c => !c.mined);
   const due = dueCards();
   const boxes = [0, 0, 0, 0, 0, 0, 0];
   intro.forEach(c => boxes[S.srs.cards[c.id].b]++);
@@ -3491,6 +3941,7 @@ function renderCards() {
           h("button", { class: "btn primary", disabled: !due.length, onclick: () => { startFree({ noNew: true, freeReview: true }); } }, "Review due cards"),
           h("button", { class: "btn", disabled: !intro.length, onclick: () => startFree({ practiceAll: true }) }, "Practise 20 random"))),
       h("p", { class: "small muted" }, "Cards are scheduled with FSRS, which estimates how well you remember each word and brings it back just before you'd forget it (aiming for 90% recall). Words you find hard come back sooner, easy ones much later. The buttons show when a card will return. Boxes group your words by how long they stay in memory.")),
+    minedSection(),
     h("section", { class: "stack" }, h("h3", null, "Memory boxes"),
       h("div", { class: "boxes" }, boxes.map((n, i) => h("div", null, h("b", null, String(n)), h("small", null, i === 0 ? "new" : INTERVALS[i] + "d+"))))),
     h("section", { class: "stack" },
@@ -3504,7 +3955,7 @@ function startFree(opts) {
   inSession = true;
   const body = h("div", { class: "stack-lg" });
   app.replaceChildren(h("div", null, h("div", { class: "session-head" }, h("button", { class: "btn ghost sm", onclick: () => setView("cards") }, "← Flashcards")),
-    h("div", { class: "stack", style: "margin-bottom:18px" }, h("span", { class: "eyebrow" }, "Flashcards"), h("h1", { class: "pl" }, opts.practiceAll ? "Losowe powtórki" : "Powtórka")), body));
+    h("div", { class: "stack", style: "margin-bottom:18px" }, h("span", { class: "eyebrow" }, "Flashcards"), h("h1", { class: "pl" }, opts.practiceAll ? "Losowe powtórki" : opts.mined ? "Zdania" : "Powtórka")), body));
   session = { stepId: "free", ctl: null };
   runReview(body, opts);
 }
@@ -3587,6 +4038,7 @@ function openSheet(title, content) {
   document.addEventListener("keydown", onKey);
   document.body.append(back);
   closeBtn.focus();
+  return close;
 }
 function openRule(u) {
   const refs = relatedRefs(u.id);
@@ -3648,7 +4100,7 @@ function renderUnitPage() {
       h("div", { class: "vocab-list" }, u.vocab.map(v => h("div", null, h("span", { class: "row", style: "gap:6px;flex-wrap:nowrap;min-width:0" }, h("span", { class: "pl" }, v[0]), sayBtn(v[0])), h("span", { class: "muted small", style: "text-align:right" }, v[1]))))),
     h("section", { class: "card stack" },
       h("span", { class: "eyebrow" }, "Model dialogue"),
-      h("div", { class: "dlg" }, u.dialogue.map(([who, pl, en]) => h("div", { class: "line" }, h("div", { class: "who" }, who), h("div", { class: "txt" }, h("div", { class: "pl" }, pl), h("div", { class: "en" }, en)), sayBtn(pl) || h("span")))))
+      h("div", { class: "dlg" }, u.dialogue.map(([who, pl, en]) => h("div", { class: "line" }, h("div", { class: "who" }, who), h("div", { class: "txt" }, h("div", { class: "pl" }, pl, mineBtn(pl, en, "Unit " + unitNo(u))), h("div", { class: "en" }, en)), sayBtn(pl) || h("span")))))
   ));
 }
 
@@ -4270,7 +4722,7 @@ function writingsCard() {
 /* ================================================================
    SETTINGS (stored with progress, so they sync between devices)
    ================================================================ */
-const DEFAULT_SETTINGS = { length: "standard", goal: 100, newPerDay: 10, rate: 0.9, story: true };
+const DEFAULT_SETTINGS = { length: "standard", goal: 100, newPerDay: 10, rate: 0.9, story: true, recall: "type" };
 function settings() { const P = S.progress; P.settings = Object.assign({}, DEFAULT_SETTINGS, P.settings || {}); return P.settings; }
 function setSetting(k, v) { settings()[k] = v; persist("progress"); }
 
@@ -4570,6 +5022,7 @@ function settingsPanel() {
     sel("set-length", "Session length", st.length, lens, v => { setSetting("length", v); }, "Quick: flashcards + a short test. Full adds listening, conversation and writing."),
     sel("set-goal", "Daily goal", st.goal, [[30, "30 XP · light"], [60, "60 XP · regular"], [100, "100 XP · serious"], [150, "150 XP · intense"], [200, "200 XP · maximum"]], v => setSetting("goal", +v), "Fills the ring on the Today page."),
     sel("set-new", "New words per day", st.newPerDay, [[5, "5"], [10, "10"], [15, "15"], [20, "20"], [99, "No limit"]], v => setSetting("newPerDay", +v), "15–20 suits 30–45 minutes a day. More than that piles up reviews within a few weeks."),
+    sel("set-recall", "Recall cards", st.recall, [["type", "Type the word into the sentence"], ["flip", "Flip and grade yourself"]], v => setSetting("recall", v), "Well-known words come back as a sentence with a gap. Typing also trains the endings."),
     sel("set-rate", "Speech speed", st.rate, [[0.7, "Slow"], [0.9, "Normal"], [1.05, "Fast"]], v => setSetting("rate", +v)),
     h("p", { class: "small muted" }, plVoice ? `Voice: ${plVoice.name}, this device's Polish voice.` : "This device has no Polish voice, so speaker buttons and listening practice are hidden. Chrome and Edge include one."),
     sel("set-story", "Story mode", st.story ? "on" : "off", [["on", "On: AI dialogues follow the same characters"], ["off", "Off: a new situation each day"]], v => setSetting("story", v === "on")),
@@ -4657,6 +5110,8 @@ if (!S.progress.milestones || !Object.keys(S.progress.milestones).length) { cons
 S.progress.streak = computeStreak(S.progress);
 applyFreezes();
 setView("today");
+handleShare();
+setTimeout(queueTranslations, 3000);
 
 /* A sync link puts the code after # (e.g. …/artifact/ID#s1.xxxx). Import it once. */
 async function takeIncomingLink() {

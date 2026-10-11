@@ -1,0 +1,25 @@
+{
+ "plen": {
+  "model": {
+   "name": "bergamot/models/model.plen.intgemm.alphas.bin",
+   "size": 17140899,
+   "estimatedCompressedSize": 13421783,
+   "expectedSha256Hash": "172a5f1d44bf8dd6a6eec3868b13b33ce265f3530e898fe11a80b739b821726e",
+   "modelType": "prod"
+  },
+  "lex": {
+   "name": "bergamot/models/lex.50.50.plen.s2t.bin",
+   "size": 4898024,
+   "estimatedCompressedSize": 2629586,
+   "expectedSha256Hash": "863afade0ba058fb0173fedef3d1fb14d0dcabc24c3b4584cb1fed8f84d6d879",
+   "modelType": "prod"
+  },
+  "vocab": {
+   "name": "bergamot/models/vocab.plen.spm",
+   "size": 822587,
+   "estimatedCompressedSize": 415308,
+   "expectedSha256Hash": "a1d27e6f5c0d29f406364ebf0382949d1c0affc750cec4380f3173150552f43e",
+   "modelType": "prod"
+  }
+ }
+}
