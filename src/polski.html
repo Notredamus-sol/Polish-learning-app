@@ -1910,7 +1910,9 @@ function takePackDrill() {
   return p.drill.items;
 }
 function validDrillItems(arr, fallbackTag) {
-  return (Array.isArray(arr) ? arr : []).filter(it => it &&
+  return (Array.isArray(arr) ? arr : []).map(it => it && Object.assign({}, it, {
+      a: it.t === "fill" && typeof it.a === "string" ? [it.a] : it.t === "choice" && typeof it.a === "string" && /^\d+$/.test(it.a) ? +it.a : it.a,
+      o: it.o || it.options })).filter(it => it &&
     ((it.t === "fill" && typeof it.q === "string" && it.q.includes("___") && Array.isArray(it.a) && it.a.length) ||
      (it.t === "choice" && typeof it.q === "string" && Array.isArray(it.o) && it.o.length >= 2 && Number.isInteger(it.a) && it.a < it.o.length)))
     .map(it => ({ t: it.t, q: it.q, h: it.h ? String(it.h) : "", a: it.t === "fill" ? it.a.map(String) : it.a, o: it.o ? it.o.map(String) : undefined, en: it.en ? String(it.en) : "", _tag: UNITS.some(u => u.tag === it.tag) ? it.tag : fallbackTag, _label: "drill" }));
@@ -1942,40 +1944,59 @@ Focus on the learner's weak spots and this unit's grammar (${u.grammar.title}). 
 Reply with only JSON:
 {"items":[{"t":"fill","q":"Polish sentence with ___","h":"base form or hint","a":["answer"],"en":"English translation","tag":"tag"},{"t":"choice","q":"sentence with ___","o":["correct","wrong","wrong"],"a":0,"tag":"tag"}]}`;
 }
+/* Each piece gets 45 seconds; a piece that times out or comes back unusable is tried once more
+   at the end of the queue. The whole pack stops after 3 minutes and keeps what's finished. */
+const PACK_PIECE_MS = 45000, PACK_TOTAL_MS = 180000, PACK_LANES = 3;
 async function makePack(onStatus, signal) {
   const cur = curUnit(), next = COURSE[POS[cur.id] + 1];
   const jobs = [0, 1, 2, 3].map(i => ({ kind: "dlg", u: cur, i })).concat([{ kind: "drill", u: cur }]);
   if (next && !S.progress.mastered.includes(next.id)) jobs.push({ kind: "dlg", u: next, i: 4 }, { kind: "dlg", u: next, i: 5 });
+  jobs.forEach(j => { j.tries = 0; });
+  const total = jobs.length, queue = jobs.slice();
   const pack = { made: Date.now(), units: {}, drill: null };
   const FATAL = ["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed", "rate_limited", "session_expired", "cancelled"];
-  let done = 0, ok = 0, stopErr = null, lastErr = null, idx = 0;
-  onStatus(`Writing the offline pack: 0 of ${jobs.length} pieces ready…`);
+  let ok = 0, failed = 0, retrying = 0, stopErr = null, lastErr = null;
+  const started = Date.now();
+  const status = () => { if (!stopErr) onStatus(`Writing the offline pack: ${ok} of ${total} pieces ready` + (retrying ? `, ${retrying} being retried` : "") + (failed ? `, ${failed} skipped` : "") + "…"); };
+  status();
   async function run(job) {
+    job.tries++;
+    /* one controller per piece: aborted by its own timeout or by Stop */
+    const ctl = new AbortController(), stop = () => ctl.abort();
+    if (signal) { if (signal.aborted) ctl.abort(); else signal.addEventListener("abort", stop); }
+    const timer = setTimeout(() => ctl.abort(), PACK_PIECE_MS);
     try {
       if (job.kind === "dlg") {
-        const r = await sample.json(packDialoguePrompt(job.u, job.i), { signal, cache: false, modelTier: "quick" });
+        const r = await sample.json(packDialoguePrompt(job.u, job.i), { signal: ctl.signal, cache: false, modelTier: "quick" });
         const dl = validDialogue(r && !r.lines && r.dialogue ? r.dialogue : r);
-        if (!dl) throw { code: "invalid_json" };
+        if (!dl || dl.lines.length < 4) throw { code: "invalid_json" };
         (pack.units[job.u.id] = pack.units[job.u.id] || { dialogues: [], used: 0 }).dialogues.push(dl);
       } else {
-        const r = await sample.json(packDrillPrompt(job.u), { signal, cache: false, modelTier: "quick" });
-        const items = validDrillItems(r && (r.items || r.drill), job.u.tag);
+        const r = await sample.json(packDrillPrompt(job.u), { signal: ctl.signal, cache: false, modelTier: "quick" });
+        const items = validDrillItems(r && (r.items || r.drill || (Array.isArray(r) ? r : null)), job.u.tag);
         if (items.length < 4) throw { code: "invalid_json" };
         pack.drill = { unit: job.u.id, items, used: false };
       }
       ok++;
+      if (job.tries > 1) retrying--;
     } catch (e) {
-      lastErr = e;
-      if (e && FATAL.includes(e.code)) stopErr = stopErr || e;
+      const userStop = signal && signal.aborted;
+      const err = userStop ? { code: "cancelled" } : ctl.signal.aborted ? { code: "timeout" } : e;
+      lastErr = err;
+      if (err && FATAL.includes(err.code)) stopErr = stopErr || err;
+      else if (job.tries < 2 && Date.now() - started < PACK_TOTAL_MS) { if (job.tries === 1) retrying++; queue.push(job); }
+      else { failed++; if (job.tries > 1) retrying--; }
+    } finally {
+      clearTimeout(timer);
+      if (signal) signal.removeEventListener("abort", stop);
     }
-    done++;
-    if (!stopErr) onStatus(`Writing the offline pack: ${ok} of ${jobs.length} pieces ready…`);
+    status();
   }
-  const worker = async () => { while (!stopErr && idx < jobs.length) await run(jobs[idx++]); };
-  await Promise.all([worker(), worker()]);
+  const lane = async () => { while (!stopErr && queue.length && Date.now() - started < PACK_TOTAL_MS) await run(queue.shift()); };
+  await Promise.all(Array.from({ length: PACK_LANES }, lane));
   const got = Object.keys(pack.units).length || pack.drill;
   if (!got) throw stopErr || lastErr || { code: "invalid_json" };
-  pack.partial = ok < jobs.length;
+  pack.partial = ok < total;
   pack.stopped = stopErr ? stopErr.code : null;
   return pack;
 }
@@ -2227,6 +2248,7 @@ function aiErrorText(e) {
   if (c === "session_expired") return "Your session expired. Sign in to Claude again and retry.";
   if (c === "invalid_json") return "The AI's reply came back in the wrong format. Press the button to try again.";
   if (c === "cancelled") return "";
+  if (c === "timeout") return "The AI took too long to answer. Try again in a moment.";
   return "The AI request didn't go through. Press the button to try again.";
 }
 function knownWords(limit = 140) {
@@ -2958,7 +2980,8 @@ Continue the story naturally, using two of the characters, in a situation that p
 function validDialogue(d) {
   if (!d || !Array.isArray(d.lines) || d.lines.length < 3) return null;
   const lines = d.lines.filter(l => l && typeof l.pl === "string" && typeof l.en === "string").map(l => ({ speaker: String(l.speaker || "?"), pl: l.pl, en: l.en }));
-  const qs = (Array.isArray(d.questions) ? d.questions : []).filter(q => q && typeof q.q === "string" && Array.isArray(q.options) && q.options.length >= 2 && Number.isInteger(q.answer) && q.answer < q.options.length)
+  const qs = (Array.isArray(d.questions) ? d.questions : []).map(q => q && ({ q: q.q || q.question, options: q.options || q.o || q.choices, answer: typeof q.answer === "string" && /^\d+$/.test(q.answer) ? +q.answer : q.answer ?? q.a }))
+    .filter(q => q && typeof q.q === "string" && Array.isArray(q.options) && q.options.length >= 2 && Number.isInteger(q.answer) && q.answer >= 0 && q.answer < q.options.length)
     .map(q => ({ t: "choice", q: q.q, o: q.options.map(String), a: q.answer }));
   const nw = (Array.isArray(d.newWords) ? d.newWords : []).filter(w => w && w.pl && w.en).slice(0, 6).map(w => ({ pl: String(w.pl), en: String(w.en) }));
   return { title: String(d.title || ""), setting: String(d.setting || ""), lines, questions: qs, newWords: nw };
@@ -4644,7 +4667,7 @@ function syncPanel() {
       h("div", { class: "spread" }, h("h3", null, "Send to the installed app"), h("span", { class: "chip green" }, "claude.ai")),
       h("p", { class: "small muted" }, "Before going offline, send your progress to the installed app. An offline pack adds 6 new AI dialogues and a 10-question weak-spot drill for the app to use without internet."),
       h("div", { class: "tiles" }, stat(ago(info.got), "last received", "from the app"), stat(ago(info.sent), "last sent", "to the app")),
-      h("label", { class: "row small", for: "pack-toggle", style: "flex-wrap:nowrap;align-items:flex-start" }, packToggle, h("span", null, "Include an offline pack (AI, usually under a minute)", aiOn() ? "" : " · needs AI and a connection")),
+      h("label", { class: "row small", for: "pack-toggle", style: "flex-wrap:nowrap;align-items:flex-start" }, packToggle, h("span", null, "Include an offline pack (AI, usually under a minute, never more than 3)", aiOn() ? "" : " · needs AI and a connection")),
       h("div", { class: "row" }, prep, h("button", { class: "btn ghost sm", onclick: () => ctl && ctl.abort() }, "Stop and keep what's ready")), status, out,
       importBox(() => render()),
       HAS_APP_URL ? h("p", { class: "small muted" }, "Don't have the app yet? Open ", h("a", { href: APP_URL, target: "_blank", rel: "noopener" }, APP_URL), " in Chrome or Edge and choose Install.") : null);
