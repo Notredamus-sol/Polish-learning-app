@@ -4,7 +4,7 @@
    a new version appears on the next launch. Fonts are cached the first time
    they load. The offline translator (bergamot/, about 28 MB) is cached in its own
    cache the first time the learner turns it on, and kept across app updates. */
-const VERSION = "pc-d87aa2e8a6";
+const VERSION = "pc-c521b7c423";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./apple-touch-icon.png"];
 const FONT_CACHE = "pc-fonts";
 const MT_CACHE = "pc-bergamot";

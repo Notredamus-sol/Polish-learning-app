@@ -2479,8 +2479,8 @@ function sentencePool() {
   if (SENTENCES) return SENTENCES;
   SENTENCES = [];
   COURSE.forEach(u => {
-    u.dialogue.forEach(([, pl, en]) => SENTENCES.push({ pl, en }));
-    u.quiz.forEach(q => { if (q.t === "fill" && q.en) SENTENCES.push({ pl: q.q.replace("___", q.a[0]), en: q.en }); });
+    u.dialogue.forEach(([, pl, en]) => SENTENCES.push({ pl, en, unit: u.id }));
+    u.quiz.forEach(q => { if (q.t === "fill" && q.en) SENTENCES.push({ pl: q.q.replace("___", q.a[0]), en: q.en, unit: u.id }); });
   });
   return SENTENCES;
 }
@@ -2519,6 +2519,47 @@ function contextFor(c) {
 }
 
 /* ---------- Step 1: Flashcard review ---------- */
+/* ---------- Grammar gate: flashcards never get ahead of the lessons ----------
+   Each form (case, tense…) unlocks with the unit (id) that teaches it. A sentence is shown
+   only when every word in it is in a form you've reached; personal pronouns are always fine.
+   Present tense, nominative and base forms are open from the start; participles never (not A1–A2). */
+const GRAMMAR_UNIT = { As: 3, Ls: 5, Gs: 6, Is: 12, Ds: 18, Vs: 30, Np: 14, Gp: 14, Ap: 14, Vp: 14, Dp: 34, Ip: 34, Lp: 34, past: 11, f: 16, cond: 29, imp: 19, cmp: 20, sup: 20 };
+const GRAMMAR_NAMES = { As: "accusative", Ls: "locative", Gs: "genitive", Is: "instrumental", Ds: "dative", Vs: "vocative", Np: "plural nouns", Dp: "plural dative/instrumental/locative", past: "past tense", f: "perfective future", cond: "conditional (by)", imp: "commands (imperative)", cmp: "comparatives" };
+const NEVER_FORMS = new Set(["ppas", "pact", "padv", "imps", "vn"]);
+const FREE_LEMMAS = new Set(["ja", "ty", "on", "ona", "ono", "my", "wy", "oni", "one", "się", "siebie", "pan", "pani"]);
+function codeAllowed(c) {
+  if (!c || c === "inf" || c === "Ns" || /^[123][sp]$/.test(c)) return true;
+  if (NEVER_FORMS.has(c)) return false;
+  const u = GRAMMAR_UNIT[/^f[123][sp]$/.test(c) ? "f" : c];
+  return u === undefined || reached(u);
+}
+const formAllowed = codes => String(codes).split("/").some(codeAllowed);
+/* every word of the sentence has at least one reading you've learned (unknown words pass) */
+/* after a preposition, the next two words are read only in the case(s) it takes:
+   "obok domu" is a genitive even though domu can also be a locative */
+const PREP_CASES = { do: "G", od: "G", bez: "G", dla: "G", u: "G", obok: "G", koło: "G", około: "G", podczas: "G", według: "G", zamiast: "G", oprócz: "G", spod: "G", zza: "G", sprzed: "G", wśród: "G", naprzeciwko: "G", dzięki: "D", przeciw: "D", ku: "D", przez: "A", przy: "L", w: "LA", we: "LA", na: "LA", o: "LA", po: "LA", z: "GI", ze: "GI", za: "IA", pod: "IA", nad: "IA", przed: "I", między: "I" };
+function sentenceAllowed(pl) {
+  const toks = String(pl).match(/\p{L}+/gu) || [];
+  let need = null, left = 0;
+  for (const t of toks) {
+    const lt = t.toLocaleLowerCase("pl"), rs = lemmasOf(lt);
+    let use = rs;
+    if (need && left > 0) {
+      const fit = rs.map(([l, c]) => [l, String(c).split("/").filter(x => need.includes(x[0]) && /^[NGDAILV][sp]$/.test(x)).join("/")]).filter(([, c]) => c);
+      if (fit.length) use = fit;
+      left--;
+    }
+    if (use.length && !use.some(([l, c]) => FREE_LEMMAS.has(l) || formAllowed(c))) return false;
+    if (PREP_CASES[lt]) { need = PREP_CASES[lt]; left = 2; }
+  }
+  return true;
+}
+/* the grammar you've reached, in words, for the AI */
+function grammarScope() {
+  const open = ["present tense", "nominative"], shut = [];
+  for (const [k, name] of Object.entries(GRAMMAR_NAMES)) (reached(GRAMMAR_UNIT[k]) ? open : shut).push(name);
+  return `Grammar the learner knows: ${open.join(", ")}.` + (shut.length ? ` Do NOT use: ${shut.join(", ")}, or participles.` : "");
+}
 /* ---------- Example sentences for a card ----------
    Course dialogues first (familiar), then sentences Claude wrote for you, then Tatoeba.
    A sentence counts only if it holds a form of the word that no other word shares
@@ -2551,14 +2592,15 @@ function findToken(pl, head) {
 function examplesFor(c) {
   if (c.mined) return [{ pl: c.pl, en: c.en, tok: null, src: "you" }];
   const head = cardHead(c), out = [], seen = new Set();
-  const push = (s, src) => { if (s && s.tok && !seen.has(s.pl)) { seen.add(s.pl); out.push(Object.assign({ src }, s)); } };
+  const tokOk = tok => { if (!tok) return false; if (tok.toLocaleLowerCase("pl") === head.toLocaleLowerCase("pl")) return true; const hit = lemmasOf(tok).find(([l]) => l.toLocaleLowerCase("pl") === head.toLocaleLowerCase("pl")); return !hit || formAllowed(hit[1]); };
+  const push = (s, src) => { if (s && s.tok && !seen.has(s.pl) && (s.unit === undefined || reached(s.unit)) && (/\s/.test(head) || tokOk(s.tok)) && sentenceAllowed(s.pl)) { seen.add(s.pl); out.push(Object.assign({ src }, s)); } };
   if (/\s/.test(head)) {
     /* a phrase is its own context; course lines that use it come first */
     const ph = head.toLocaleLowerCase("pl");
-    for (const s of sentencePool()) { const i = s.pl.toLocaleLowerCase("pl").indexOf(ph); if (i >= 0 && s.pl.length > ph.length + 3) push({ pl: s.pl, en: s.en, tok: s.pl.substr(i, ph.length) }, "course"); if (out.length >= 3) break; }
+    for (const s of sentencePool()) { const i = s.pl.toLocaleLowerCase("pl").indexOf(ph); if (i >= 0 && s.pl.length > ph.length + 3) push({ pl: s.pl, en: s.en, unit: s.unit, tok: s.pl.substr(i, ph.length) }, "course"); if (out.length >= 3) break; }
     return out;
   }
-  for (const s of sentencePool()) { push({ pl: s.pl, en: s.en, tok: findToken(s.pl, head) }, "course"); if (out.length >= 3) break; }
+  for (const s of sentencePool()) { push({ pl: s.pl, en: s.en, unit: s.unit, tok: findToken(s.pl, head) }, "course"); if (out.length >= 3) break; }
   ((S.srs.ex || {})[c.id] || []).forEach(s => push({ pl: s.pl, en: s.en, tok: findToken(s.pl, head) || (String(s.pl).includes(s.tok) ? s.tok : null) }, "claude"));
   const ix = exData().get(String(c.pl).toLocaleLowerCase("pl")) || exData().get(head.toLocaleLowerCase("pl"));
   if (ix) ix.ids.forEach(i => { const s = _exSent[i]; push({ pl: s.pl, en: s.en, tid: s.tid, tok: findToken(s.pl, ix.lem) }, "tatoeba"); });
@@ -2574,6 +2616,7 @@ async function fillExamples(cards) {
     const r = await sample.json(`You write example sentences for a Polish learner (level ${levelOf(curUnit())}, a native Serbian speaker who studies in English).
 For each word below write 2 short, natural Polish sentences (4–9 words) that use the word in a common meaning, ideally in different grammatical forms, with an English translation.
 Use simple vocabulary; prefer words the learner knows: ${known}.
+${grammarScope()} Use the word itself only in forms from that list.
 Words:
 ${need.map(c => `- ${c.pl} = ${c.en}`).join("\n")}
 Reply with only JSON: {"items":[{"word":"…","sentences":[{"pl":"…","en":"…"}]}]}`, { cache: false, modelTier: "quick" });
@@ -2581,7 +2624,7 @@ Reply with only JSON: {"items":[{"word":"…","sentences":[{"pl":"…","en":"…
     for (const it of (r && r.items) || []) {
       const c = need.find(x => x.pl === it.word || cardHead(x) === it.word);
       if (!c) continue;
-      const ok = (it.sentences || []).filter(s => s && s.pl && s.en && findToken(s.pl, cardHead(c))).slice(0, 3).map(s => ({ pl: String(s.pl), en: String(s.en) }));
+      const ok = (it.sentences || []).filter(s => s && s.pl && s.en && findToken(s.pl, cardHead(c)) && sentenceAllowed(s.pl)).slice(0, 3).map(s => ({ pl: String(s.pl), en: String(s.en) }));
       if (ok.length) S.srs.ex[c.id] = ok;
     }
     persist("srs");
