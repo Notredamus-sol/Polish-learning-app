@@ -342,6 +342,22 @@ ul.cando li::before { content: "✓"; position: absolute; left: 0; color: var(--
 .vocab-list .grp { grid-column: 1 / -1; display: block; border: 0; margin: 10px 0 0; padding: 0 0 2px; font-family: var(--display); font-size: 0.85rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
 .vocab-list .grp:first-child { margin-top: 0; }
 .letter-bar { gap: 4px; }
+.case-q { line-height: 1.7; }
+.case-gap { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 4px; line-height: 1.1; }
+.case-gap small { font-size: 0.72rem; color: var(--muted); font-weight: 400; }
+.ok-word { color: var(--good); } .bad-word { color: var(--accent); text-decoration: line-through; }
+.case-ex .type-row { max-width: none; }
+.mm { display: grid; gap: 8px; }
+.mm-row { display: grid; grid-template-columns: minmax(0, 11rem) 1fr 3rem; gap: 2px 10px; align-items: center; }
+.mm-bar { height: 10px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; }
+.mm-bar span { display: block; height: 100%; background: var(--muted); }
+.mm-bar span.low { background: var(--accent); } .mm-bar span.mid { background: var(--warn); } .mm-bar span.hi { background: var(--good); }
+.mm-num { text-align: right; font-variant-numeric: tabular-nums; }
+.mm-split { grid-column: 1 / -1; margin-top: -4px; }
+.nb-list { display: grid; gap: 10px; }
+.nb { display: grid; gap: 3px; border-top: 1px solid var(--line); padding-top: 10px; }
+.nb-expl { background: var(--blue-soft); border-radius: 8px; padding: 6px 8px; }
+@media (max-width: 420px) { .mm-row { grid-template-columns: minmax(0, 1fr) 6rem 2.6rem; } }
 .tapw { cursor: pointer; border-radius: 4px; text-decoration: underline dotted color-mix(in srgb, var(--muted) 45%, transparent); text-underline-offset: 4px; }
 .tapw:hover, .tapw:focus-visible { background: var(--warn-soft); outline: none; }
 .word-look { width: 100%; max-width: 440px; text-align: left; border: 1px solid var(--line); background: var(--surface-2); border-radius: 10px; padding: 8px 10px; display: grid; gap: 6px; }
@@ -1636,8 +1652,8 @@ const STORY_PAIRS = [["Ola", "Tomek"], ["Tomek", "Marek"], ["Ola", "Pani Ewa"], 
 /* Session lengths: which steps make up the day */
 const PLANS = {
   quick: { label: "Quick", steps: ["review", "mini"] },
-  standard: { label: "Standard", steps: ["review", "grammar", "read", "dialogue", "quiz"] },
-  full: { label: "Full", steps: ["review", "grammar", "read", "dialogue", "listen", "convo", "writing", "story", "quiz"] }
+  standard: { label: "Standard", steps: ["review", "grammar", "cases", "read", "dialogue", "quiz"] },
+  full: { label: "Full", steps: ["review", "grammar", "cases", "read", "dialogue", "listen", "convo", "writing", "story", "quiz"] }
 };
 
 /* ================================================================
@@ -1778,7 +1794,7 @@ function normalizeProgress(P) {
   if (!Array.isArray(P.quizzes)) P.quizzes = [];
   if (!Array.isArray(P.mastered)) P.mastered = [];
   if (!Array.isArray(P.exams)) P.exams = [];
-  for (const k of ["stats", "milestones", "frozen", "masteredAt", "passed", "timeBy"]) if (!P[k] || typeof P[k] !== "object") P[k] = {};
+  for (const k of ["stats", "milestones", "frozen", "masteredAt", "passed", "timeBy", "cases", "mistakes"]) if (!P[k] || typeof P[k] !== "object") P[k] = {};
   return P;
 }
 function computeStreak(P) {
@@ -1828,6 +1844,11 @@ function mergeProgress(local, incoming) {
   m.passed = pa;
   m.timeBy = Object.assign({}, older.timeBy);   /* study time per device, merged like XP */
   for (const [dev, t] of Object.entries(newer.timeBy)) { const o = m.timeBy[dev] || {}; m.timeBy[dev] = { A1: Math.max(o.A1 || 0, t.A1 || 0), A2: Math.max(o.A2 || 0, t.A2 || 0) }; }
+  /* case drill stats: per case/governor the copy with more answers wins; notebook: newer edit wins */
+  m.cases = { k: {}, g: {}, seen: Object.assign({}, (older.cases || {}).seen, (newer.cases || {}).seen), commute: (newer.cases || {}).commute || (older.cases || {}).commute };
+  for (const part of ["k", "g"]) for (const src of [older.cases || {}, newer.cases || {}]) for (const [key, x] of Object.entries(src[part] || {})) { const o = m.cases[part][key]; if (!o || (x.n || 0) > (o.n || 0)) m.cases[part][key] = x; }
+  m.mistakes = Object.assign({}, older.mistakes);
+  for (const [id, x] of Object.entries(newer.mistakes || {})) { const o = m.mistakes[id]; if (!o || (x.t || 0) >= (o.t || 0)) m.mistakes[id] = x; }
   m.unit = nextUnitFrom(m.mastered.concat(Object.keys(pa).map(Number)), (POS[b.unit] ?? -1) > (POS[a.unit] ?? -1) ? b.unit : a.unit);
   return m;
 }
@@ -2300,7 +2321,7 @@ function setView(v) {
   if (session && session.ctl) { try { session.ctl.abort(); } catch (e) {} }
   session = null; keyHandler = null;
   stopAudio();
-  document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-current", b.dataset.view === (v === "unit" || v === "exam" ? "course" : v) ? "page" : "false"));
+  document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-current", b.dataset.view === (v === "unit" || v === "exam" ? "course" : v === "cases" ? "tables" : v) ? "page" : "false"));
   render();
   window.scrollTo({ top: 0 });
 }
@@ -2313,6 +2334,7 @@ function render() {
   else if (view === "course") renderCourse();
   else if (view === "unit") renderUnitPage();
   else if (view === "dict") renderDict();
+  else if (view === "cases") renderCases();
   else if (view === "tables") renderTables();
   else if (view === "progress") renderProgress();
   else if (view === "exam") renderExam();
@@ -2332,6 +2354,7 @@ const STEPS = [
   { id: "writing", pl: "Pisanie", en: "Writing", min: 4, desc: () => curUnit().writing.prompt },
   { id: "story", pl: "Czytanka", en: "Daily reading", min: 6, desc: () => aiOn() ? "A short new story written from the words you know" : "Read again: a text from an earlier unit" },
   { id: "check", pl: "Sprawdzian", en: "Check-back test", min: 5, desc: () => { const d = dueChecks()[0]; return d ? `Unit ${unitNo(d)}, „${d.pl}”: pass it again to finish the unit` : "Nothing due"; } },
+  { id: "cases", pl: "Przypadki", en: "Case practice", min: 5, desc: () => { const w = MAP_CODES.filter(c => codeAllowed(c) && caseState().k[c]).sort((a, b) => caseState().k[a].s - caseState().k[b].s)[0]; return "8 sentences: put the noun in the right form" + (w ? ` · weakest: ${caseName(w)}` : "") + (dueMistakes().length ? ` · ${dueMistakes().length} in your notebook` : ""); } },
   { id: "quiz", pl: "Test dnia", en: "Daily test", min: 5, desc: () => "12 questions · score 80% to finish the unit" }
 ];
 const DRILL = { id: "drill", pl: "Słabe punkty", en: "Weak-spot drill", min: 5, desc: () => "Extra practice on: " + weakList().slice(0, 3).map(([t]) => tagLabel(t)).join(", ") };
@@ -2398,6 +2421,11 @@ function renderToday() {
       next ? h("div", { class: "row", style: "margin-top:8px" }, h("button", { class: "btn primary", onclick: () => startStep(next.id) }, done ? "Continue →" : "Start today's session →")) : null,
       extras.length ? h("details", { class: "ref", style: "margin-top:10px" }, h("summary", null, `Extra practice (${extras.length})`), h("div", { class: "plan" }, extras.map((s, i) => row(s, i, false)))) : null),
     writingsCard(),
+    casesUnlocked() ? h("section", { class: "card stack" },
+      h("div", { class: "spread" }, h("div", null, h("span", { class: "eyebrow" }, "Case trainer · works offline"), h("h3", { class: "pl", style: "margin:2px 0 0" }, "Przypadki")),
+        h("div", { class: "row" }, h("button", { class: "btn sm", onclick: () => startCommute() }, commuteToday() && commuteToday().stage >= COMMUTE_STAGES.length ? "Commute ✓" : commuteToday() ? "Continue commute" : "Commute session"),
+          h("button", { class: "btn ghost sm", onclick: () => setView("cases") }, "Open"))),
+      h("p", { class: "small muted" }, "Drills, your case mastery map and your mistake notebook." + (dueMistakes().length ? ` ${dueMistakes().length} mistake${dueMistakes().length === 1 ? "" : "s"} to review.` : ""))) : null,
     dailyCards(),
     weakList().length ? h("section", { class: "stack" },
       h("h3", null, "Weak spots"),
@@ -2445,7 +2473,7 @@ function startStep(id, opts = {}) {
       h("h1", { class: "pl" }, s.pl)),
     body));
   window.scrollTo({ top: 0 });
-  const runners = { review: runReview, grammar: runGrammar, dialogue: runDialogue, convo: runConvo, writing: runWriting, quiz: runQuiz, drill: runDrill, mini: runMini, listen: runListen, read: runRead, story: runStory, check: runCheck };
+  const runners = { review: runReview, grammar: runGrammar, dialogue: runDialogue, convo: runConvo, writing: runWriting, quiz: runQuiz, drill: runDrill, mini: runMini, listen: runListen, read: runRead, story: runStory, check: runCheck, cases: runCasesStep };
   runners[id](body, opts);
 }
 function stepUnit() { return session && session.opts && session.opts.unit != null ? UNITS[session.opts.unit] : session && session.opts && session.opts.checkUnit != null ? UNITS[session.opts.checkUnit] : curUnit(); }
@@ -2689,6 +2717,7 @@ function runReview(body, opts = {}) {
   }
   const total = queue.length;
   let done = 0, again = {};
+  if (!total && opts.onDone) { opts.onDone(); return; }
   if (!total) {
     body.append(h("div", { class: "card stack" }, h("p", null, opts.mined ? "No sentences are due right now." : "No cards are due right now, and all the words from this unit have been introduced."), h("p", { class: "muted small" }, "Cards come back when they're due. Your next review builds up as you learn.")));
     if (!opts.practiceAll && !opts.mined) finishStep("review", body);
@@ -2698,6 +2727,7 @@ function runReview(body, opts = {}) {
   const stage = h("div", { class: "stack" });
   body.append(stage);
   function next() {
+    if (opts.onDone && (!queue.length || (opts.until && Date.now() > opts.until))) { stage.replaceChildren(); addXP(done * 2); keyHandler = null; opts.onDone(); return; }
     if (!queue.length) {
       stage.replaceChildren();
       addXP(done * 2);
@@ -2736,6 +2766,12 @@ function runReview(body, opts = {}) {
       if (flipped) return;
       result = checkTyped(input.value, target.tok, target.head);
       if (result === "empty") return;
+      if ((result === "form" || result === "wrong") && recallEx && recallEx.tok) {
+        const i = recallEx.pl.indexOf(target.tok), hitc = lemmasOf(target.tok).find(([l]) => l.toLocaleLowerCase("pl") === String(target.head).toLocaleLowerCase("pl"));
+        if (i >= 0) addMistake({ kind: "card", pl: recallEx.pl.slice(0, i) + "___" + recallEx.pl.slice(i + target.tok.length), full: recallEx.pl, en: recallEx.en || "", right: target.tok, wrote: input.value, lemma: target.head,
+          code: hitc && /^[NGDAILV][sp]/.test(hitc[1]) ? hitc[1].split("/")[0] : "", diag: result === "form" ? "right word, wrong form" : "wrong word", rule: hitc && hitc[1] ? describeForm(hitc[1]) + " of " + target.head : "" });
+        persist("progress");
+      }
       flip();
     }
     input.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); if (!flipped) check(); else rate(result === "ok" || result === "accents" ? "good" : result === "form" ? "hard" : "again"); } });
@@ -2847,7 +2883,7 @@ function exercise(host, item, meta = {}) {
     const fb = h("div");
     host.replaceChildren(box);
     if (meta.counter) box.append(h("div", { class: "spread" }, h("span", { class: "eyebrow" }, meta.counter), meta.label ? h("span", { class: "chip" }, meta.label) : null));
-    let answered = false;
+    let answered = false, given = "";
     const ruleUnit = item._tag && !String(item._tag).startsWith("v") ? unitOfTag(item._tag) : null;
     function feedback(kind, right, extra) {
       answered = true;
@@ -2857,7 +2893,7 @@ function exercise(host, item, meta = {}) {
         kind !== "ok" && right ? h("div", null, "Answer: ", h("b", { class: "pl" }, right)) : null,
         item.en ? h("div", { class: "muted small" }, item.en) : null,
         extra ? h("div", { class: "small" }, extra) : null,
-        h("div", { class: "row", style: "margin-top:6px" }, h("button", { class: "btn primary sm", id: "ex-continue", onclick: () => resolve({ correct: kind !== "no", almost: kind === "almost" }) }, "Continue →"), right ? sayBtn(fullSentence(item)) : null,
+        h("div", { class: "row", style: "margin-top:6px" }, h("button", { class: "btn primary sm", id: "ex-continue", onclick: () => resolve({ correct: kind !== "no", almost: kind === "almost", given }) }, "Continue →"), right ? sayBtn(fullSentence(item)) : null,
           ruleUnit ? h("button", { class: "btn ghost sm", onclick: () => openRule(ruleUnit) }, "▦ Show the rule") : null)
       ));
       setTimeout(() => { const b = $("#ex-continue"); b && b.focus(); }, 30);
@@ -2875,6 +2911,7 @@ function exercise(host, item, meta = {}) {
       setTimeout(() => inp.focus(), 30);
       function check() {
         if (answered || !inp.value.trim()) return;
+        given = inp.value;
         const r = checkText(inp.value, item.a);
         btn.disabled = true; inp.disabled = true;
         feedback(r, item.a[0]);
@@ -2888,6 +2925,7 @@ function exercise(host, item, meta = {}) {
         if (answered) return;
         opts.querySelectorAll("button").forEach(b => b.disabled = true);
         const ok = i === item.a;
+        given = item.o[i];
         e.currentTarget.classList.add(ok ? "right" : "wrong");
         if (!ok) opts.children[order.indexOf(item.a)].classList.add("right");
         feedback(ok ? "ok" : "no", item.o[item.a]);
@@ -2913,6 +2951,7 @@ function exercise(host, item, meta = {}) {
         if (answered || !built.length) return;
         btn.disabled = true;
         const guess = built.map(b => words[b.i]).join(" ");
+        given = guess;
         feedback(norm(guess) === norm(item.a) ? "ok" : "no", item.a);
       } }, "Check");
       box.append(tray, bank, h("div", { class: "row" }, btn), fb);
@@ -2933,6 +2972,12 @@ async function runSet(host, items, { onEach, key, start = 0, score: startScore =
     const r = await exercise(host, it, { counter: `${i + 1} / ${items.length}`, label: it._label });
     if (r.correct) score++;
     if (it._tag) hit(it._tag, r.correct);
+    if (!r.correct && it.q && it._label !== "drill") {
+      const right = it.t === "fill" ? it.a[0] : it.t === "choice" ? it.o[it.a] : it.a;
+      const keep = { t: it.t, q: it.q, o: it.o, a: it.a, h: it.h, en: it.en, _tag: it._tag, _label: it._label, _gloss: it._gloss };
+      addMistake({ kind: "test", item: keep, q: it.t === "order" ? it.en : it.q, pl: it.t === "fill" ? it.q : "", right, wrote: r.given || "", en: it.en || "",
+        rule: it._tag && !String(it._tag).startsWith("v") ? tagLabel(it._tag) : "", serb: it.sr ? "A typical Serbian-speaker trap." : "" });
+    }
     onEach && onEach(it, r);
     if (key) saveResume(key, items, i + 1, score);
   }
@@ -4671,7 +4716,8 @@ function renderTables() {
   }
   q.addEventListener("input", draw);
   app.replaceChildren(h("div", { class: "stack-lg" },
-    h("div", { class: "stack" }, h("span", { class: "eyebrow" }, "Grammar reminders"), h("h1", { class: "pl" }, "Tabele")),
+    h("div", { class: "spread" }, h("div", { class: "stack" }, h("span", { class: "eyebrow" }, "Grammar reminders"), h("h1", { class: "pl" }, "Tabele")),
+      casesUnlocked() ? h("button", { class: "btn sm", onclick: () => setView("cases") }, "Przypadki: case trainer →") : null),
     h("p", { class: "muted" }, "Every key conjugation and ending in one place. Green tags show topics you've already reached. The rest are here to look ahead. You can also open these tables from any lesson, and from a wrong answer."),
     q, index, list));
   draw();
@@ -4883,11 +4929,11 @@ try { if (window.speechSynthesis) speechSynthesis.addEventListener("voiceschange
    SESSION PLAN, minimum day, daily goal
    ================================================================ */
 function planSteps() {
-  let ids = (PLANS[settings().length] || PLANS.standard).steps.filter(id => id !== "listen" || hasAnyAudio());
+  let ids = (PLANS[settings().length] || PLANS.standard).steps.filter(id => (id !== "listen" || hasAnyAudio()) && (id !== "cases" || casesUnlocked()));
   if (dueChecks().length || todayRec().steps.check) ids = [ids[0], "check", ...ids.slice(1)];   /* a check-back test joins the plan when one is due */
   return ids.map(id => STEPS.find(s => s.id === id)).filter(Boolean);
 }
-function extraSteps() { const inPlan = new Set(planSteps().map(s => s.id)); return STEPS.filter(s => !inPlan.has(s.id) && s.id !== "check" && (s.id !== "listen" || hasAnyAudio())); }
+function extraSteps() { const inPlan = new Set(planSteps().map(s => s.id)); return STEPS.filter(s => !inPlan.has(s.id) && s.id !== "check" && (s.id !== "listen" || hasAnyAudio()) && (s.id !== "cases" || casesUnlocked())); }
 const planMinutes = () => planSteps().reduce((n, s) => n + s.min, 0);
 function goalRing(xp, goal) {
   const r = 26, c = 2 * Math.PI * r, f = Math.min(1, xp / goal);
@@ -5220,6 +5266,8 @@ function resetBox() {
   wrap.append(h("button", { class: "btn ghost sm", onclick: ask }, "Reset all progress"));
   return wrap;
 }
+
+/*@include features/cases.js*/
 
 /* ================================================================
    Boot
