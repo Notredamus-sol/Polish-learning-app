@@ -342,6 +342,10 @@ ul.cando li::before { content: "✓"; position: absolute; left: 0; color: var(--
 .vocab-list .grp { grid-column: 1 / -1; display: block; border: 0; margin: 10px 0 0; padding: 0 0 2px; font-family: var(--display); font-size: 0.85rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
 .vocab-list .grp:first-child { margin-top: 0; }
 .letter-bar { gap: 4px; }
+.tapw { cursor: pointer; border-radius: 4px; text-decoration: underline dotted color-mix(in srgb, var(--muted) 45%, transparent); text-underline-offset: 4px; }
+.tapw:hover, .tapw:focus-visible { background: var(--warn-soft); outline: none; }
+.word-look { width: 100%; max-width: 440px; text-align: left; border: 1px solid var(--line); background: var(--surface-2); border-radius: 10px; padding: 8px 10px; display: grid; gap: 6px; }
+.gloss { margin-top: -4px; }
 .flash:has(.tagline) { padding-top: 46px; }
 .type-row { display: flex; gap: 8px; width: 100%; max-width: 420px; }
 .type-in { flex: 1; min-width: 0; font-size: 1.15rem; text-align: center; }
@@ -2636,12 +2640,30 @@ function formNote(tok, head) {
   const hit = lemmasOf(tok).find(([l]) => l.toLocaleLowerCase("pl") === head.toLocaleLowerCase("pl"));
   return hit && hit[1] ? `${tok} = ${describeForm(hit[1])} of ${head}` : `${tok} is a form of ${head}`;
 }
-function sentenceEl(ex, mode, words) {
-  /* mode: "show" highlights the word; "gap" hides it */
+function sentenceEl(ex, mode, words, onTap) {
+  /* mode: "show" highlights the word; "gap" hides it. With onTap every word can be tapped. */
   const marks = words ? words.map(w => w.tok) : ex.tok ? [ex.tok] : [];
+  if (onTap) return h("div", { class: "pl ctx-pl" }, String(ex.pl).split(/(\p{L}+)/u).map((part, i) => {
+    if (!(i % 2)) return part;
+    if (mode === "gap" && part === ex.tok) return h("span", { class: "blank" }, "____");
+    return h("span", { class: "tapw" + (marks.includes(part) ? " ctx-word" : ""), role: "button", tabindex: "0", title: "Look up " + part,
+      onclick: e => { e.stopPropagation(); onTap(part); }, onkeydown: e => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); onTap(part); } } }, part);
+  }));
   if (!marks.length) return h("div", { class: "pl ctx-pl" }, ex.pl);
   const re = new RegExp("(" + marks.map(m => m.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")", "u");
   return h("div", { class: "pl ctx-pl" }, ex.pl.split(re).map((part, i) => i % 2 ? (mode === "gap" && part === ex.tok ? h("span", { class: "blank" }, "____") : h("b", { class: "ctx-word" }, part)) : part));
+}
+function wordPanel(panel, tok, ex) {
+  const hits = lookupWord(tok), hit = hits[0];
+  const saveBtn = h("button", { class: "btn ghost sm", onclick: e => { e.stopPropagation(); openMiner({ pl: ex.pl, en: ex.en || "", src: "Flashcards", marks: [tok] }); } }, "＋ Save sentence to Zdania");
+  const add = hit && hit.entry ? (inDeck(hit.entry) ? h("span", { class: "chip green" }, "✓ in your flashcards")
+    : h("button", { class: "btn sm", onclick: e => { e.stopPropagation(); addFromDict(hit.entry); e.currentTarget.replaceWith(h("span", { class: "chip green" }, "✓ added to My words")); } }, "+ My words")) : null;
+  panel.hidden = false;
+  panel.replaceChildren(h("div", { class: "spread" },
+      h("div", null, h("b", { class: "pl" }, tok), hit && hit.lemma && hit.lemma.toLocaleLowerCase("pl") !== tok.toLocaleLowerCase("pl") ? h("span", { class: "muted" }, " → " + hit.lemma) : null, hit && hit.form ? h("span", { class: "muted small" }, " · " + hit.form) : null),
+      h("button", { class: "btn ghost sm", "aria-label": "Close", onclick: e => { e.stopPropagation(); panel.hidden = true; } }, "✕")),
+    h("div", null, hit ? hit.en : "Not in the dictionary. Save the sentence and it will be translated for you."),
+    h("div", { class: "row" }, add, saveBtn));
 }
 const exSource = ex => ex.src === "tatoeba" ? h("a", { class: "small muted", href: "https://tatoeba.org/sentences/show/" + ex.tid, target: "_blank", rel: "noopener" }, "Tatoeba #" + ex.tid) : ex.src === "claude" ? h("span", { class: "small muted" }, "written for you by Claude") : null;
 /* typed answers: exact, only the Polish letters missing, the right word in the wrong form, or wrong */
@@ -2706,6 +2728,10 @@ function runReview(body, opts = {}) {
     const grades = h("div", { class: "grades" });
     const input = h("input", { type: "text", class: "type-in", autocomplete: "off", autocapitalize: "off", spellcheck: "false", "aria-label": "Type the missing word" });
     const recallEx = c.mined ? { pl: c.pl, en: c.en, tok: target && target.tok } : ex;
+    /* on the answer side every word of the sentence can be tapped: meaning, + My words, save to Zdania */
+    const look = h("div", { class: "word-look", hidden: true });
+    const tap = s => (flipped || mode === "new") ? (tok => wordPanel(look, tok, s)) : null;
+    const tapHint = () => h("div", { class: "small muted" }, "Tap any word to look it up or save it");
     function check() {
       if (flipped) return;
       result = checkTyped(input.value, target.tok, target.head);
@@ -2721,21 +2747,21 @@ function runReview(body, opts = {}) {
       const wordInfo = () => [h("div", { class: "row", style: "justify-content:center" }, h("div", { class: "word" }, c.pl), sayBtn(c.pl)), h("div", { class: "answer" }, c.en), c.note ? h("div", { class: "note" }, c.note) : null];
       const glosses = () => (c.words || []).length ? h("div", { class: "glosses" }, c.words.map(w => h("div", null, h("b", { class: "pl" }, w.tok), w.lemma && w.lemma !== w.tok ? " (" + w.lemma + ")" : "", " = ", w.en || "?"))) : null;
       if (mode === "new") {
-        if (c.mined) parts.push(h("div", { class: "ctx" }, sentenceEl({ pl: c.pl }, "show", c.words), sayBtn(c.pl), h("div", { class: "muted" }, c.en || "No translation yet")), glosses());
+        if (c.mined) parts.push(h("div", { class: "ctx" }, sentenceEl({ pl: c.pl }, "show", c.words, tap({ pl: c.pl, en: c.en })), sayBtn(c.pl), h("div", { class: "muted" }, c.en || "No translation yet")), look, glosses());
         else {
           parts.push(...wordInfo());
-          if (ex) parts.push(h("div", { class: "ctx" }, h("div", { class: "row", style: "justify-content:center;flex-wrap:nowrap" }, sentenceEl(ex, "show"), sayBtn(ex.pl)), h("div", { class: "muted small" }, ex.en), formNote(ex.tok, head) ? h("div", { class: "small" }, formNote(ex.tok, head)) : null, exSource(ex)));
+          if (ex) parts.push(h("div", { class: "ctx" }, h("div", { class: "row", style: "justify-content:center;flex-wrap:nowrap" }, sentenceEl(ex, "show", null, tap(ex)), sayBtn(ex.pl)), h("div", { class: "muted small" }, ex.en), formNote(ex.tok, head) ? h("div", { class: "small" }, formNote(ex.tok, head)) : null, exSource(ex)), look, tapHint());
         }
       } else if (mode === "recog") {
         if (c.mined) {
-          parts.push(h("div", { class: "ctx" }, sentenceEl({ pl: c.pl }, "show", c.words), flipped ? sayBtn(c.pl) : null));
+          parts.push(h("div", { class: "ctx" }, sentenceEl({ pl: c.pl }, "show", c.words, tap({ pl: c.pl, en: c.en })), flipped ? sayBtn(c.pl) : null), flipped ? look : null);
           if (!flipped) parts.push(h("p", { class: "muted small" }, "Do you understand the whole sentence? Say it out loud, then flip."));
           else parts.push(h("div", { class: "answer" }, c.en || "No translation yet"), glosses(), c.note ? h("div", { class: "note" }, c.note) : null);
         } else if (ex) {
-          parts.push(h("div", { class: "ctx" }, h("div", { class: "row", style: "justify-content:center;flex-wrap:nowrap" }, sentenceEl(ex, "show"), flipped ? sayBtn(ex.pl) : null)));
+          parts.push(h("div", { class: "ctx" }, h("div", { class: "row", style: "justify-content:center;flex-wrap:nowrap" }, sentenceEl(ex, "show", null, tap(ex)), flipped ? sayBtn(ex.pl) : null)), flipped ? look : null);
           if (!flipped) parts.push(h("p", { class: "muted small" }, "What does the highlighted word mean? Flip the card to check."));
           else parts.push(h("div", { class: "answer" }, c.en), h("div", { class: "muted small" }, ex.en),
-            h("div", { class: "row small", style: "justify-content:center" }, h("span", { class: "pl" }, c.pl), sayBtn(c.pl)), formNote(ex.tok, head) ? h("div", { class: "small" }, formNote(ex.tok, head)) : null, c.note ? h("div", { class: "note" }, c.note) : null, exSource(ex));
+            h("div", { class: "row small", style: "justify-content:center" }, h("span", { class: "pl" }, c.pl), sayBtn(c.pl)), formNote(ex.tok, head) ? h("div", { class: "small" }, formNote(ex.tok, head)) : null, c.note ? h("div", { class: "note" }, c.note) : null, exSource(ex), tapHint());
         } else {
           parts.push(h("div", { class: "row", style: "justify-content:center" }, h("div", { class: "word" }, c.pl), sayBtn(c.pl)));
           parts.push(flipped ? h("div", { class: "answer" }, c.en) : h("p", { class: "muted small" }, "What does it mean? Flip the card to check."));
@@ -2743,13 +2769,13 @@ function runReview(body, opts = {}) {
         }
       } else if (mode === "flipRecall") {
         parts.push(h("div", { class: "word" }, c.en));
-        if (ex) parts.push(h("div", { class: "ctx" }, flipped ? sentenceEl(ex, "show") : h("div", { class: "muted" }, ex.en)));
+        if (ex) parts.push(h("div", { class: "ctx" }, flipped ? sentenceEl(ex, "show", null, tap(ex)) : h("div", { class: "muted" }, ex.en)), flipped ? look : null);
         parts.push(flipped ? h("div", { class: "row", style: "justify-content:center" }, h("div", { class: "answer pl" }, c.pl), sayBtn(c.pl)) : h("p", { class: "muted small" }, "Say it in Polish, then flip the card."));
         if (flipped && c.note) parts.push(h("div", { class: "note" }, c.note));
       } else {
         /* typed recall */
         const has = recallEx && recallEx.tok;
-        if (has) parts.push(h("div", { class: "ctx" }, h("div", { class: "muted" }, recallEx.en || ""), sentenceEl(recallEx, flipped ? "show" : "gap", c.mined ? [{ tok: target.tok }] : null), flipped ? sayBtn(recallEx.pl) : null));
+        if (has) parts.push(h("div", { class: "ctx" }, h("div", { class: "muted" }, recallEx.en || ""), sentenceEl(recallEx, flipped ? "show" : "gap", c.mined ? [{ tok: target.tok }] : null, tap(recallEx)), flipped ? sayBtn(recallEx.pl) : null), flipped ? look : null);
         else parts.push(h("div", { class: "word" }, target.en));
         parts.push(h("div", { class: "small" }, has ? ["Missing word: ", h("b", null, target.en || "?")] : "Type it in Polish"));
         if (!flipped) {
@@ -2814,6 +2840,7 @@ function keypad(target) {
   } }, ch)));
 }
 /* Renders one exercise; resolves {correct, almost} after the learner presses Continue */
+const glossEl = it => it._gloss && it._gloss.length ? h("div", { class: "small muted gloss" }, it._gloss.length > 1 ? "New words: " : "New word: ", ...it._gloss.flatMap((w, i) => [i ? " · " : "", h("b", { class: "pl" }, w.pl), " = " + w.en])) : null;
 function exercise(host, item, meta = {}) {
   return new Promise(resolve => {
     const box = h("div", { class: "card stack" });
@@ -2840,6 +2867,7 @@ function exercise(host, item, meta = {}) {
       const parts = item.q.split("___");
       box.append(h("div", { class: "ex-q" }, parts[0], h("span", { class: "blank" }, "?"), parts[1] || ""));
       if (item.h) box.append(h("div", { class: "hint" }, "Use: ", h("b", { class: "pl" }, item.h)));
+      glossEl(item) && box.append(glossEl(item));
       const inp = h("input", { type: "text", id: "ex-input", autocomplete: "off", autocapitalize: "off", spellcheck: "false", "aria-label": "Your answer" });
       const btn = h("button", { class: "btn primary", onclick: check }, "Check");
       inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); if (!answered) check(); else $("#ex-continue")?.click(); } });
@@ -2853,6 +2881,7 @@ function exercise(host, item, meta = {}) {
       }
     } else if (item.t === "choice") {
       box.append(h("div", { class: "ex-q" }, item.q));
+      glossEl(item) && box.append(glossEl(item));
       const order = shuffle(item.o.map((o, i) => i));
       const opts = h("div", { class: "options" });
       order.forEach(i => opts.append(h("button", { class: "opt pl", onclick: (e) => {
@@ -2913,15 +2942,39 @@ async function runSet(host, items, { onEach, key, start = 0, score: startScore =
   host.replaceChildren();
   return score;
 }
+/* Course words you haven't met yet in this text: [{ tok, pl, en }]. Tests use them as little as
+   possible and gloss the rest under the question (puszka = a can). */
+let _cardMap = null;
+function unseenWords(text) {
+  if (!_cardMap) { _cardMap = new Map(); COURSE.forEach(u => u.vocab.forEach((v, i) => _cardMap.set(u.id + "-" + i, { pl: v[0], en: v[1] }))); }
+  const out = [], seen = new Set();
+  for (const t of String(text).match(/\p{L}+/gu) || []) {
+    const keys = [dictKey(t), ...lemmasOf(t).map(([l]) => dictKey(l))];
+    const known = keys.some(k => { const id = courseIndex().get(k); return id && S.srs.cards[id]; });
+    if (known) continue;
+    const id = keys.map(k => courseIndex().get(k)).find(Boolean);
+    if (id && !seen.has(id)) { seen.add(id); out.push(Object.assign({ tok: t }, _cardMap.get(id))); }
+  }
+  return out;
+}
+const itemText = it => [it.q, it.h, ...(it.o || []), ...(Array.isArray(it.a) ? it.a : [])].filter(x => typeof x === "string").join(" ");
+/* vocabulary questions only on words already in your flashcards, with wrong answers you've met too */
 function vocabItems(u, n) {
-  const v = u.vocab.filter(x => !/…/.test(x[0]));
-  return pick(v, n).map((w, k) => {
-    const others = pick(v.filter(x => x !== w), 3);
+  const metW = u.vocab.map((x, i) => [x, u.id + "-" + i]).filter(([x, id]) => !/…/.test(x[0]) && S.srs.cards[id]).map(([x]) => x);
+  if (!metW.length) return [];
+  const metAll = introduced().filter(c => !c.custom && !c.mined && !/…/.test(c.pl)).map(c => [c.pl, c.en]);
+  const v = metW;
+  return pick(v, Math.min(n, v.length)).map((w, k) => {
+    let others = pick(v.filter(x => x !== w), 3);
+    if (others.length < 3) others = others.concat(pick(metAll.filter(x => x[0] !== w[0] && !others.some(o => o[0] === x[0])), 3 - others.length));
+    if (others.length < 3) others = others.concat(pick(u.vocab.filter(x => x !== w && !/…/.test(x[0]) && !others.includes(x)), 3 - others.length));
     if (k % 2 === 0) return { t: "choice", q: `What does „${w[0]}” mean?`, o: [w[1], ...others.map(o => o[1])], a: 0, _tag: "v" + u.id, _label: "vocabulary", _say: w[0] };
     return { t: "choice", q: `How do you say “${w[1]}” in Polish?`, o: [w[0], ...others.map(o => o[0])], a: 0, _tag: "v" + u.id, _label: "vocabulary", _say: w[0] };
   });
 }
-const tagItems = (u, n) => pick(u.quiz, n).map(q => Object.assign({}, q, { _tag: u.tag, _label: q.sr ? "Serbian trap" : u.focus.split(" · ")[1] || u.focus }));
+/* grammar questions: the ones made of words you know come first; any unseen word is glossed */
+const tagItems = (u, n) => shuffle(u.quiz.map(q => [q, unseenWords(itemText(q))])).sort((a, b) => a[1].length - b[1].length).slice(0, n)
+  .map(([q, un]) => Object.assign({}, q, { _tag: u.tag, _label: q.sr ? "Serbian trap" : u.focus.split(" · ")[1] || u.focus }, un.length ? { _gloss: un.map(w => ({ pl: w.pl, en: w.en })) } : {}));
 
 /* ---------- Step 2: Grammar ---------- */
 function runGrammar(body) {
@@ -3410,7 +3463,8 @@ Reply with only JSON: {"title":"Polish title","paragraphs":["..."],"glossary":[{
 
 /* ---------- Step 6: Daily test ---------- */
 function buildQuiz(u) {
-  const items = tagItems(u, 6).concat(vocabItems(u, 4));
+  const voc = vocabItems(u, 4);
+  const items = tagItems(u, 10 - voc.length).concat(voc);
   const learned = x => POS[x.id] < POS[u.id] && S.progress.mastered.includes(x.id);
   const earlier = COURSE.filter(learned);
   if (earlier.length) {
@@ -3851,6 +3905,7 @@ function openMiner(pre = {}, editId = null) {
   const src = h("input", { type: "text", id: "mine-src", placeholder: "Where it's from (optional)", "aria-label": "Source" });
   src.value = (old && old.src) || pre.src || "";
   const marked = new Map(((old && old.words) || []).map(w => [w.tok, Object.assign({}, w)]));
+  for (const t of pre.marks || []) if (!marked.has(t)) { const hit = lookupWord(t)[0]; marked.set(t, { tok: t, lemma: hit ? hit.lemma : "", en: hit ? hit.en : "", form: hit ? hit.form : "", entry: hit ? hit.entry : null }); }
   const chips = h("div", { class: "row mine-toks" });
   const info = h("div", { class: "stack", style: "gap:6px" });
   const warn = h("p", { class: "small muted" });
